@@ -1,97 +1,297 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Weave Codex</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <header class="topbar">
-    <a class="brand" href="/"><span>W</span><b>Weave Codex</b></a>
-    <div class="runtime"><i></i><span>Local control plane</span></div>
-    <nav><a href="#design">Design</a><a href="#run">Run</a><a href="https://github.com/openai/codex" target="_blank" rel="noreferrer">Upstream source ↗</a></nav>
-  </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Weave Codex</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/"><span>W</span><b>Weave Codex</b></a>
+      <div class="runtime"><i></i><span>Local control plane</span></div>
+      <nav>
+        <a href="#design">Design</a><a href="#run">Run</a
+        ><a
+          href="https://github.com/openai/codex"
+          target="_blank"
+          rel="noreferrer"
+          >Upstream source ↗</a
+        >
+      </nav>
+    </header>
 
-  <main>
-    <section class="intro">
-      <p class="kicker">CODEX APP-SERVER / VISUAL CONTROL PLANE</p>
-      <h1>Make the agent loop inspectable and editable.</h1>
-      <p class="lede">This page compiles a human-owned manifest into real Codex thread and turn operations. Sandbox, approvals, memory scope, verification, and retry limits remain visible in the run receipt.</p>
-    </section>
+    <main>
+      <section class="intro">
+        <p class="kicker">CODEX APP-SERVER / VISUAL CONTROL PLANE</p>
+        <h1>Make the agent loop inspectable and editable.</h1>
+        <p class="lede">
+          This page compiles a human-owned manifest into real Codex thread and
+          turn operations. Sandbox, approvals, memory scope, verification, and
+          retry limits remain visible in the run receipt.
+        </p>
+      </section>
 
-    <section id="design" class="workspace">
-      <aside class="configuration">
-        <header class="section-head"><span>01</span><div><h2>Define the run</h2><p>Start from a reviewed shape, then change the controls.</p></div></header>
+      <section id="design" class="workspace">
+        <aside class="configuration">
+          <header class="section-head">
+            <span>01</span>
+            <div>
+              <h2>Define the run</h2>
+              <p>Start from a reviewed shape, then change the controls.</p>
+            </div>
+          </header>
 
-        <div class="preset-grid" role="group" aria-label="Starting designs">
-          <button class="preset active" data-preset="inspect"><svg viewBox="0 0 168 52" aria-hidden="true"><rect x="2" y="15" width="36" height="22"/><path d="M38 26h22"/><rect x="60" y="15" width="42" height="22"/><path d="M102 26h22"/><rect x="124" y="15" width="42" height="22"/></svg><b>Read-only inspect</b><small>Task → Codex → verify</small></button>
-          <button class="preset" data-preset="edit"><svg viewBox="0 0 168 52" aria-hidden="true"><rect x="2" y="15" width="30" height="22"/><path d="M32 26h16"/><rect x="48" y="15" width="32" height="22"/><path d="M80 26h16"/><rect x="96" y="15" width="32" height="22"/><path d="M128 26h10"/><rect x="138" y="15" width="28" height="22"/></svg><b>Workspace change</b><small>Manual approval + repair</small></button>
-          <button class="preset" data-preset="review"><svg viewBox="0 0 168 52" aria-hidden="true"><rect x="2" y="15" width="44" height="22"/><path d="M46 26h28"/><rect x="74" y="15" width="44" height="22"/><path d="M118 26h16"/><rect x="134" y="15" width="32" height="22"/></svg><b>Review only</b><small>No memory, no writes</small></button>
-        </div>
-
-        <label class="field wide"><span>Task</span><textarea id="task" rows="6">Inspect this repository without changing files. Explain the control flow in three concise bullets and cite the files you inspected.</textarea></label>
-        <div class="field-row">
-          <label class="field"><span>Workspace (absolute)</span><input id="cwd" value="/home/mustafaah/WeaveCodex"></label>
-          <label class="field"><span>Model <em>optional</em></span><input id="model" placeholder="Use account default"></label>
-        </div>
-        <label class="field wide"><span>Context paths <em>one per line</em></span><textarea id="context" rows="2">README.md
-codex-rs/app-server/README.md</textarea></label>
-
-        <fieldset>
-          <legend><span>02</span><div><b>Memory scope</b><small>What prior Codex experience may enter this run?</small></div></legend>
-          <div class="segmented" id="memory-mode">
-            <label><input type="radio" name="memory" value="off" checked><span><b>Off</b><small>No prior traces</small></span></label>
-            <label><input type="radio" name="memory" value="all"><span><b>All</b><small>Native Codex memory</small></span></label>
-            <label><input type="radio" name="memory" value="selected"><span><b>Selected</b><small>Exact thread IDs</small></span></label>
+          <div class="preset-grid" role="group" aria-label="Starting designs">
+            <button class="preset active" data-preset="inspect">
+              <svg viewBox="0 0 168 52" aria-hidden="true">
+                <rect x="2" y="15" width="36" height="22" />
+                <path d="M38 26h22" />
+                <rect x="60" y="15" width="42" height="22" />
+                <path d="M102 26h22" />
+                <rect x="124" y="15" width="42" height="22" /></svg
+              ><b>Read-only inspect</b><small>Task → Codex → verify</small>
+            </button>
+            <button class="preset" data-preset="edit">
+              <svg viewBox="0 0 168 52" aria-hidden="true">
+                <rect x="2" y="15" width="30" height="22" />
+                <path d="M32 26h16" />
+                <rect x="48" y="15" width="32" height="22" />
+                <path d="M80 26h16" />
+                <rect x="96" y="15" width="32" height="22" />
+                <path d="M128 26h10" />
+                <rect x="138" y="15" width="28" height="22" /></svg
+              ><b>Workspace change</b><small>Manual approval + repair</small>
+            </button>
+            <button class="preset" data-preset="review">
+              <svg viewBox="0 0 168 52" aria-hidden="true">
+                <rect x="2" y="15" width="44" height="22" />
+                <path d="M46 26h28" />
+                <rect x="74" y="15" width="44" height="22" />
+                <path d="M118 26h16" />
+                <rect x="134" y="15" width="32" height="22" /></svg
+              ><b>Review only</b><small>No memory, no writes</small>
+            </button>
           </div>
-          <div id="trace-picker" class="trace-picker hidden">
-            <div><b>Selected Codex threads</b><button id="load-threads" type="button">Load from workspace</button></div>
-            <p>Only checked thread excerpts are injected. Their IDs and content hashes are recorded.</p>
-            <div id="thread-list" class="thread-list"><span>No threads loaded.</span></div>
-          </div>
-        </fieldset>
 
-        <fieldset>
-          <legend><span>03</span><div><b>Control policy</b><small>Codex keeps its native tools and safety boundary.</small></div></legend>
-          <div class="field-row thirds">
-            <label class="field"><span>Sandbox</span><select id="sandbox"><option value="read-only">Read only</option><option value="workspace-write">Workspace write</option></select></label>
-            <label class="field"><span>Approval gate</span><select id="approval"><option value="manual">Ask me</option><option value="auto-review">Codex auto-review</option><option value="deny">Deny escalation</option></select></label>
-            <label class="field"><span>Reasoning</span><select id="effort"><option>low</option><option selected>medium</option><option>high</option><option>xhigh</option></select></label>
+          <label class="field wide"
+            ><span>Task</span
+            ><textarea id="task" rows="6">
+Inspect this repository without changing files. Explain the control flow in three concise bullets and cite the files you inspected.</textarea
+            >
+          </label>
+          <div class="field-row">
+            <label class="field"
+              ><span>Workspace (absolute)</span
+              ><input id="cwd" value="/home/mustafaah/WeaveCodex"
+            /></label>
+            <label class="field"
+              ><span>Model <em>optional</em></span
+              ><input id="model" placeholder="Use account default"
+            /></label>
           </div>
-          <div class="verify-row">
-            <label class="check"><input id="verify" type="checkbox" checked><span><b>Structured verifier</b><small>Check the candidate in a later turn</small></span></label>
-            <label class="field compact"><span>Repair retries</span><select id="retries"><option>0</option><option selected>1</option><option>2</option></select></label>
+          <label class="field wide"
+            ><span>Context paths <em>one per line</em></span
+            ><textarea id="context" rows="2">
+README.md
+codex-rs/app-server/README.md</textarea
+            >
+          </label>
+
+          <fieldset>
+            <legend>
+              <span>02</span>
+              <div>
+                <b>Memory scope</b
+                ><small>What prior Codex experience may enter this run?</small>
+              </div>
+            </legend>
+            <div class="segmented" id="memory-mode">
+              <label
+                ><input type="radio" name="memory" value="off" checked /><span
+                  ><b>Off</b><small>No prior traces</small></span
+                ></label
+              >
+              <label
+                ><input type="radio" name="memory" value="all" /><span
+                  ><b>All</b><small>Native Codex memory</small></span
+                ></label
+              >
+              <label
+                ><input type="radio" name="memory" value="selected" /><span
+                  ><b>Selected</b><small>Exact thread IDs</small></span
+                ></label
+              >
+            </div>
+            <div id="trace-picker" class="trace-picker hidden">
+              <div>
+                <b>Selected Codex threads</b
+                ><button id="load-threads" type="button">
+                  Load from workspace
+                </button>
+              </div>
+              <p>
+                Only checked thread excerpts are injected. Their IDs and content
+                hashes are recorded.
+              </p>
+              <div id="thread-list" class="thread-list">
+                <span>No threads loaded.</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>
+              <span>03</span>
+              <div>
+                <b>Control policy</b
+                ><small
+                  >Codex keeps its native tools and safety boundary.</small
+                >
+              </div>
+            </legend>
+            <div class="field-row thirds">
+              <label class="field"
+                ><span>Sandbox</span
+                ><select id="sandbox">
+                  <option value="read-only">Read only</option>
+                  <option value="workspace-write">Workspace write</option>
+                </select></label
+              >
+              <label class="field"
+                ><span>Approval gate</span
+                ><select id="approval">
+                  <option value="manual">Ask me</option>
+                  <option value="auto-review">Codex auto-review</option>
+                  <option value="deny">Deny escalation</option>
+                </select></label
+              >
+              <label class="field"
+                ><span>Reasoning</span
+                ><select id="effort">
+                  <option>low</option>
+                  <option selected>medium</option>
+                  <option>high</option>
+                  <option>xhigh</option>
+                </select></label
+              >
+            </div>
+            <div class="verify-row">
+              <label class="check"
+                ><input id="verify" type="checkbox" checked /><span
+                  ><b>Structured verifier</b
+                  ><small>Check the candidate in a later turn</small></span
+                ></label
+              >
+              <label class="field compact"
+                ><span>Repair retries</span
+                ><select id="retries">
+                  <option>0</option>
+                  <option selected>1</option>
+                  <option>2</option>
+                </select></label
+              >
+            </div>
+            <label class="field wide"
+              ><span>Verification criterion</span
+              ><input
+                id="criteria"
+                value="The answer is correct, complete, grounded in inspected evidence, and follows the task."
+            /></label>
+          </fieldset>
+
+          <details class="manifest-panel">
+            <summary>
+              Manifest JSON <span>Edit the source document</span>
+            </summary>
+            <textarea id="manifest-json" spellcheck="false"></textarea
+            ><button id="apply-json" type="button">Apply JSON</button>
+          </details>
+        </aside>
+
+        <section class="preview">
+          <header class="section-head">
+            <span>04</span>
+            <div>
+              <h2>Compiled architecture</h2>
+              <p>Read left to right. This is the graph that will run.</p>
+            </div>
+            <strong id="valid-state">Not checked</strong>
+          </header>
+          <div id="graph" class="graph" aria-live="polite"></div>
+          <div class="compile-grid">
+            <section>
+              <h3>App-server operations</h3>
+              <ol id="actions"></ol>
+            </section>
+            <section>
+              <h3>Bounded work</h3>
+              <dl>
+                <div>
+                  <dt>Maximum controller turns</dt>
+                  <dd id="turn-bound">—</dd>
+                </div>
+                <div>
+                  <dt>Native tool loop</dt>
+                  <dd>Codex-managed</dd>
+                </div>
+                <div>
+                  <dt>Trace storage</dt>
+                  <dd>Local only</dd>
+                </div>
+              </dl>
+            </section>
           </div>
-          <label class="field wide"><span>Verification criterion</span><input id="criteria" value="The answer is correct, complete, grounded in inspected evidence, and follows the task."></label>
-        </fieldset>
-
-        <details class="manifest-panel"><summary>Manifest JSON <span>Edit the source document</span></summary><textarea id="manifest-json" spellcheck="false"></textarea><button id="apply-json" type="button">Apply JSON</button></details>
-      </aside>
-
-      <section class="preview">
-        <header class="section-head"><span>04</span><div><h2>Compiled architecture</h2><p>Read left to right. This is the graph that will run.</p></div><strong id="valid-state">Not checked</strong></header>
-        <div id="graph" class="graph" aria-live="polite"></div>
-        <div class="compile-grid">
-          <section><h3>App-server operations</h3><ol id="actions"></ol></section>
-          <section><h3>Bounded work</h3><dl><div><dt>Maximum controller turns</dt><dd id="turn-bound">—</dd></div><div><dt>Native tool loop</dt><dd>Codex-managed</dd></div><div><dt>Trace storage</dt><dd>Local only</dd></div></dl></section>
-        </div>
-        <div class="action-bar"><button id="compile" type="button">Validate manifest</button><button id="run-button" class="primary" type="button">Run with Codex</button></div>
-
-        <section id="run" class="run-panel">
-          <header><div><p class="kicker">LIVE RUN</p><h2>Events and receipt</h2></div><span id="run-status">No run</span></header>
-          <div class="run-columns">
-            <div><h3>Event stream</h3><div id="events" class="events"><p>Start a run to see app-server events.</p></div></div>
-            <div><h3>Final receipt</h3><pre id="receipt">No receipt yet.</pre></div>
+          <div class="action-bar">
+            <button id="compile" type="button">Validate manifest</button
+            ><button id="run-button" class="primary" type="button">
+              Run with Codex
+            </button>
           </div>
+
+          <section id="run" class="run-panel">
+            <header>
+              <div>
+                <p class="kicker">LIVE RUN</p>
+                <h2>Events and receipt</h2>
+              </div>
+              <span id="run-status">No run</span>
+            </header>
+            <div class="run-columns">
+              <div>
+                <h3>Event stream</h3>
+                <div id="events" class="events">
+                  <p>Start a run to see app-server events.</p>
+                </div>
+              </div>
+              <div>
+                <h3>Final receipt</h3>
+                <pre id="receipt">No receipt yet.</pre>
+              </div>
+            </div>
+          </section>
         </section>
       </section>
-    </section>
-  </main>
+    </main>
 
-  <dialog id="approval-dialog">
-    <form method="dialog"><p class="kicker">HUMAN APPROVAL</p><h2>Codex requested a protected action</h2><pre id="approval-detail"></pre><div><button value="decline" data-decision="decline">Decline</button><button value="accept" data-decision="accept">Allow once</button><button class="primary" value="acceptForSession" data-decision="acceptForSession">Allow for session</button></div></form>
-  </dialog>
-  <script src="/app.js"></script>
-</body>
+    <dialog id="approval-dialog">
+      <form method="dialog">
+        <p class="kicker">HUMAN APPROVAL</p>
+        <h2>Codex requested a protected action</h2>
+        <pre id="approval-detail"></pre>
+        <div>
+          <button value="decline" data-decision="decline">Decline</button
+          ><button value="accept" data-decision="accept">Allow once</button
+          ><button
+            class="primary"
+            value="acceptForSession"
+            data-decision="acceptForSession"
+          >
+            Allow for session
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <script src="/app.js"></script>
+  </body>
 </html>
