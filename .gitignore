@@ -94,3 +94,6 @@ CHANGELOG.ignore.md
 # Python bytecode files
 __pycache__/
 *.pyc
+
+# Local Weave Codex receipts and rollout traces can contain sensitive session data.
+.weave-codex/
