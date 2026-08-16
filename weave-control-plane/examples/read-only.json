@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "name": "Read-only repository inspection",
+  "cwd": "/absolute/path/to/repository",
+  "task": {
+    "instructions": "Inspect this repository without changing files. State the first Markdown heading in README.md and cite the file inspected.",
+    "contextPaths": ["README.md"]
+  },
+  "memory": {"mode": "off", "selectedThreadIds": []},
+  "agent": {
+    "model": null,
+    "reasoningEffort": "low",
+    "sandbox": "read-only",
+    "approvalGate": "deny"
+  },
+  "verification": {"enabled": false, "criteria": "The heading is exact.", "maxRetries": 0},
+  "output": {"format": "text"},
+  "observability": {"traceRoot": ".weave-codex/traces"}
+}

@@ -1,0 +1,24 @@
+[project]
+name = "weave-codex-control-plane"
+version = "0.1.0"
+description = "A human-designable control plane for Codex app-server"
+requires-python = ">=3.11"
+dependencies = ["openai-codex"]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.15"]
+
+[tool.uv.sources]
+openai-codex = { path = "../sdk/python", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C4"]

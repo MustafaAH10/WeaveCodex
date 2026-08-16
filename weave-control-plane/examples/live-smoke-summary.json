@@ -1,0 +1,29 @@
+{
+  "kind": "live-read-only-smoke",
+  "executedAt": "2026-08-16T23:39:08+08:00",
+  "controlPlaneSourceRevision": "9ded177ce7c1c0bd2047f902936c177612ab3434",
+  "runtime": "codex-cli 0.147.0 using the machine's existing Codex login",
+  "manifestHash": "sha256:cef6a3fc2c9c2562dd025ca911f5f10e6616fa2b86cdeab5b597d35dbd063c6c",
+  "task": "Inspect README.md only. Do not modify files. Report the exact first Markdown heading and cite the file inspected.",
+  "controls": {
+    "memory": "off",
+    "sandbox": "read-only",
+    "approvalGate": "deny",
+    "controllerTurns": 1,
+    "verification": false
+  },
+  "observed": {
+    "status": "completed",
+    "durationSeconds": 15,
+    "tokenUsageUpdates": 3,
+    "completedCommandExecutions": 2,
+    "completedFileChanges": 0,
+    "commands": [
+      "read the first line matching a Markdown heading in README.md",
+      "search README.md for the first Markdown heading"
+    ],
+    "finalResponse": "The first Markdown heading is `## Quickstart` in README.md.",
+    "independentlyChecked": true
+  },
+  "callCountCaveat": "This first smoke did not enable rawResponse/completed, so token-usage updates are recorded but not relabeled as an exact model-call count. Later runs enable raw completion events."
+}
