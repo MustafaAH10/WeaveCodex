@@ -126,6 +126,7 @@ main {
   align-self: start;
   max-height: calc(100vh - 64px);
   overflow: auto;
+  container-type: inline-size;
 }
 .section-head {
   display: flex;
@@ -386,32 +387,37 @@ legend small {
   font: 11px/1.5 var(--mono);
 }
 .graph {
-  display: flex;
-  align-items: center;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 12px;
   min-height: 152px;
-  padding: 22px;
-  overflow-x: auto;
+  padding: 18px;
+  overflow: visible;
   background: var(--panel);
   border: 1px solid var(--line);
 }
 .node {
   position: relative;
-  flex: 0 0 124px;
+  min-width: 0;
   min-height: 82px;
   border: 1px solid var(--ink);
   background: var(--paper);
-  padding: 11px;
+  padding: 10px;
 }
 .node:not(:last-child):after {
   content: "→";
   position: absolute;
-  right: -17px;
+  right: -11px;
   top: 30px;
   color: var(--accent);
 }
 .node[data-state="bypassed"] {
   opacity: 0.45;
+  border-style: dashed;
+}
+.node[data-state="invalid"] {
+  border-color: var(--accent);
   border-style: dashed;
 }
 .node i {
@@ -424,6 +430,7 @@ legend small {
 .node b,
 .node small {
   display: block;
+  overflow-wrap: anywhere;
 }
 .node b {
   margin: 7px 0 3px;
@@ -560,6 +567,36 @@ dialog button {
   border: 1px solid var(--ink);
   background: transparent;
 }
+@container (max-width: 760px) {
+  .graph {
+    gap: 10px;
+    min-height: 122px;
+    padding: 14px;
+  }
+  .node {
+    min-height: 72px;
+    padding: 8px 6px;
+  }
+  .node:not(:last-child):after {
+    right: -9px;
+    top: 26px;
+  }
+  .node i {
+    font-size: 8px;
+    overflow-wrap: anywhere;
+  }
+  .node b {
+    font-size: 11px;
+    line-height: 1.15;
+  }
+  .node small {
+    display: none;
+  }
+  .node[data-kind="memory"] small {
+    display: block;
+    font-size: 9px;
+  }
+}
 @media (max-width: 1050px) {
   .workspace {
     grid-template-columns: 1fr;
@@ -617,5 +654,32 @@ dialog button {
   }
   .preview {
     overflow: hidden;
+  }
+  .graph {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 16px;
+  }
+  .node {
+    min-height: 0;
+    padding: 11px;
+  }
+  .node:not(:last-child):after {
+    content: "↓";
+    right: auto;
+    left: 50%;
+    top: auto;
+    bottom: -18px;
+    transform: translateX(-50%);
+  }
+  .node i {
+    font-size: 9px;
+  }
+  .node b {
+    font-size: inherit;
+    line-height: inherit;
+  }
+  .node small {
+    display: block;
   }
 }

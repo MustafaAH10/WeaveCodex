@@ -3,6 +3,7 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 let compiled = null;
 let activeRun = null;
 let pollTimer = null;
+let compileVersion = 0;
 const h = (text) =>
   String(text).replace(
     /[&<>"']/g,
@@ -76,7 +77,7 @@ function renderCompile(result) {
   $("#graph").innerHTML = result.nodes
     .map(
       (node) =>
-        `<article class="node" data-state="${h(node.state || "active")}"><i>${h(node.kind)}</i><b>${h(node.label)}</b><small>${h(node.detail)}</small></article>`,
+        `<article class="node" data-kind="${h(node.kind)}" data-state="${h(node.state || "active")}"><i>${h(node.kind)}</i><b>${h(node.label)}</b><small>${h(node.detail)}</small></article>`,
     )
     .join("");
   $("#actions").innerHTML = result.actions
@@ -88,19 +89,95 @@ function renderCompile(result) {
   $("#valid-state").style.color = "var(--green)";
 }
 
+function draftNodes(manifest) {
+  const selectedCount = manifest.memory.selectedThreadIds.length;
+  const memory = {
+    off: { detail: "Off", state: "bypassed" },
+    all: { detail: "All prior Codex threads", state: "active" },
+    selected: {
+      detail: selectedCount
+        ? `Selected · ${selectedCount} thread${selectedCount === 1 ? "" : "s"}`
+        : "Selected · choose threads",
+      state: selectedCount ? "active" : "invalid",
+    },
+  }[manifest.memory.mode];
+  const verificationEnabled = manifest.verification.enabled;
+
+  return [
+    { kind: "task", label: "Task", detail: "Instructions + context" },
+    { kind: "memory", label: "Memory", ...memory },
+    {
+      kind: "safety",
+      label: "Safety",
+      detail: `${manifest.agent.sandbox} · ${manifest.agent.approvalGate}`,
+    },
+    {
+      kind: "agent",
+      label: "Agent loop",
+      detail: manifest.agent.model || "Codex default model",
+    },
+    {
+      kind: "verify",
+      label: "Verify",
+      detail: verificationEnabled ? "Structured verdict" : "Off",
+      state: verificationEnabled ? "active" : "bypassed",
+    },
+    {
+      kind: "repair",
+      label: "Repair",
+      detail: manifest.verification.maxRetries
+        ? `Up to ${manifest.verification.maxRetries}`
+        : "No retries",
+      state:
+        verificationEnabled && manifest.verification.maxRetries
+          ? "active"
+          : "bypassed",
+    },
+    { kind: "output", label: "Output", detail: manifest.output.format },
+  ];
+}
+
+function renderDraft(manifest, status, action) {
+  compiled = null;
+  $("#graph").innerHTML = draftNodes(manifest)
+    .map(
+      (node) =>
+        `<article class="node" data-kind="${h(node.kind)}" data-state="${h(node.state || "active")}"><i>${h(node.kind)}</i><b>${h(node.label)}</b><small>${h(node.detail)}</small></article>`,
+    )
+    .join("");
+  $("#actions").innerHTML = `<li>${h(action)}</li>`;
+  $("#turn-bound").textContent = "—";
+  $("#valid-state").textContent = status;
+  $("#valid-state").style.color = "var(--accent)";
+}
+
 async function compile() {
   syncJson();
+  const manifest = manifestFromForm();
+  const version = ++compileVersion;
+  renderDraft(manifest, "Checking…", "Validating this harness manifest…");
   try {
-    renderCompile(
-      await request("/api/compile", {
-        method: "POST",
-        body: $("#manifest-json").value,
-      }),
-    );
+    const result = await request("/api/compile", {
+      method: "POST",
+      body: $("#manifest-json").value,
+    });
+    if (version !== compileVersion) return false;
+    renderCompile(result);
     return true;
   } catch (error) {
-    $("#valid-state").textContent = `Invalid · ${error.message}`;
-    $("#valid-state").style.color = "var(--accent)";
+    if (version !== compileVersion) return false;
+    const selectedMemoryIsEmpty =
+      manifest.memory.mode === "selected" &&
+      manifest.memory.selectedThreadIds.length === 0;
+    renderDraft(
+      manifest,
+      selectedMemoryIsEmpty
+        ? "Invalid · Select at least one exact thread ID."
+        : `Invalid · ${error.message}`,
+      selectedMemoryIsEmpty
+        ? "Select at least one exact thread ID to compile this plan."
+        : "Fix the manifest error before compiling or running.",
+    );
     return false;
   }
 }
@@ -176,6 +253,17 @@ async function loadThreads() {
   } catch (error) {
     list.innerHTML = `<span>${h(error.message)}</span>`;
   }
+  compile();
+}
+
+function recompileMemory() {
+  updateMemoryPanel();
+  compile();
+}
+
+function recompileSelectedThreads() {
+  syncJson();
+  compile();
 }
 
 async function run() {
@@ -252,7 +340,7 @@ async function approve(decision) {
 }
 
 $$('input[name="memory"]').forEach((input) =>
-  input.addEventListener("change", updateMemoryPanel),
+  input.addEventListener("change", recompileMemory),
 );
 $$(".preset").forEach((button) =>
   button.addEventListener("click", () => applyPreset(button.dataset.preset)),
@@ -260,7 +348,7 @@ $$(".preset").forEach((button) =>
 $$("input, textarea, select").forEach((input) =>
   input.addEventListener("change", syncJson),
 );
-$("#thread-list").addEventListener("change", syncJson);
+$("#thread-list").addEventListener("change", recompileSelectedThreads);
 $("#load-threads").addEventListener("click", loadThreads);
 $("#compile").addEventListener("click", compile);
 $("#run-button").addEventListener("click", run);

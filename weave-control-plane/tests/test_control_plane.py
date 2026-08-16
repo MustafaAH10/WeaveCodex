@@ -176,3 +176,20 @@ def test_ui_contains_manifest_graph_memory_and_receipt_surfaces() -> None:
         "approval-dialog",
     ):
         assert f'id="{element_id}"' in html
+
+
+def test_ui_recompiles_memory_changes_and_fits_the_graph() -> None:
+    static = Path(__file__).parents[1] / "weave_codex/static"
+    javascript = (static / "app.js").read_text()
+    stylesheet = (static / "style.css").read_text()
+
+    assert 'input.addEventListener("change", recompileMemory)' in javascript
+    assert (
+        '$("#thread-list").addEventListener("change", recompileSelectedThreads)'
+        in javascript
+    )
+    assert 'renderDraft(manifest, "Checking…"' in javascript
+    assert "Select at least one exact thread ID to compile this plan." in javascript
+    assert "grid-template-columns: repeat(7, minmax(0, 1fr))" in stylesheet
+    graph_rule = stylesheet.split(".graph {", maxsplit=1)[1].split("}", maxsplit=1)[0]
+    assert "overflow-x: auto" not in graph_rule
