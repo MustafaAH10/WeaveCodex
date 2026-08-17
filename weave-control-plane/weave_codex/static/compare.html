@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Compare an existing Codex task with an exact WeaveCodex run without inventing hidden plans." />
+    <title>Compare runs · Weave for Codex</title>
+    <link rel="stylesheet" href="/compare.css" />
+  </head>
+  <body>
+    <header class="topbar"><a href="/#runs">← Run Explorer</a><b>Weave <span>for Codex</span></b><a href="/deep-dive.html">Technical deep dive</a></header>
+    <main>
+      <header class="hero">
+        <p>RUN COMPARISON</p>
+        <h1>Same runtime.<br />Different control surface.</h1>
+        <div><p>Choose one existing Codex task and one Weave run. The page compares observable structure and human coordination—not hidden reasoning or answer quality.</p><span>Deterministic projection · no model call</span></div>
+      </header>
+
+      <section class="pickers" aria-label="Choose runs">
+        <label><span>CODEX ONLY</span><b>Existing Codex task</b><select id="codex-select"><option value="">Loading tasks…</option></select></label>
+        <div class="versus">VS</div>
+        <label><span>WEAVE + CODEX</span><b>Exact Weave receipt</b><select id="weave-select"><option value="">Loading runs…</option></select></label>
+      </section>
+      <p id="comparison-status" class="status">Loading local run sources…</p>
+
+      <section class="comparison" aria-label="Side-by-side run maps">
+        <article class="run-column codex-column">
+          <header><div><span>C</span><p>CODEX ONLY</p></div><em id="codex-provenance">Derived from persisted items</em></header>
+          <h2 id="codex-title">Choose a Codex task</h2>
+          <p id="codex-summary">Codex adapts inside one native task. We group observed items for readability; the groups are not an authored plan.</p>
+          <div id="codex-map" class="run-map empty">No task selected.</div>
+          <dl id="codex-metrics"></dl>
+        </article>
+
+        <article class="run-column weave-column">
+          <header><div><span>W</span><p>WEAVE + CODEX</p></div><em id="weave-provenance">Exact local receipt</em></header>
+          <h2 id="weave-title">Choose a Weave run</h2>
+          <p id="weave-summary">Weave preserves the authored goal phases and the observed Codex activity inside each Work phase.</p>
+          <div id="weave-map" class="run-map empty">No run selected.</div>
+          <dl id="weave-metrics"></dl>
+        </article>
+      </section>
+
+      <section class="coordination">
+        <header><p>HUMAN-IN-THE-LOOP COORDINATION</p><h2>Where can a person actually intervene?</h2></header>
+        <div class="coordination-grid">
+          <article><span>Codex only</span><h3>Steer in the conversation</h3><p>Users can add messages and answer native approval requests. The workflow itself is adaptive and not separately compiled before the run.</p><div id="codex-human" class="human-line"></div></article>
+          <article><span>Weave + Codex</span><h3>Author handoffs before execution</h3><p>Named checkpoints can pause between complete Codex turns. Native tool approvals still operate inside those turns.</p><div id="weave-human" class="human-line"></div></article>
+        </div>
+      </section>
+
+      <section class="matrix">
+        <header><p>STRUCTURAL DIFF</p><h2>What the evidence permits us to say</h2></header>
+        <div id="comparison-matrix" class="matrix-table"></div>
+        <p class="limit"><b>Not a performance evaluation.</b> Unless both sides ran the same task under matched conditions with a scorer, this page makes no claim that one answer was better.</p>
+      </section>
+    </main>
+    <script src="/compare.js"></script>
+  </body>
+</html>

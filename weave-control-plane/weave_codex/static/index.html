@@ -18,6 +18,7 @@
         <button class="view-tab" data-view="examples" type="button">Examples</button>
         <button class="view-tab" data-view="design" type="button">Design</button>
         <button class="view-tab" data-view="runs" type="button">Runs</button>
+        <button class="view-tab" data-view="integrations" type="button">Integrations</button>
         <button class="view-tab" data-view="setup" type="button">Setup</button>
       </nav>
       <button class="runtime" id="runtime-indicator" data-view-link="setup" type="button">
@@ -241,31 +242,39 @@
 
       <section id="runs-view" class="app-view" aria-labelledby="observe-title">
         <header class="page-intro compact page-shell">
-          <p class="eyebrow">RUNS &amp; RECEIPTS</p>
-          <h1 id="observe-title">See what Codex actually did</h1>
-          <p>Weave-authored runs show exact phase boundaries and their internal events. Existing Codex tasks can also be viewed through a privacy-preserving projection, clearly marked as derived.</p>
-          <button id="new-harness" class="primary" type="button">Design a new harness</button>
+          <p class="eyebrow">RUN EXPLORER</p>
+          <h1 id="observe-title">From one task to one evidence map</h1>
+          <p>Pick a run, read its workflow from left to right, then open evidence only when you need it. One Work block may contain one or one hundred Codex tool calls.</p>
+          <div class="page-actions"><a class="secondary" href="/compare.html">Compare Codex with Weave</a><button id="new-harness" class="primary" type="button">Design a new harness</button></div>
         </header>
+        <ol class="run-steps page-shell" aria-label="How to inspect a run">
+          <li><span>1</span><div><b>Pick a source</b><small>An exact Weave receipt or an existing Codex task.</small></div></li>
+          <li><span>2</span><div><b>Read the map</b><small>Large nodes are goals; native tools stay nested inside them.</small></div></li>
+          <li><span>3</span><div><b>Open evidence</b><small>Activity, result, and raw JSON remain available below.</small></div></li>
+        </ol>
 
         <div class="observe-layout page-shell">
           <aside class="run-library">
-            <div class="panel-head"><div><h3>Weave runs</h3><p>Exact local receipts</p></div><button id="refresh-runs" class="icon-button" type="button" aria-label="Refresh runs">↻</button></div>
-            <div id="recent-runs" class="run-list"><div class="skeleton">Looking for saved runs…</div></div>
-            <section class="thread-browser">
-              <header><div><h3>Existing Codex tasks</h3><p>Derived view of persisted items</p></div><button id="browse-threads" class="text-button" type="button">Browse</button></header>
+            <div class="source-tabs" role="tablist" aria-label="Run source"><button class="active" data-run-source="weave" type="button">Weave runs</button><button data-run-source="codex" type="button">Codex tasks</button></div>
+            <section id="weave-run-source" class="run-source active">
+              <div class="panel-head"><div><h3>Saved Weave runs</h3><p>Exact authored phases and receipts</p></div><button id="refresh-runs" class="icon-button" type="button" aria-label="Refresh runs">↻</button></div>
+              <div id="recent-runs" class="run-list"><div class="skeleton">Looking for saved runs…</div></div>
+            </section>
+            <section id="codex-run-source" class="thread-browser run-source">
+              <header><div><h3>Existing Codex tasks</h3><p>Deterministic grouping of persisted items</p></div><button id="browse-threads" class="text-button" type="button">Browse</button></header>
               <div id="codex-thread-list" class="thread-source-list"><p>Browse to visualize a Codex task that was not run by Weave.</p></div>
             </section>
           </aside>
 
           <section class="trace-workspace">
             <div id="trace-empty" class="empty-state">
-              <span class="empty-mark" aria-hidden="true">⌁</span><h3>Choose a run to inspect</h3><p>Select an exact Weave receipt or browse an existing Codex task. Nothing is sent to a model just to view a saved trace.</p><button class="secondary" data-open-builder type="button">Design a harness first</button>
+              <span class="empty-mark" aria-hidden="true">⌁</span><h3>Choose a run to inspect</h3><p>Select an exact Weave receipt or browse an existing Codex task. Viewing a saved trace does not call a model.</p><button class="secondary" data-open-builder type="button">Design a harness first</button>
             </div>
 
             <div id="trace-content" class="hidden">
               <header class="trace-header">
                 <div><div class="title-row"><span id="trace-status" class="status-pill">Complete</span><h3 id="trace-title">Codex run</h3></div><p id="trace-meta">—</p></div>
-                <button id="use-run-controls" class="secondary" type="button">Use these controls</button>
+                <div class="trace-actions"><a id="compare-this-run" class="text-button" href="/compare.html">Compare this run</a><button id="use-run-controls" class="secondary" type="button">Reuse workflow</button></div>
               </header>
               <div class="trace-legend"><span><i class="legend-authored"></i>Authored by you</span><span><i class="legend-observed"></i>Observed from Codex</span><span><i class="legend-derived"></i>Derived grouping</span></div>
               <section class="trace-summary" aria-label="Run summary">
@@ -275,10 +284,11 @@
                 <article><b id="metric-turns">—</b><span>controller turns</span></article>
               </section>
               <section class="execution-map-panel">
-                <header><div><h3>Phase map</h3><p>Large cards are meaningful goals. Tool calls stay inside Work phases.</p></div><span id="trace-event-count">0 events</span></header>
-                <div id="execution-map" class="execution-map"></div>
+                <header><div><h3>Run map</h3><p>Large cards are meaningful goals. Tool calls stay inside Work phases.</p></div><span id="trace-event-count">0 events</span></header>
+                <div class="run-canvas"><div id="execution-map" class="execution-map"></div></div>
               </section>
-              <div class="trace-detail-grid">
+              <div class="trace-detail-tabs" role="tablist" aria-label="Run evidence"><button data-trace-panel="activity" type="button">Activity</button><button class="active" data-trace-panel="result" type="button">Result &amp; receipt</button><button data-trace-panel="raw" type="button">Raw notifications</button></div>
+              <div class="trace-detail-grid" data-visible-panel="result">
                 <section class="activity-panel">
                   <header><div><h3>Activity inside the selected phase</h3><p>Observable app-server events, not private chain-of-thought.</p></div><select id="event-filter" aria-label="Filter trace activity"><option value="all">All activity</option><option value="tool">Tools only</option><option value="reasoning">Reasoning summaries</option><option value="answer">Answers only</option></select></header>
                   <div id="timeline" class="timeline"></div>
@@ -289,10 +299,35 @@
                   <details><summary>Machine-readable receipt</summary><div id="receipt-summary"></div><pre id="receipt"></pre></details>
                 </section>
               </div>
-              <details class="raw-events"><summary>Raw app-server notifications</summary><div id="events"></div></details>
+              <section class="raw-events" aria-label="Raw app-server notifications"><div id="events"><p>No raw notifications were persisted for this saved run.</p></div></section>
             </div>
           </section>
         </div>
+      </section>
+
+      <section id="integrations-view" class="app-view" aria-labelledby="integrations-title">
+        <header class="page-intro page-shell">
+          <p class="eyebrow">CODEX-NATIVE INTEGRATIONS</p>
+          <h1 id="integrations-title">Use what your Codex already knows</h1>
+          <p>Weave reads a redacted inventory from the local Codex app-server. It does not copy skill files, connector credentials, MCP secrets, or account tokens.</p>
+          <button id="refresh-integrations" class="primary" type="button">Read my Codex setup</button>
+        </header>
+        <div class="integration-model page-shell">
+          <article><span>Automatic</span><h2>AGENTS.md</h2><p>Codex loads global guidance, then project guidance from the repository root toward the working directory. Weave inherits that behavior.</p><a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md" target="_blank" rel="noreferrer">Instruction precedence ↗</a></article>
+          <article><span>Invocable</span><h2>Skills</h2><p>Reusable procedures discovered by Codex for this workspace. The inventory shows names and enablement, not file contents.</p><a href="https://learn.chatgpt.com/docs/build-skills" target="_blank" rel="noreferrer">Skills documentation ↗</a></article>
+          <article><span>Tool runtime</span><h2>MCP servers</h2><p>External tools and resources configured in Codex. Their own auth, policy, sandbox, and approval rules still apply.</p><a href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli" target="_blank" rel="noreferrer">MCP documentation ↗</a></article>
+          <article><span>Connected data</span><h2>Apps</h2><p>Codex-owned connector apps. Weave shows accessibility and installation links without receiving connector credentials.</p><a href="https://learn.chatgpt.com/docs/app-server" target="_blank" rel="noreferrer">App-server documentation ↗</a></article>
+        </div>
+        <section class="integration-inventory page-shell">
+          <header><div><h2>Your current inventory</h2><p id="integration-status">Choose “Read my Codex setup” to inspect the current workspace.</p></div><span>Read-only · local</span></header>
+          <div class="integration-columns">
+            <section><h3>Skills <em id="skill-count">0</em></h3><div id="skill-inventory" class="inventory-list"><p>Not loaded.</p></div></section>
+            <section><h3>MCP servers <em id="mcp-count">0</em></h3><div id="mcp-inventory" class="inventory-list"><p>Not loaded.</p></div></section>
+            <section><h3>Connector apps <em id="app-count">0</em></h3><div id="app-inventory" class="inventory-list"><p>Not loaded.</p></div></section>
+          </div>
+          <div class="integration-selection"><div><b>Selected for the next harness</b><p id="integration-selection">Nothing selected. Skills and connected Apps can be added as visible invocation markers in your task.</p></div><button id="apply-integrations" class="primary" type="button" disabled>Add to task and open designer</button></div>
+          <div class="integration-boundary"><b>What “available” means</b><p>This page inventories the effective Codex environment. It does not claim every integration is invoked in every run, and it does not bypass Codex policies. Per-phase hard allowlisting is not implemented yet; until it is, an integration request belongs in the visible task instruction.</p></div>
+        </section>
       </section>
 
       <section id="setup-view" class="app-view" aria-labelledby="setup-title">

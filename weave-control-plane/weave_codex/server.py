@@ -241,6 +241,21 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/examples":
             self._json(HTTPStatus.OK, {"examples": self.server.app.product_examples()})
             return
+        if parsed.path == "/api/integrations":
+            cwd = parse_qs(parsed.query).get("cwd", [str(self.server.app.workspace_root)])[0]
+            try:
+                self._json(HTTPStatus.OK, self.server.app.auth.integrations(cwd))
+            except (OSError, ValueError):
+                self._json(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": "Integration inventory requires an existing workspace path."},
+                )
+            except Exception:  # noqa: BLE001 - never expose raw app-server/config errors
+                self._json(
+                    HTTPStatus.BAD_GATEWAY,
+                    {"error": "Codex integration inventory is unavailable."},
+                )
+            return
         if parsed.path.startswith("/api/account/login/"):
             login_id = parsed.path.removeprefix("/api/account/login/")
             if re.fullmatch(r"[A-Za-z0-9_-]{1,160}", login_id) is None:

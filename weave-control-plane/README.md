@@ -66,10 +66,18 @@ Open `http://127.0.0.1:8790`. The product is organized as a short, explicit jour
    claims.
 3. **Design** lets you edit Work, Human Checkpoint, and Verify + Repair phases, then inspect the
    exact app-server operations before execution.
-4. **Runs** shows saved Weave receipts or projects an existing Codex thread into a smaller set of
-   privacy-reduced, explicitly derived activity groups.
-5. **Setup** checks the native Codex account and starts the official ChatGPT browser flow when
+4. **Runs** starts with a deterministic task-to-output map. Saved Weave receipts show exact authored
+   phases; existing Codex threads show explicitly derived activity groups. Result, activity, raw
+   notifications, and receipt JSON are progressive-disclosure tabs rather than one long trace wall.
+5. **Integrations** reads a secret-free inventory of workspace Skills, configured MCP servers, and
+   connector Apps from the local Codex app-server. Accessible Skills and Apps can be added visibly
+   to the next task; AGENTS.md remains inherited and MCP policy remains Codex-owned.
+6. **Setup** checks the native Codex account and starts the official ChatGPT browser flow when
    sign-in is required.
+
+Open `http://127.0.0.1:8790/compare.html` to place a Codex-only thread projection beside an exact
+Weave receipt. The comparison reports observable structure and human coordination; it does not
+claim answer-quality improvement unless an external matched evaluation exists.
 
 For a Codex-first explanation, open `http://127.0.0.1:8790/deep-dive.html`. The article initially
 describes Codex by itself. **Reveal Weave layer** then adds track-change annotations and transforms
@@ -109,6 +117,8 @@ This first version intentionally lives in `weave-control-plane/`. No `codex-core
 app-server protocol code is modified. The runtime uses the pinned Python SDK and these existing v2
 operations: `initialize`, `thread/list`, `thread/read`, `thread/start`,
 `thread/memoryMode/set`, `turn/start`, event notifications, and approval responses.
+The read-only Integrations page additionally uses `skills/list`, `mcpServerStatus/list`, and
+`app/list`; it does not read Codex configuration files or connector credentials directly.
 
 Read [Codex is not a flowchart](docs/CODEX_HARNESS_INTERNALS.md) for the source-level architecture
 and [the source evidence ledger](docs/CODEX_SOURCE_AUDIT.md) for claim-to-symbol provenance.

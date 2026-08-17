@@ -1,7 +1,10 @@
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 import pytest
 
+from weave_codex.auth_service import NativeAuthService
 from weave_codex.auth_status import (
     account_read_params,
     chatgpt_browser_login_params,
@@ -160,3 +163,96 @@ def test_passive_probe_and_managed_browser_login_contract() -> None:
     first = chatgpt_browser_login_params()
     first["type"] = "mutated"
     assert chatgpt_browser_login_params()["type"] == "chatgpt"
+
+
+def test_integration_inventory_is_allowlisted_and_secret_free(tmp_path: Path) -> None:
+    class FakeClient:
+        def start(self) -> None:
+            pass
+
+        def initialize(self) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
+        def request(
+            self,
+            method: str,
+            params: dict[str, Any] | None,
+            *,
+            response_model: type[Any],
+        ) -> Any:
+            assert params is not None
+            if method == "skills/list":
+                value = {
+                    "data": [
+                        {
+                            "cwd": str(tmp_path),
+                            "errors": [],
+                            "skills": [
+                                {
+                                    "name": "finance",
+                                    "description": "Analyze workbooks",
+                                    "enabled": True,
+                                    "path": "/private/skills/finance/SKILL.md",
+                                    "scope": "user",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            elif method == "mcpServerStatus/list":
+                value = {
+                    "data": [
+                        {
+                            "name": "drive",
+                            "authStatus": "oAuth",
+                            "tools": {
+                                "search": {
+                                    "name": "search",
+                                    "inputSchema": {"type": "object"},
+                                }
+                            },
+                            "resources": [],
+                            "resourceTemplates": [],
+                        }
+                    ],
+                    "nextCursor": None,
+                }
+            else:
+                value = {
+                    "data": [
+                        {
+                            "id": "sheets",
+                            "name": "Google Sheets",
+                            "description": "Connected workbooks",
+                            "isAccessible": True,
+                            "isEnabled": True,
+                            "installUrl": "https://chatgpt.com/apps/sheets",
+                        }
+                    ],
+                    "nextCursor": None,
+                }
+            return response_model.model_validate(value)
+
+    service = NativeAuthService("codex", client_factory=lambda _: FakeClient())
+    try:
+        result = service.integrations(str(tmp_path))
+    finally:
+        service.close()
+
+    encoded = repr(result)
+    assert result["skills"] == [
+        {
+            "name": "finance",
+            "description": "Analyze workbooks",
+            "enabled": True,
+            "scope": "user",
+        }
+    ]
+    assert result["mcpServers"][0]["tools"] == ["search"]
+    assert result["apps"][0]["accessible"] is True
+    assert "/private/skills" not in encoded
+    assert "token" not in encoded.lower()
+    assert result["privacy"]["secretsIncluded"] is False

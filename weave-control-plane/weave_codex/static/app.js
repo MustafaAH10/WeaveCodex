@@ -128,6 +128,7 @@ let currentExample = "flappy";
 let securitySession = null;
 let loginPollTimer = null;
 let workspaceEntries = [];
+const selectedIntegrations = new Map();
 
 function makePhase(type, config = {}) {
   return { id: uid(), type, title: PHASE_TYPES[type].defaultTitle, config };
@@ -229,6 +230,7 @@ function switchView(view, updateHistory = true) {
   if (updateHistory && location.hash !== `#${view}`) history.pushState({ view }, "", `#${view}`);
   window.scrollTo({ top: 0, behavior: "smooth" });
   if (view === "setup" && securitySession) void checkAccount();
+  if (view === "integrations" && securitySession && $("#integration-status")?.dataset.loaded !== "true") void loadIntegrations();
 }
 
 function renderPalette() {
@@ -696,7 +698,7 @@ async function loadThreadProjection(threadId, name) {
     const projection = await request("/api/thread-projection", { method: "POST", body: JSON.stringify({ cwd: $("#cwd").value.trim(), threadId }) });
     activeRun = null;
     activeTracePhase = null;
-    activeReceipt = { runId: threadId, threadName: name, traceProjection: projection, timeline: [], finalResponse: "This is a privacy-preserving phase projection of an existing Codex thread. The original response body is not copied into the projection." };
+    activeReceipt = { runId: threadId, threadId, threadName: name, traceProjection: projection, timeline: [], finalResponse: "This is a privacy-preserving phase projection of an existing Codex thread. The original response body is not copied into the projection." };
     renderEvents([]);
     renderTrace(activeReceipt, "completed");
   } catch (error) { showTraceError(`Thread projection unavailable: ${error.message}`); }
@@ -757,6 +759,13 @@ function renderTrace(result, status = "completed", error = null) {
   $("#trace-title").textContent = status === "running" ? "Codex is working" : result.threadName || "Codex execution trace";
   $("#trace-meta").textContent = hasAuthoredPhases ? `${String(result.runId || "run").slice(0, 16)} · exact Weave phase receipt · ${result.controls?.sandbox || "control pending"}` : projection ? `${String(result.runId || "thread").slice(0, 16)} · derived activity view · ${projection.projectionBasis}` : `${result.runId ? result.runId.slice(0, 8) : "live"} · ${result.controls?.sandbox || "control pending"} · memory ${result.memory?.mode || "off"}${error ? ` · ${error}` : ""}`;
   $("#use-run-controls").textContent = hasAuthoredPhases ? "Reuse this harness shape" : projection ? "Use this trace shape" : "Use these controls";
+  const comparison = $("#compare-this-run");
+  if (comparison) {
+    const query = hasAuthoredPhases
+      ? `rightRun=${encodeURIComponent(result.runId || "")}`
+      : `leftThread=${encodeURIComponent(result.threadId || result.runId || "")}&cwd=${encodeURIComponent($("#cwd").value.trim())}`;
+    comparison.href = `/compare.html?${query}`;
+  }
   $("#metric-phases").textContent = groups.length;
   $("#metric-phases").nextElementSibling.textContent = hasAuthoredPhases ? "authored phases" : projection ? "derived activity groups" : "goal phases";
   $("#metric-tools").textContent = tools;
@@ -822,11 +831,14 @@ function renderProjectionActivity(projection) {
 function renderExecutionMap(groups) {
   const root = $("#execution-map");
   if (!groups.length) { root.innerHTML = `<div class="map-empty">Waiting for the first phase event…</div>`; return; }
-  root.innerHTML = groups.map((group, index) => {
+  const executions = new Map((activeReceipt?.phaseProgram?.executions || []).map((item) => [item.phaseId, item.kind]));
+  const phaseMarkup = groups.map((group, index) => {
     const tools = group.events.filter((event) => event.kind === "tool_call").length;
     const reasoning = group.events.filter((event) => event.kind === "reasoning").length;
-    return `<button class="executed-phase ${activeTracePhase === group.id ? "active" : ""}" type="button" data-trace-phase="${escapeHtml(group.id)}"><span>${String(index + 1).padStart(2, "0")}</span><div><small>HARNESS PHASE</small><b>${escapeHtml(group.label)}</b><p>${tools} tool request${tools === 1 ? "" : "s"} · ${reasoning} reasoning item${reasoning === 1 ? "" : "s"}</p></div>${group.id === "solver" ? `<em>Codex-managed loop</em>` : ""}</button>`;
+    const kind = executions.get(group.id) || "work";
+    return `<button class="executed-phase ${activeTracePhase === group.id ? "active" : ""}" type="button" data-trace-phase="${escapeHtml(group.id)}"><span>${String(index + 1).padStart(2, "0")}</span><div><small>${escapeHtml(kind === "verify" ? "VERIFY + REPAIR" : "AUTHORED WORK GOAL")}</small><b>${escapeHtml(group.label)}</b><p>${tools} tool request${tools === 1 ? "" : "s"} · ${reasoning} reasoning summar${reasoning === 1 ? "y" : "ies"}</p><div class="phase-inside"><i>Codex loop</i><i>tools nested here</i></div></div></button>`;
   }).join("");
+  root.innerHTML = `<div class="map-boundary"><small>INPUT</small><b>Task contract</b><span>context · memory · safety</span></div>${phaseMarkup}<div class="map-boundary output"><small>OUTPUT</small><b>Answer + receipt</b><span>result · counts · provenance</span></div>`;
   $$(".executed-phase", root).forEach((button) => button.addEventListener("click", () => {
     activeTracePhase = activeTracePhase === button.dataset.tracePhase ? null : button.dataset.tracePhase;
     renderExecutionMap(groups);
@@ -891,6 +903,76 @@ async function poll() {
     }
     pollTimer = setTimeout(poll, 650);
   } catch (error) { showTraceError(error.message); $("#run-button").disabled = false; }
+}
+
+function selectRunSource(source) {
+  $$('[data-run-source]').forEach((button) => button.classList.toggle("active", button.dataset.runSource === source));
+  $$(".run-source").forEach((section) => section.classList.toggle("active", section.id === `${source}-run-source`));
+  activeReceipt = null;
+  activeTracePhase = null;
+  $("#trace-content").classList.add("hidden");
+  $("#trace-empty").classList.remove("hidden");
+  $("#trace-empty h3").textContent = source === "codex" ? "Choose an existing Codex task" : "Choose a saved Weave run";
+  $("#trace-empty p").textContent = source === "codex"
+    ? "Weave will derive a compact activity map from persisted Codex items. It will not call a model or claim the groups were an original plan."
+    : "An exact Weave receipt preserves your authored phases and the observed Codex activity inside them.";
+  if (source === "codex" && !$("#codex-thread-list [data-thread-id]")) void browseCodexThreads();
+}
+
+function selectTracePanel(panel) {
+  $$("[data-trace-panel]").forEach((button) => button.classList.toggle("active", button.dataset.tracePanel === panel));
+  $(".trace-detail-grid").dataset.visiblePanel = panel;
+}
+
+async function loadIntegrations() {
+  const status = $("#integration-status");
+  status.textContent = "Reading the effective Codex inventory for this workspace…";
+  try {
+    const data = await request(`/api/integrations?cwd=${encodeURIComponent($("#cwd").value.trim())}`);
+    status.dataset.loaded = "true";
+    status.textContent = `Inventory from ${data.cwd}. No credentials or configuration contents were returned.`;
+    const skills = data.skills || [];
+    const servers = data.mcpServers || [];
+    const apps = data.apps || [];
+    $("#skill-count").textContent = skills.length;
+    $("#mcp-count").textContent = servers.length;
+    $("#app-count").textContent = apps.length;
+    $("#skill-inventory").innerHTML = skills.length ? skills.map((skill) => `<article><b>${escapeHtml(skill.name)}</b><small>${escapeHtml(skill.description || "No description")}</small><span class="inventory-state">${skill.enabled ? "enabled" : "disabled"} · ${escapeHtml(skill.scope || "scope unknown")}</span>${skill.enabled ? `<button type="button" data-integration-marker="$${escapeHtml(skill.name)}" data-integration-label="Skill: ${escapeHtml(skill.name)}">Include in task</button>` : ""}</article>`).join("") : "<p>No skills were reported for this workspace.</p>";
+    $("#mcp-inventory").innerHTML = servers.length ? servers.map((server) => `<article><b>${escapeHtml(server.name)}</b><small>${server.tools.length} tool${server.tools.length === 1 ? "" : "s"}: ${escapeHtml(server.tools.slice(0, 5).join(", ") || "none exposed")}${server.tools.length > 5 ? "…" : ""}</small><span class="inventory-state">auth ${escapeHtml(server.authStatus)}</span></article>`).join("") : "<p>No MCP servers were reported by Codex.</p>";
+    $("#app-inventory").innerHTML = apps.length ? apps.map((app) => `<article><b>${escapeHtml(app.name)}</b><small>${escapeHtml(app.description || "Codex connector app")}</small><span class="inventory-state">${app.accessible ? "connected" : app.enabled ? "available" : "disabled"}</span>${app.accessible ? `<button type="button" data-integration-marker="$${escapeHtml(app.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""))}" data-integration-label="App: ${escapeHtml(app.name)}">Include in task</button>` : app.installUrl ? `<a href="${escapeHtml(app.installUrl)}" target="_blank" rel="noreferrer">Connect in Codex ↗</a>` : ""}</article>`).join("") : "<p>No connector apps were reported by Codex.</p>";
+    $$('[data-integration-marker]').forEach((button) => button.addEventListener("click", () => toggleIntegration(button)));
+    renderIntegrationSelection();
+    if (data.pagination?.appsTruncated) status.textContent += " The connector list shows the first 100 entries reported by Codex.";
+    if (data.pagination?.mcpTruncated) status.textContent += " The MCP list is paginated and this view shows its first page.";
+    if (data.warnings?.length) status.textContent += ` ${data.warnings.join(" ")}`;
+  } catch (error) {
+    status.textContent = `Inventory unavailable: ${error.message}`;
+  }
+}
+
+function toggleIntegration(button) {
+  const marker = button.dataset.integrationMarker;
+  if (selectedIntegrations.has(marker)) selectedIntegrations.delete(marker);
+  else selectedIntegrations.set(marker, button.dataset.integrationLabel || marker);
+  $$('[data-integration-marker]').forEach((item) => item.classList.toggle("selected", selectedIntegrations.has(item.dataset.integrationMarker)));
+  renderIntegrationSelection();
+}
+
+function renderIntegrationSelection() {
+  const labels = [...selectedIntegrations.values()];
+  $("#integration-selection").textContent = labels.length ? labels.join(" · ") : "Nothing selected. Skills and connected Apps can be added as visible invocation markers in your task.";
+  $("#apply-integrations").disabled = labels.length === 0;
+}
+
+function applySelectedIntegrations() {
+  if (!selectedIntegrations.size) return;
+  const markerLine = `Use these Codex integrations when relevant: ${[...selectedIntegrations.keys()].join(" ")}.`;
+  const task = getPhase("task");
+  task.config.goal = `${task.config.goal || "Describe the task here."}\n\n${markerLine}`.trim();
+  selectedPhaseId = task.id;
+  changed();
+  switchView("design");
+  toast("Selected integration markers were added visibly to the task");
 }
 
 async function approve(decision) {
@@ -1147,7 +1229,11 @@ function bindGlobalEvents() {
   $("#search-workspace").addEventListener("click", searchWorkspacePaths);
   $("#workspace-query").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); searchWorkspacePaths(); } });
   $("#refresh-runs").addEventListener("click", () => loadRecentRuns());
+  $$('[data-run-source]').forEach((button) => button.addEventListener("click", () => selectRunSource(button.dataset.runSource)));
+  $$('[data-trace-panel]').forEach((button) => button.addEventListener("click", () => selectTracePanel(button.dataset.tracePanel)));
   $("#browse-threads").addEventListener("click", browseCodexThreads);
+  $("#refresh-integrations").addEventListener("click", loadIntegrations);
+  $("#apply-integrations").addEventListener("click", applySelectedIntegrations);
   $("#event-filter").addEventListener("change", () => activeReceipt?.traceProjection ? renderProjectionActivity(activeReceipt.traceProjection) : renderTimeline(activeReceipt?.timeline || []));
   $("#copy-result").addEventListener("click", async () => { await navigator.clipboard.writeText($("#final-response").textContent); toast("Result copied"); });
   $("#use-run-controls").addEventListener("click", useRunControls);

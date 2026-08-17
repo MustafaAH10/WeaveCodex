@@ -31,6 +31,16 @@ class FakeAuth:
             "authUrl": "https://chatgpt.com/auth/example",
         }
 
+    def integrations(self, cwd: str) -> dict[str, Any]:
+        return {
+            "cwd": cwd,
+            "skills": [{"name": "spreadsheet", "enabled": True}],
+            "mcpServers": [{"name": "browser", "tools": ["open"]}],
+            "apps": [{"id": "drive", "name": "Google Drive", "accessible": True}],
+            "warnings": [],
+            "privacy": {"secretsIncluded": False},
+        }
+
     def login_status(self, login_id: str) -> dict[str, str] | None:
         if login_id != "login-1":
             return None
@@ -109,6 +119,16 @@ def test_local_session_token_guards_side_effects_and_auth_flow(tmp_path: Path) -
         status, account = _request(port, "GET", "/api/account")
         assert status == 200
         assert account["subscriptionAccess"] is True
+
+        status, integrations = _request(
+            port,
+            "GET",
+            f"/api/integrations?cwd={workspace}",
+        )
+        assert status == 200
+        assert integrations["skills"][0]["name"] == "spreadsheet"
+        assert integrations["mcpServers"][0]["tools"] == ["open"]
+        assert integrations["privacy"]["secretsIncluded"] is False
 
         (workspace / "src").mkdir()
         (workspace / "src" / "main.py").write_text("SECRET_FILE_CONTENT", encoding="utf-8")

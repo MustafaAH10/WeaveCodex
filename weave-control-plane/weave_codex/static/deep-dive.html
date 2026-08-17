@@ -46,6 +46,7 @@
           <li><a href="#architecture" data-section="architecture"><i></i><span>Architecture</span></a></li>
           <li><a href="#loop" data-section="loop"><i></i><span>Agent loop</span></a></li>
           <li><a href="#context" data-section="context"><i></i><span>Context</span></a></li>
+          <li><a href="#integrations" data-section="integrations"><i></i><span>Integrations</span></a></li>
           <li><a href="#execution" data-section="execution"><i></i><span>Execution</span></a></li>
           <li><a href="#records" data-section="records"><i></i><span>Records</span></a></li>
           <li class="weave-nav"><a href="#difference" data-section="difference"><i></i><span>The diff</span><em>+ Weave</em></a></li>
@@ -361,9 +362,56 @@
           </div>
         </section>
 
-        <section id="execution" class="chapter">
+        <section id="integrations" class="chapter">
           <header class="chapter-head">
             <span class="chapter-number">04</span>
+            <div>
+              <p class="chapter-kicker">INSTRUCTIONS, PROCEDURES, AND TOOLS</p>
+              <h2>Four extension systems enter the loop differently</h2>
+            </div>
+          </header>
+          <p>
+            <code>AGENTS.md</code>, Skills, MCP servers, and connector apps are often described as one
+            bucket called “integrations.” At runtime they occupy different layers. Project instructions
+            modify the instruction stack. A Skill contributes a reusable procedure and may declare tool
+            dependencies. MCP servers register tools and resources. Apps expose connected data through
+            a Codex-owned connector runtime. Collapsing them into one toggle hides both provenance and
+            enforcement.
+          </p>
+          <figure class="integration-architecture" aria-labelledby="integration-caption">
+            <svg viewBox="0 0 1040 560" role="img" aria-labelledby="integration-title integration-desc">
+              <title id="integration-title">Codex integration layers</title>
+              <desc id="integration-desc">AGENTS instructions and Skills shape the model-visible request, while MCP and Apps provide tools governed by policy, approval, and sandbox controls.</desc>
+              <defs><marker id="integration-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#69737b" /></marker></defs>
+              <rect class="diagram-paper" x="1" y="1" width="1038" height="558" />
+              <text class="svg-eyebrow" x="42" y="42">DISCOVERY AND PRECEDENCE</text>
+              <rect class="integration-source" x="42" y="65" width="204" height="90" /><text class="node-title small" x="60" y="96">AGENTS.md chain</text><text class="node-copy" x="60" y="121">global → root → cwd</text><text class="node-copy" x="60" y="138">nearer guidance wins</text>
+              <rect class="integration-source" x="42" y="178" width="204" height="90" /><text class="node-title small" x="60" y="209">Skills</text><text class="node-copy" x="60" y="234">procedure + dependencies</text><text class="node-copy" x="60" y="251">workspace-scoped discovery</text>
+              <rect class="integration-source" x="42" y="322" width="204" height="90" /><text class="node-title small" x="60" y="353">MCP servers</text><text class="node-copy" x="60" y="378">tools · resources · OAuth</text><text class="node-copy" x="60" y="395">config.toml + policy</text>
+              <rect class="integration-source" x="42" y="435" width="204" height="90" /><text class="node-title small" x="60" y="466">Apps</text><text class="node-copy" x="60" y="491">connected-data runtime</text><text class="node-copy" x="60" y="508">Codex-owned credentials</text>
+              <line class="integration-line" x1="246" y1="110" x2="360" y2="177" marker-end="url(#integration-arrow)" /><line class="integration-line" x1="246" y1="223" x2="360" y2="200" marker-end="url(#integration-arrow)" />
+              <rect class="integration-context" x="360" y="122" width="265" height="132" /><text class="svg-eyebrow" x="382" y="150">MODEL-VISIBLE REQUEST</text><text class="node-title" x="382" y="184">Instruction + procedure</text><text class="node-copy" x="382" y="210">task · history · world state</text><text class="node-copy" x="382" y="229">AGENTS · selected Skill content</text>
+              <line class="integration-line" x1="246" y1="367" x2="360" y2="360" marker-end="url(#integration-arrow)" /><line class="integration-line" x1="246" y1="480" x2="360" y2="385" marker-end="url(#integration-arrow)" />
+              <rect class="integration-tools" x="360" y="320" width="265" height="132" /><text class="svg-eyebrow" x="382" y="348">MODEL-CALLABLE SURFACE</text><text class="node-title" x="382" y="382">Tool registry</text><text class="node-copy" x="382" y="408">built-ins · MCP · Apps</text><text class="node-copy" x="382" y="427">enabled tools filtered by policy</text>
+              <line class="integration-line" x1="625" y1="188" x2="729" y2="250" marker-end="url(#integration-arrow)" /><line class="integration-line" x1="625" y1="386" x2="729" y2="318" marker-end="url(#integration-arrow)" />
+              <rect class="integration-core" x="729" y="194" width="266" height="186" /><text class="svg-eyebrow light" x="754" y="226">CODEX RUN_TURN</text><text class="integration-core-title" x="754" y="267">Model → action → result</text><text class="integration-core-copy" x="754" y="300">policy and approvals</text><text class="integration-core-copy" x="754" y="324">sandbox / permissions</text><text class="integration-core-copy" x="754" y="348">append result; sample again</text>
+              <g class="weave-only"><rect class="weave-boundary" x="335" y="94" width="686" height="390" /><rect class="weave-tag" x="817" y="76" width="174" height="29" /><text x="837" y="95">WEAVE INVENTORIES</text><text class="weave-copy" x="664" y="457">shows availability and provenance; does not copy credentials</text></g>
+            </svg>
+            <figcaption id="integration-caption"><span>FIG. 04</span><p>Instructions and procedures shape requests; MCP and Apps shape the callable surface. All remain inside the native Codex control and security model.</p></figcaption>
+          </figure>
+          <div class="fact-table">
+            <div class="fact-head"><span>System</span><span>Codex resolution</span><span>Safe Weave product surface</span></div>
+            <div><b>AGENTS.md</b><span>Global, then repository root toward cwd; nearer files override</span><span>Show inheritance and precedence; do not duplicate the files</span></div>
+            <div><b>Skills</b><span>Discovered per workspace and enabled through Codex configuration</span><span>List names and scope; leave the files in Codex</span></div>
+            <div><b>MCP</b><span>Server status, tools, resources, auth state, and policy</span><span>Inventory model-visible tools; never export credentials</span></div>
+            <div><b>Apps</b><span>Accessible connectors with Codex-owned auth and tool policy</span><span>Show accessibility or a Codex installation link</span></div>
+          </div>
+          <aside class="source-note"><span class="evidence documented">DOCUMENTED</span>See the current <a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md">AGENTS.md</a>, <a href="https://learn.chatgpt.com/docs/build-skills">Skills</a>, <a href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli">MCP</a>, and <a href="https://learn.chatgpt.com/docs/app-server">app-server</a> references. The Weave inventory deliberately returns no skill paths, configuration contents, or credentials.</aside>
+        </section>
+
+        <section id="execution" class="chapter">
+          <header class="chapter-head">
+            <span class="chapter-number">05</span>
             <div>
               <p class="chapter-kicker">TOOLS, CONSENT, CONTAINMENT</p>
               <h2>Approval and sandboxing are different</h2>
@@ -402,7 +450,7 @@
 
         <section id="records" class="chapter">
           <header class="chapter-head">
-            <span class="chapter-number">05</span>
+            <span class="chapter-number">06</span>
             <div>
               <p class="chapter-kicker">OBSERVABILITY WITHOUT FICTION</p>
               <h2>There is no single “complete trace”</h2>
@@ -573,6 +621,7 @@
               <h3>Official OpenAI documentation</h3>
               <ol>
                 <li><a href="https://learn.chatgpt.com/docs/app-server">Codex app-server</a></li>
+                <li><a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md">AGENTS.md instructions</a></li>
                 <li><a href="https://learn.chatgpt.com/docs/build-skills">Build with Skills</a></li>
                 <li><a href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli">Model Context Protocol</a></li>
                 <li><a href="https://learn.chatgpt.com/docs/agent-approvals-security">Agent approvals &amp; security</a></li>

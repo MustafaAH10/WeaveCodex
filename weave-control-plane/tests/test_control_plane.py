@@ -308,6 +308,28 @@ def test_ui_offers_three_additional_complex_programs_and_workspace_references() 
     assert "one or one hundred tool calls" in javascript
 
 
+def test_run_explorer_comparison_integrations_and_technical_diagrams_are_explicit() -> None:
+    static = Path(__file__).parents[1] / "weave_codex/static"
+    html = (static / "index.html").read_text()
+    javascript = (static / "app.js").read_text()
+    comparison = (static / "compare.html").read_text()
+    comparison_js = (static / "compare.js").read_text()
+    deep_dive = (static / "deep-dive.html").read_text()
+
+    assert "From one task to one evidence map" in html
+    assert 'data-run-source="weave"' in html
+    assert 'data-trace-panel="activity"' in html
+    assert 'id="integrations-view"' in html
+    assert "request(`/api/integrations?" in javascript
+    assert "Same runtime.<br />Different control surface." in comparison
+    assert 'id="codex-map"' in comparison
+    assert 'id="weave-map"' in comparison
+    assert "Deterministic projection of persisted items" in comparison_js
+    assert 'id="integrations"' in deep_dive
+    assert 'id="integration-title"' in deep_dive
+    assert "AGENTS.md chain" in deep_dive
+
+
 def test_product_examples_api_source_includes_all_five_examples(tmp_path: Path) -> None:
     app = ControlPlane("codex", tmp_path)
     try:
