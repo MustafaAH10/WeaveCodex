@@ -1,0 +1,12 @@
+[
+  {"method": "harness/stage", "phase": "setup", "params": {"title": "Manifest accepted", "detail": "SECRET SETUP"}},
+  {"method": "turn/started", "phase": "solver", "params": {"turn": {"id": "turn-live", "status": "inProgress", "items": []}}},
+  {"method": "item/started", "phase": "solver", "params": {"threadId": "thr-live", "turnId": "turn-live", "item": {"type": "commandExecution", "id": "tool-live", "command": "curl https://secret.example", "commandActions": [{"type": "unknown", "command": "SECRET COMMAND"}], "status": "inProgress"}}},
+  {"method": "item/commandExecution/requestApproval", "id": "approval-17", "phase": "solver", "params": {"threadId": "thr-live", "turnId": "turn-live", "itemId": "tool-live", "reason": "SECRET APPROVAL REASON", "command": "SECRET COMMAND"}},
+  {"method": "serverRequest/resolved", "phase": "solver", "params": {"threadId": "thr-live", "requestId": "approval-17"}},
+  {"method": "item/completed", "phase": "solver", "params": {"threadId": "thr-live", "turnId": "turn-live", "item": {"type": "commandExecution", "id": "tool-live", "command": "curl https://secret.example", "commandActions": [{"type": "unknown", "command": "SECRET COMMAND"}], "aggregatedOutput": "SECRET OUTPUT", "status": "completed"}}},
+  {"method": "rawResponse/completed", "id": "response-1", "phase": "solver", "params": {"threadId": "thr-live", "turnId": "turn-live", "response": "SECRET RESPONSE"}},
+  {"method": "harness/stage", "phase": "verifier-1", "params": {"title": "Verifier turn started", "detail": "SECRET CANDIDATE"}},
+  {"method": "rawResponse/completed", "id": 42, "phase": "verifier-1", "params": {"threadId": "thr-live", "turnId": "turn-verify", "response": "SECRET VERIFICATION"}},
+  {"method": "turn/completed", "phase": "verifier-1", "params": {"turn": {"id": "turn-verify", "status": "completed", "items": []}}}
+]

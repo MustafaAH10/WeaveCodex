@@ -16,6 +16,9 @@ from typing import Any, Protocol
 from pydantic import BaseModel
 
 from .manifest import VERIFIER_SCHEMA, HarnessManifest, build_solver_prompt, manifest_hash
+from .phase_program import phase_turn_bound
+from .phase_runtime import execute_phase_program
+from .trace_projection import project_events
 
 
 @dataclass
@@ -97,8 +100,20 @@ class RunSession:
             "item/fileChange/requestApproval",
         }:
             return {"decision": "cancel"}
+        decision = self._wait_for_decision({"method": method, "params": params or {}})
+        return {"decision": decision}
+
+    def request_checkpoint(self, phase_id: str, question: str) -> str:
+        return self._wait_for_decision(
+            {
+                "method": "harness/checkpoint",
+                "params": {"phaseId": phase_id, "question": question},
+            }
+        )
+
+    def _wait_for_decision(self, pending: dict[str, Any]) -> str:
         with self._condition:
-            self.pending_approval = {"method": method, "params": params or {}}
+            self.pending_approval = pending
             self.status = "waitingForApproval"
             self._condition.notify_all()
             deadline = time.monotonic() + 300
@@ -108,7 +123,7 @@ class RunSession:
             self._decision = None
             self.pending_approval = None
             self.status = "running"
-            return {"decision": decision}
+            return decision
 
     def decide(self, decision: str) -> None:
         if decision not in {"accept", "acceptForSession", "decline", "cancel"}:
@@ -338,6 +353,17 @@ class HarnessRunner:
         finally:
             gateway.close()
 
+    def read_thread(self, cwd: str, thread_id: str) -> dict[str, Any]:
+        trace_root = str(Path(cwd) / ".weave-codex" / "traces")
+        gateway = self.gateway_factory(
+            self.codex_bin, trace_root, lambda *_: {"decision": "decline"}
+        )
+        try:
+            gateway.start()
+            return gateway.read_thread(thread_id)
+        finally:
+            gateway.close()
+
     def run(self, manifest: HarnessManifest, session: RunSession) -> None:
         started_at = int(time.time())
         session.status = "running"
@@ -401,59 +427,84 @@ class HarnessRunner:
                 thread_id, "enabled" if manifest.memory.mode == "all" else "disabled"
             )
 
-            session.stage("solver", "Solver turn started", "Codex may reason and use native tools.")
-            solver = gateway.run_turn(
-                thread_id,
-                build_solver_prompt(manifest, excerpts),
-                effort=manifest.agent.reasoning_effort,
-                output_schema=None,
-                event_sink=lambda event: session.event(event, phase="solver"),
-            )
-            turns.append(solver.turn_id)
-            if solver.usage is not None:
-                usage_by_turn[solver.turn_id] = solver.usage
-            answer = solver.final_response
-            session.stage("solver", "Solver turn finished", f"Turn {solver.turn_id}")
-            verification: list[dict[str, Any]] = []
-            for attempt in range(
-                1 + manifest.verification.max_retries if manifest.verification.enabled else 0
-            ):
-                phase = f"verifier-{attempt + 1}"
+            phase_executions: list[dict[str, Any]] = []
+            checkpoints: list[dict[str, str]] = []
+            completion_status = "completed"
+            if manifest.phase_program is not None:
+                phase_result = execute_phase_program(
+                    manifest,
+                    gateway=gateway,
+                    session=session,
+                    thread_id=thread_id,
+                    selected_excerpts=excerpts,
+                )
+                turns = phase_result.turn_ids
+                usage_by_turn = phase_result.usage_by_turn
+                answer = phase_result.answer
+                verification = phase_result.verification
+                phase_executions = phase_result.executions
+                checkpoints = phase_result.checkpoints
+                completion_status = phase_result.completion_status
+            else:
                 session.stage(
-                    phase,
-                    f"Verifier turn {attempt + 1} started",
-                    "Checks the candidate and may return a repaired answer.",
+                    "solver", "Solver turn started", "Codex may reason and use native tools."
                 )
-                prompt = (
-                    "Verify the candidate against the stated task and this criterion:\n"
-                    f"{manifest.verification.criteria}\n\nCandidate:\n{answer}\n\n"
-                    "Return status=pass if it is ready. Otherwise repair it in answer "
-                    "and list issues."
-                )
-                checked = gateway.run_turn(
+                solver = gateway.run_turn(
                     thread_id,
-                    prompt,
+                    build_solver_prompt(manifest, excerpts),
                     effort=manifest.agent.reasoning_effort,
-                    output_schema=VERIFIER_SCHEMA,
-                    event_sink=lambda event, current_phase=phase: session.event(
-                        event, phase=current_phase
-                    ),
+                    output_schema=None,
+                    event_sink=lambda event: session.event(event, phase="solver"),
                 )
-                turns.append(checked.turn_id)
-                if checked.usage is not None:
-                    usage_by_turn[checked.turn_id] = checked.usage
-                parsed = json.loads(checked.final_response)
-                verification.append(
-                    {"attempt": attempt + 1, "status": parsed["status"], "issues": parsed["issues"]}
-                )
-                answer = parsed["answer"]
-                session.stage(
-                    phase,
-                    f"Verifier turn {attempt + 1} finished",
-                    f"Verdict: {parsed['status']}",
-                )
-                if parsed["status"] == "pass":
-                    break
+                turns.append(solver.turn_id)
+                if solver.usage is not None:
+                    usage_by_turn[solver.turn_id] = solver.usage
+                answer = solver.final_response
+                session.stage("solver", "Solver turn finished", f"Turn {solver.turn_id}")
+                verification = []
+                for attempt in range(
+                    1 + manifest.verification.max_retries if manifest.verification.enabled else 0
+                ):
+                    phase = f"verifier-{attempt + 1}"
+                    session.stage(
+                        phase,
+                        f"Verifier turn {attempt + 1} started",
+                        "Checks the candidate and may return a repaired answer.",
+                    )
+                    prompt = (
+                        "Verify the candidate against the stated task and this criterion:\n"
+                        f"{manifest.verification.criteria}\n\nCandidate:\n{answer}\n\n"
+                        "Return status=pass if it is ready. Otherwise repair it in answer "
+                        "and list issues."
+                    )
+                    checked = gateway.run_turn(
+                        thread_id,
+                        prompt,
+                        effort=manifest.agent.reasoning_effort,
+                        output_schema=VERIFIER_SCHEMA,
+                        event_sink=lambda event, current_phase=phase: session.event(
+                            event, phase=current_phase
+                        ),
+                    )
+                    turns.append(checked.turn_id)
+                    if checked.usage is not None:
+                        usage_by_turn[checked.turn_id] = checked.usage
+                    parsed = json.loads(checked.final_response)
+                    verification.append(
+                        {
+                            "attempt": attempt + 1,
+                            "status": parsed["status"],
+                            "issues": parsed["issues"],
+                        }
+                    )
+                    answer = parsed["answer"]
+                    session.stage(
+                        phase,
+                        f"Verifier turn {attempt + 1} finished",
+                        f"Verdict: {parsed['status']}",
+                    )
+                    if parsed["status"] == "pass":
+                        break
 
             completed_item_types = Counter(
                 event.get("params", {}).get("item", {}).get("type", "unknown")
@@ -477,13 +528,31 @@ class HarnessRunner:
                 "controls": {
                     "sandbox": manifest.agent.sandbox,
                     "approvalGate": manifest.agent.approval_gate,
-                    "maximumTurns": 1
-                    + (
-                        1 + manifest.verification.max_retries
-                        if manifest.verification.enabled
-                        else 0
+                    "maximumTurns": (
+                        phase_turn_bound(manifest.phase_program)
+                        if manifest.phase_program is not None
+                        else 1
+                        + (
+                            1 + manifest.verification.max_retries
+                            if manifest.verification.enabled
+                            else 0
+                        )
                     ),
                 },
+                "completionStatus": completion_status,
+                "phaseProgram": (
+                    {
+                        "projectionVersion": manifest.phase_program.projection_version,
+                        "executions": phase_executions,
+                        "checkpoints": checkpoints,
+                        "internalLoopSemantics": (
+                            "Work phases are controller turns; Codex-internal model and tool "
+                            "iterations are observed events, not separately authored blocks."
+                        ),
+                    }
+                    if manifest.phase_program is not None
+                    else None
+                ),
                 "verification": verification,
                 "usageByTurn": usage_by_turn,
                 "observed": {
@@ -498,6 +567,9 @@ class HarnessRunner:
             }
             session.stage("output", "Final output recorded", "Receipt persisted locally.")
             session.result["timeline"] = session.projected_timeline()
+            session.result["traceProjection"] = project_events(
+                session.events, receipt=session.result
+            )
             session.status = "completed"
         except Exception as exc:  # noqa: BLE001
             session.error = str(exc)

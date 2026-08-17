@@ -1,0 +1,33 @@
+{
+  "thread": {
+    "id": "thr-fixture",
+    "turns": [
+      {
+        "id": "turn-build",
+        "itemsView": "full",
+        "status": "completed",
+        "items": [
+          {"type": "userMessage", "id": "item-user", "content": [{"type": "text", "text": "SECRET TASK"}]},
+          {"type": "reasoning", "id": "item-reason", "summary": ["SECRET REASONING"], "content": []},
+          {"type": "commandExecution", "id": "item-read", "command": "sed -n '1,80p' private.py", "commandActions": [{"type": "read", "command": "SECRET", "name": "private.py", "path": "/secret/private.py"}], "aggregatedOutput": "SECRET OUTPUT", "status": "completed"},
+          {"type": "agentMessage", "id": "item-progress", "phase": "commentary", "text": "SECRET COMMENTARY"},
+          {"type": "commandExecution", "id": "item-search", "command": "rg password .", "commandActions": [{"type": "search", "command": "SECRET", "query": "password", "path": "/secret"}], "aggregatedOutput": "SECRET SEARCH OUTPUT", "status": "completed"},
+          {"type": "fileChange", "id": "item-change", "changes": [{"path": "/secret/private.py", "kind": {"type": "update"}}], "status": "completed"},
+          {"type": "commandExecution", "id": "item-test-fail", "command": "pytest -q tests/private_test.py", "commandActions": [{"type": "unknown", "command": "SECRET"}], "aggregatedOutput": "SECRET FAILURE", "status": "failed"},
+          {"type": "fileChange", "id": "item-repair", "changes": [{"path": "/secret/private.py", "kind": {"type": "update"}}], "status": "completed"},
+          {"type": "commandExecution", "id": "item-test-pass", "command": "pytest -q tests/private_test.py", "commandActions": [{"type": "unknown", "command": "SECRET"}], "aggregatedOutput": "SECRET PASS", "status": "completed"},
+          {"type": "agentMessage", "id": "item-final", "phase": "finalAnswer", "text": "SECRET FINAL"}
+        ]
+      },
+      {
+        "id": "turn-review",
+        "itemsView": "summary",
+        "status": "completed",
+        "items": [
+          {"type": "enteredReviewMode", "id": "item-review-start", "review": "SECRET REVIEW TARGET"},
+          {"type": "exitedReviewMode", "id": "item-review-end", "review": "SECRET REVIEW RESULT"}
+        ]
+      }
+    ]
+  }
+}

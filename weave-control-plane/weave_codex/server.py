@@ -15,7 +15,9 @@ from urllib.parse import parse_qs, urlparse
 from pydantic import ValidationError
 
 from .manifest import HarnessManifest, compile_manifest
+from .phase_program import PhaseProgram, compile_phase_program, phase_templates
 from .runtime import HarnessRunner, RunSession
+from .trace_projection import project_thread
 
 
 class ControlPlane:
@@ -64,6 +66,8 @@ class ControlPlane:
                     "memoryMode": payload.get("memory", {}).get("mode"),
                     "sandbox": payload.get("controls", {}).get("sandbox"),
                     "turnCount": len(payload.get("turnIds", [])),
+                    "phaseCount": len((payload.get("phaseProgram") or {}).get("executions", [])),
+                    "completionStatus": payload.get("completionStatus", "completed"),
                     "verification": payload.get("verification", []),
                 }
             )
@@ -86,6 +90,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        if parsed.path == "/api/phase-templates":
+            self._json(
+                HTTPStatus.OK,
+                {
+                    "phasePrograms": True,
+                    "compileEndpoint": "/api/compile",
+                    "runEndpoint": "/api/runs",
+                    "templates": phase_templates(),
+                },
+            )
+            return
         if parsed.path == "/api/threads":
             cwd = parse_qs(parsed.query).get("cwd", [""])[0]
             try:
@@ -127,6 +142,24 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/compile":
                 manifest = HarnessManifest.model_validate(payload)
                 self._json(HTTPStatus.OK, compile_manifest(manifest))
+                return
+            if self.path == "/api/phase-compile":
+                program = PhaseProgram.model_validate(payload)
+                self._json(HTTPStatus.OK, compile_phase_program(program))
+                return
+            if self.path == "/api/thread-projection":
+                cwd = str(payload.get("cwd", ""))
+                thread_id = str(payload.get("threadId", ""))
+                if not Path(cwd).is_absolute():
+                    raise ValueError("cwd must be an absolute path")
+                if re.fullmatch(r"[A-Za-z0-9_-]{1,160}", thread_id) is None:
+                    raise ValueError("threadId contains unsupported characters")
+                try:
+                    thread = self.server.app.runner.read_thread(cwd, thread_id)
+                except Exception as exc:  # noqa: BLE001
+                    self._json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
+                    return
+                self._json(HTTPStatus.OK, project_thread(thread))
                 return
             if self.path == "/api/runs":
                 manifest = HarnessManifest.model_validate(payload)

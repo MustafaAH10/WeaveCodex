@@ -99,6 +99,49 @@ def test_compiler_exposes_bypassed_memory_and_turn_bound() -> None:
     assert "inject no prior traces" in compiled["actions"][1]
 
 
+def test_compiler_exposes_phase_level_program_without_expanding_tool_calls() -> None:
+    value = manifest(
+        schemaVersion=2,
+        phaseProgram={
+            "projectionVersion": 1,
+            "phases": [
+                {
+                    "id": "inspect",
+                    "kind": "work",
+                    "name": "Inspect",
+                    "goal": "Inspect the relevant project evidence.",
+                },
+                {
+                    "id": "gate",
+                    "kind": "checkpoint",
+                    "name": "Human gate",
+                    "question": "Continue into implementation?",
+                },
+                {
+                    "id": "build",
+                    "kind": "work",
+                    "name": "Build",
+                    "goal": "Implement and test the requested change.",
+                },
+            ],
+        },
+    )
+    compiled = compile_manifest(value)
+
+    assert compiled["maximumTurns"] == 2
+    assert compiled["executionOrder"] == ["inspect", "gate", "build"]
+    assert [node["id"] for node in compiled["nodes"]] == [
+        "task",
+        "memory",
+        "safety",
+        "inspect",
+        "gate",
+        "build",
+        "output",
+    ]
+    assert "not authored by this graph" in compiled["internalLoopSemantics"]
+
+
 def test_selected_memory_requires_explicit_unique_ids() -> None:
     with pytest.raises(ValidationError, match="at least one thread id"):
         manifest(memory={"mode": "selected", "selectedThreadIds": []})
@@ -117,6 +160,8 @@ def test_runner_injects_only_selected_threads_and_records_hashes() -> None:
     assert fake.read_ids == ["thread-a", "thread-b"]
     assert "useful result from thread-a" in fake.prompts[0]
     assert "useful result from thread-b" in fake.prompts[0]
+    assert fake.prompts[0].count("[thread thread-a]") == 1
+    assert fake.prompts[0].count("[thread thread-b]") == 1
     assert fake.memory_mode == ("new-thread", "disabled")
     assert fake.params is not None
     assert fake.params["config"]["memories"] == {
@@ -212,36 +257,38 @@ def test_manual_approval_blocks_until_human_decision() -> None:
     assert answer == [{"decision": "accept"}]
 
 
-def test_ui_contains_manifest_graph_memory_and_receipt_surfaces() -> None:
+def test_ui_contains_phase_canvas_thread_projection_and_receipt_surfaces() -> None:
     html = (Path(__file__).parents[1] / "weave_codex/static/index.html").read_text()
     for element_id in (
         "manifest-json",
-        "graph",
-        "memory-mode",
-        "trace-picker",
+        "phase-canvas",
+        "phase-palette",
+        "thread-picker",
         "receipt",
         "timeline",
         "receipt-summary",
-        "block-inspector",
+        "phase-inspector",
+        "execution-map",
         "recent-runs",
+        "codex-thread-list",
         "approval-dialog",
     ):
         assert f'id="{element_id}"' in html
 
 
-def test_ui_recompiles_memory_changes_and_fits_the_graph() -> None:
+def test_ui_edits_phase_programs_without_expanding_codex_tool_calls() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
     javascript = (static / "app.js").read_text()
     stylesheet = (static / "style.css").read_text()
 
-    assert 'input.addEventListener("change", recompileMemory)' in javascript
-    assert '$("#thread-list").addEventListener("change", recompileSelectedThreads)' in javascript
-    assert 'renderDraft(manifest, "Checking…"' in javascript
-    assert "Select at least one exact thread ID to compile this plan." in javascript
-    assert "grid-template-columns: repeat(7, minmax(0, 1fr))" in stylesheet
-    graph_rule = stylesheet.split(".graph {", maxsplit=1)[1].split("}", maxsplit=1)[0]
-    assert "overflow-x: auto" not in graph_rule
-    assert "Click any block to edit" in (static / "index.html").read_text()
+    assert 'button.addEventListener("dragstart"' in javascript
+    assert "function phaseManifest()" in javascript
+    assert 'request("/api/thread-projection"' in javascript
+    assert "One app-server turn; Codex may use many tools inside." in javascript
+    assert "Codex owns the internal tool loop" in javascript
+    assert ".phase-card.fixed-phase" in stylesheet
+    assert ".phase-card.drop-before" in stylesheet
+    assert "A canvas block is not a tool call." in (static / "index.html").read_text()
 
 
 def test_saved_run_index_and_load_are_local_and_bounded(tmp_path: Path) -> None:

@@ -3,303 +3,150 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Weave Codex</title>
+    <meta name="description" content="Inspect Codex traces and design phase-level executable harnesses." />
+    <title>Weave for Codex</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="/"><span>W</span><b>Weave Codex</b></a>
-      <div class="runtime"><i></i><span>Local control plane</span></div>
-      <nav>
-        <a href="#design">Design</a><a href="#run">Run</a
-        ><a
-          href="https://github.com/openai/codex"
-          target="_blank"
-          rel="noreferrer"
-          >Upstream source ↗</a
-        >
+      <a class="brand" href="/" aria-label="Weave for Codex home"><span>W</span><b>Weave</b><em>for Codex</em></a>
+      <nav class="view-tabs" aria-label="Main views">
+        <button class="view-tab active" data-view="observe" type="button">Observe</button>
+        <button class="view-tab" data-view="build" type="button">Build</button>
       </nav>
+      <div class="runtime"><i></i><span>Local Codex runtime</span></div>
     </header>
 
     <main>
-      <section class="intro">
-        <p class="kicker">CODEX APP-SERVER / VISUAL CONTROL PLANE</p>
-        <h1>Make the agent loop inspectable and editable.</h1>
-        <p class="lede">
-          This page compiles a human-owned manifest into real Codex thread and
-          turn operations. Sandbox, approvals, memory scope, verification, and
-          retry limits remain visible in the run receipt.
-        </p>
+      <section class="welcome">
+        <div>
+          <p class="eyebrow">HUMAN-OWNED AGENT CONTROL</p>
+          <h1>See the work. Shape the workflow.</h1>
+        </div>
+        <p>Weave turns a Codex thread into understandable phases, then lets you edit those phases as an executable harness.</p>
       </section>
 
-      <section id="design" class="workspace">
-        <aside class="configuration">
-          <header class="section-head">
-            <span>01</span>
-            <div>
-              <h2>Define the run</h2>
-              <p>Start from a reviewed shape, then change the controls.</p>
+      <aside class="mental-model" aria-label="How Weave relates to Codex">
+        <div class="model-cell"><span>YOUR HARNESS</span><b>A few goal-level phases</b><small>Research → change → verify</small></div>
+        <div class="model-arrow" aria-hidden="true">contains</div>
+        <div class="model-cell codex-cell"><span>ONE CODEX WORK PHASE</span><b>Many internal iterations</b><small>Reason · inspect · use tools · edit · test · repeat</small></div>
+        <p><b>A canvas block is not a tool call.</b> It is an instruction Codex may complete with one or one hundred tool calls.</p>
+      </aside>
+
+      <section id="observe-view" class="app-view active" aria-labelledby="observe-title">
+        <header class="view-head">
+          <div><p class="eyebrow">START HERE</p><h2 id="observe-title">Understand a Codex run</h2><p>Choose a saved thread execution. Weave groups the raw stream into goal-level phases without hiding the underlying events.</p></div>
+          <button id="new-harness" class="primary" type="button">Design a harness</button>
+        </header>
+
+        <div class="observe-layout">
+          <aside class="run-library">
+            <div class="panel-head"><div><h3>Recent runs</h3><p>Weave receipts with exact events</p></div><button id="refresh-runs" class="icon-button" type="button" aria-label="Refresh runs">↻</button></div>
+            <div id="recent-runs" class="run-list"><div class="skeleton">Looking for saved runs…</div></div>
+            <section class="thread-browser">
+              <header><div><h3>Existing Codex threads</h3><p>Derived from persisted thread items</p></div><button id="browse-threads" class="text-button" type="button">Browse</button></header>
+              <div id="codex-thread-list" class="thread-source-list"><p>Browse to visualize a Codex thread that was not run by Weave.</p></div>
+            </section>
+          </aside>
+
+          <section class="trace-workspace">
+            <div id="trace-empty" class="empty-state">
+              <span class="empty-mark">⌁</span><h3>No run selected</h3><p>Run a harness or select a saved run to see how Codex reasoned, used tools, and completed each phase.</p><button class="secondary" data-open-builder type="button">Open the builder</button>
             </div>
-          </header>
 
-          <div class="preset-grid" role="group" aria-label="Starting designs">
-            <button class="preset active" data-preset="inspect">
-              <svg viewBox="0 0 168 52" aria-hidden="true">
-                <rect x="2" y="15" width="36" height="22" />
-                <path d="M38 26h22" />
-                <rect x="60" y="15" width="42" height="22" />
-                <path d="M102 26h22" />
-                <rect x="124" y="15" width="42" height="22" /></svg
-              ><b>Read-only inspect</b><small>Task → Codex → verify</small>
-            </button>
-            <button class="preset" data-preset="edit">
-              <svg viewBox="0 0 168 52" aria-hidden="true">
-                <rect x="2" y="15" width="30" height="22" />
-                <path d="M32 26h16" />
-                <rect x="48" y="15" width="32" height="22" />
-                <path d="M80 26h16" />
-                <rect x="96" y="15" width="32" height="22" />
-                <path d="M128 26h10" />
-                <rect x="138" y="15" width="28" height="22" /></svg
-              ><b>Workspace change</b><small>Manual approval + repair</small>
-            </button>
-            <button class="preset" data-preset="review">
-              <svg viewBox="0 0 168 52" aria-hidden="true">
-                <rect x="2" y="15" width="44" height="22" />
-                <path d="M46 26h28" />
-                <rect x="74" y="15" width="44" height="22" />
-                <path d="M118 26h16" />
-                <rect x="134" y="15" width="32" height="22" /></svg
-              ><b>Review only</b><small>No memory, no writes</small>
-            </button>
-          </div>
+            <div id="trace-content" class="hidden">
+              <header class="trace-header">
+                <div><div class="title-row"><span id="trace-status" class="status-pill">Complete</span><h3 id="trace-title">Codex run</h3></div><p id="trace-meta">—</p></div>
+                <button id="use-run-controls" class="secondary" type="button">Use these controls</button>
+              </header>
 
-          <label id="task-control" class="field wide"
-            ><span>Task</span
-            ><textarea id="task" rows="6">
-Inspect this repository without changing files. Explain the control flow in three concise bullets and cite the files you inspected.</textarea
-            >
-          </label>
-          <div class="field-row">
-            <label class="field"
-              ><span>Workspace (absolute)</span
-              ><input id="cwd" value="/home/mustafaah/WeaveCodex"
-            /></label>
-            <label class="field"
-              ><span>Model <em>optional</em></span
-              ><input id="model" placeholder="Use account default"
-            /></label>
-          </div>
-          <label class="field wide"
-            ><span>Context paths <em>one per line</em></span
-            ><textarea id="context" rows="2">
-README.md
-codex-rs/app-server/README.md</textarea
-            >
-          </label>
+              <section class="trace-summary" aria-label="Run summary">
+                <article><b id="metric-phases">—</b><span>goal phases</span></article>
+                <article><b id="metric-tools">—</b><span>tool requests</span></article>
+                <article><b id="metric-model">—</b><span>model completions</span></article>
+                <article><b id="metric-turns">—</b><span>controller turns</span></article>
+              </section>
 
-          <fieldset id="memory-control">
-            <legend>
-              <span>02</span>
-              <div>
-                <b>Memory scope</b
-                ><small>What prior Codex experience may enter this run?</small>
+              <section class="execution-map-panel">
+                <header><div><h3>Execution map</h3><p>Each large card is one harness phase. Activity inside it is Codex's native loop.</p></div><span id="trace-event-count">0 events</span></header>
+                <div id="execution-map" class="execution-map"></div>
+              </section>
+
+              <div class="trace-detail-grid">
+                <section class="activity-panel">
+                  <header><div><h3>Activity inside phases</h3><p>The underlying app-server events, still available for inspection.</p></div><select id="event-filter" aria-label="Filter trace activity"><option value="all">All activity</option><option value="tool">Tools only</option><option value="reasoning">Reasoning only</option><option value="answer">Answers only</option></select></header>
+                  <div id="timeline" class="timeline"></div>
+                </section>
+                <section class="result-panel">
+                  <header><h3>Result</h3><button id="copy-result" class="text-button" type="button">Copy</button></header>
+                  <pre id="final-response">No response yet.</pre>
+                  <details><summary>Run contract and receipt</summary><div id="receipt-summary"></div><pre id="receipt"></pre></details>
+                </section>
               </div>
-            </legend>
-            <div class="segmented" id="memory-mode">
-              <label
-                ><input type="radio" name="memory" value="off" checked /><span
-                  ><b>Off</b><small>No prior traces</small></span
-                ></label
-              >
-              <label
-                ><input type="radio" name="memory" value="all" /><span
-                  ><b>All</b><small>Native Codex memory</small></span
-                ></label
-              >
-              <label
-                ><input type="radio" name="memory" value="selected" /><span
-                  ><b>Selected</b><small>Exact thread IDs</small></span
-                ></label
-              >
+              <details class="raw-events"><summary>Raw app-server notifications</summary><div id="events"></div></details>
             </div>
-            <div id="trace-picker" class="trace-picker hidden">
-              <div>
-                <b>Selected Codex threads</b
-                ><button id="load-threads" type="button">
-                  Load from workspace
-                </button>
-              </div>
-              <p>
-                Only checked thread excerpts are injected. Their IDs and content
-                hashes are recorded.
-              </p>
-              <div id="thread-list" class="thread-list">
-                <span>No threads loaded.</span>
-              </div>
-            </div>
-          </fieldset>
-
-          <fieldset id="policy-control">
-            <legend>
-              <span>03</span>
-              <div>
-                <b>Control policy</b
-                ><small
-                  >Codex keeps its native tools and safety boundary.</small
-                >
-              </div>
-            </legend>
-            <div class="field-row thirds">
-              <label class="field"
-                ><span>Sandbox</span
-                ><select id="sandbox">
-                  <option value="read-only">Read only</option>
-                  <option value="workspace-write">Workspace write</option>
-                </select></label
-              >
-              <label class="field"
-                ><span>Approval gate</span
-                ><select id="approval">
-                  <option value="manual">Ask me</option>
-                  <option value="auto-review">Codex auto-review</option>
-                  <option value="deny">Deny escalation</option>
-                </select></label
-              >
-              <label class="field"
-                ><span>Reasoning</span
-                ><select id="effort">
-                  <option>low</option>
-                  <option selected>medium</option>
-                  <option>high</option>
-                  <option>xhigh</option>
-                </select></label
-              >
-            </div>
-            <div class="verify-row">
-              <label class="check"
-                ><input id="verify" type="checkbox" checked /><span
-                  ><b>Structured verifier</b
-                  ><small>Check the candidate in a later turn</small></span
-                ></label
-              >
-              <label class="field compact"
-                ><span>Repair retries</span
-                ><select id="retries">
-                  <option>0</option>
-                  <option selected>1</option>
-                  <option>2</option>
-                </select></label
-              >
-            </div>
-            <label class="field wide"
-              ><span>Verification criterion</span
-              ><input
-                id="criteria"
-                value="The answer is correct, complete, grounded in inspected evidence, and follows the task."
-            /></label>
-          </fieldset>
-
-          <details class="manifest-panel">
-            <summary>
-              Manifest JSON <span>Edit the source document</span>
-            </summary>
-            <textarea id="manifest-json" spellcheck="false"></textarea
-            ><button id="apply-json" type="button">Apply JSON</button>
-          </details>
-        </aside>
-
-        <section class="preview">
-          <header class="section-head">
-            <span>04</span>
-            <div>
-              <h2>Compiled architecture</h2>
-              <p>Read left to right. Click any block to edit the setting that controls it.</p>
-            </div>
-            <strong id="valid-state">Not checked</strong>
-          </header>
-          <div id="graph" class="graph" aria-live="polite"></div>
-          <section id="block-inspector" class="block-inspector" aria-live="polite">
-            <div><span>SELECT A BLOCK</span><h3>Click Task, Memory, Safety, Agent, Verify, or Repair above.</h3><p>The graph is the manifest: selecting a block takes you to the exact control that changes it.</p></div>
           </section>
-          <div class="compile-grid">
-            <section>
-              <h3>App-server operations</h3>
-              <ol id="actions"></ol>
-            </section>
-            <section>
-              <h3>Bounded work</h3>
-              <dl>
-                <div>
-                  <dt>Maximum controller turns</dt>
-                  <dd id="turn-bound">—</dd>
-                </div>
-                <div>
-                  <dt>Native tool loop</dt>
-                  <dd>Codex-managed</dd>
-                </div>
-                <div>
-                  <dt>Trace storage</dt>
-                  <dd>Local only</dd>
-                </div>
-              </dl>
-            </section>
-          </div>
-          <div class="action-bar">
-            <button id="compile" type="button">Validate manifest</button
-            ><button id="run-button" class="primary" type="button">
-              Run with Codex
-            </button>
-          </div>
+        </div>
+      </section>
 
-          <section id="run" class="run-panel">
-            <header>
-              <div>
-                <p class="kicker">LIVE RUN</p>
-                <h2>Events and receipt</h2>
-              </div>
-              <span id="run-status">No run</span>
+      <section id="build-view" class="app-view" aria-labelledby="build-title">
+        <header class="view-head builder-head">
+          <div><p class="eyebrow">PHASE-LEVEL EDITOR</p><h2 id="build-title">Design an executable harness</h2><p>Drag phases into the canvas, reorder them, and configure each one. Weave will only enable Run when the current Codex adapter can execute the design faithfully.</p></div>
+          <div class="save-state"><i></i><span id="draft-status">Draft saved locally</span></div>
+        </header>
+
+        <div class="builder-layout">
+          <aside class="phase-palette">
+            <div class="panel-head"><div><h3>Phase library</h3><p>Drag or click to add</p></div></div>
+            <div id="phase-palette" class="palette-list"></div>
+            <div class="palette-note"><b>What belongs in a phase?</b><p>A complete goal with a clear handoff: “implement the new page,” not “open a file.” Codex owns the detailed tool loop inside it.</p></div>
+          </aside>
+
+          <section class="canvas-panel">
+            <header class="canvas-toolbar">
+              <div><label for="harness-name">Harness name</label><input id="harness-name" value="Repository change with review" /></div>
+              <div class="toolbar-actions"><button id="reset-canvas" class="text-button" type="button">Start over</button><button id="load-preset" class="secondary" type="button">Use safe starter</button></div>
             </header>
-            <div class="recent-run-bar">
-              <div><b>Saved local runs</b><span>Reload a persisted visual receipt without rerunning Codex.</span></div>
-              <div id="recent-runs" class="recent-runs"><span>No saved runs.</span></div>
-            </div>
-            <div class="run-evidence">
-              <section class="timeline-panel">
-                <header><div><h3>Executed timeline</h3><p>Phases, reasoning summaries, tool requests, tool results, and controller turns in observed order.</p></div><span id="timeline-count">0 events</span></header>
-                <div id="timeline" class="timeline"><p>Start a run to see the observed control flow.</p></div>
-              </section>
-              <section class="receipt-panel">
-                <header><div><h3>Run receipt</h3><p>Controls, turns, memory, verification, and model activity.</p></div></header>
-                <div id="receipt-summary" class="receipt-summary"><p>No receipt yet.</p></div>
-                <section class="final-answer"><span>FINAL RESPONSE</span><pre id="final-response">No response yet.</pre></section>
-                <details class="raw-receipt"><summary>Inspect complete receipt JSON</summary><pre id="receipt">No receipt yet.</pre></details>
-              </section>
-            </div>
-            <details class="raw-events"><summary>Inspect raw app-server notifications</summary><div id="events" class="events"><p>Start a run to see app-server events.</p></div></details>
+            <div id="phase-canvas" class="phase-canvas" aria-label="Editable harness phases"></div>
+            <div id="canvas-dropzone" class="canvas-dropzone" tabindex="0">＋ Drop or add another phase</div>
+            <div class="canvas-help"><span>↕ Drag to reorder</span><span>＋ Add from the library</span><span>Click a phase to edit it</span></div>
           </section>
+
+          <aside class="inspector-panel">
+            <div class="panel-head"><div><h3>Phase settings</h3><p id="inspector-subtitle">Select a phase</p></div></div>
+            <div id="phase-inspector" class="phase-inspector"><div class="inspector-empty"><span>↖</span><p>Select a phase on the canvas to edit its instruction and controls.</p></div></div>
+          </aside>
+        </div>
+
+        <section class="compile-panel">
+          <header><div><p class="eyebrow">EXECUTION PREVIEW</p><h2>What Codex will actually run</h2><p>The canvas compiles to a typed manifest and concrete app-server operations. Unsupported designs stay editable but cannot be run.</p></div><span id="adapter-status" class="adapter-pill checking">Checking adapter…</span></header>
+          <div class="compile-layout">
+            <section><h3>Compatibility</h3><div id="compatibility" class="compatibility"></div></section>
+            <section><h3>App-server operations</h3><ol id="actions" class="operation-list"><li>Validate the phase graph to see operations.</li></ol></section>
+            <section class="contract-card"><h3>Execution contract</h3><dl><div><dt>Executable phases</dt><dd id="phase-bound">—</dd></div><div><dt>Controller turns</dt><dd id="turn-bound">—</dd></div><div><dt>Tools inside work</dt><dd>Codex-managed</dd></div><div><dt>Trace storage</dt><dd>Local</dd></div></dl></section>
+          </div>
+          <div class="run-bar"><div><b id="run-readiness">Checking this design…</b><span id="run-readiness-detail">The adapter validates before execution.</span></div><button id="compile" class="secondary" type="button">Check design</button><button id="run-button" class="primary" type="button" disabled>Run harness</button></div>
         </section>
+
+        <details class="advanced-panel">
+          <summary><span>Advanced</span><small>Workspace, model, raw manifest, and imported Codex threads</small></summary>
+          <div class="advanced-grid">
+            <label class="field"><span>Workspace (absolute path)</span><input id="cwd" value="/home/mustafaah/WeaveCodex" /></label>
+            <label class="field"><span>Model <em>optional</em></span><input id="model" placeholder="Use Codex account default" /></label>
+            <label class="field"><span>Reasoning effort</span><select id="effort"><option>low</option><option selected>medium</option><option>high</option><option>xhigh</option></select></label>
+            <label class="field"><span>Sandbox</span><select id="sandbox"><option value="read-only">Read only</option><option value="workspace-write">Workspace write</option></select></label>
+          </div>
+          <div id="thread-picker" class="thread-picker hidden"><div><b>Choose exact Codex threads</b><button id="load-threads" class="secondary" type="button">Load threads</button></div><p>Only selected thread excerpts are injected, and their IDs are recorded in the receipt.</p><div id="thread-list" class="thread-list">No threads loaded.</div></div>
+          <label class="field manifest-field"><span>Compiled manifest JSON</span><textarea id="manifest-json" spellcheck="false" rows="18"></textarea></label>
+          <button id="apply-json" class="secondary" type="button">Apply supported manifest fields</button>
+        </details>
       </section>
     </main>
 
     <dialog id="approval-dialog">
-      <form method="dialog">
-        <p class="kicker">HUMAN APPROVAL</p>
-        <h2>Codex requested a protected action</h2>
-        <pre id="approval-detail"></pre>
-        <div>
-          <button value="decline" data-decision="decline">Decline</button
-          ><button value="accept" data-decision="accept">Allow once</button
-          ><button
-            class="primary"
-            value="acceptForSession"
-            data-decision="acceptForSession"
-          >
-            Allow for session
-          </button>
-        </div>
-      </form>
+      <form method="dialog"><p id="approval-kicker" class="eyebrow">HUMAN CHECKPOINT</p><h2 id="approval-title">Codex requested a protected action</h2><p id="approval-copy">This request came from inside the current Codex work phase.</p><pre id="approval-detail"></pre><div><button id="decision-decline" value="decline" data-decision="decline">Decline</button><button id="decision-accept" value="accept" data-decision="accept">Allow once</button><button id="decision-session" class="primary" value="acceptForSession" data-decision="acceptForSession">Allow for this run</button></div></form>
     </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="/app.js"></script>
   </body>
 </html>

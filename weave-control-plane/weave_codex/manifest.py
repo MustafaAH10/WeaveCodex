@@ -13,6 +13,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .phase_program import PhaseProgram, compile_phase_program, phase_turn_bound
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -73,7 +75,7 @@ class ObservabilityBlock(StrictModel):
 
 
 class HarnessManifest(StrictModel):
-    schema_version: Literal[1] = Field(default=1, alias="schemaVersion")
+    schema_version: Literal[1, 2] = Field(default=1, alias="schemaVersion")
     name: str = Field(default="Untitled harness", min_length=2, max_length=100)
     cwd: str = Field(min_length=1, max_length=1_000)
     task: TaskBlock
@@ -82,11 +84,16 @@ class HarnessManifest(StrictModel):
     verification: VerificationBlock = Field(default_factory=VerificationBlock)
     output: OutputBlock = Field(default_factory=OutputBlock)
     observability: ObservabilityBlock = Field(default_factory=ObservabilityBlock)
+    phase_program: PhaseProgram | None = Field(default=None, alias="phaseProgram")
 
     @model_validator(mode="after")
     def check_paths(self) -> HarnessManifest:
         if not Path(self.cwd).is_absolute():
             raise ValueError("cwd must be an absolute path")
+        if self.schema_version == 2 and self.phase_program is None:
+            raise ValueError("schemaVersion 2 requires phaseProgram")
+        if self.schema_version == 1 and self.phase_program is not None:
+            raise ValueError("phaseProgram requires schemaVersion 2")
         return self
 
 
@@ -101,6 +108,9 @@ def manifest_hash(manifest: HarnessManifest) -> str:
 
 def compile_manifest(manifest: HarnessManifest) -> dict[str, Any]:
     """Return the executable graph and app-server action preview."""
+
+    if manifest.phase_program is not None:
+        return _compile_phase_manifest(manifest)
 
     nodes = [
         {"id": "task", "kind": "task", "label": "Task", "detail": "Human instructions"},
@@ -171,6 +181,69 @@ def compile_manifest(manifest: HarnessManifest) -> dict[str, Any]:
         "actions": actions,
         "maximumTurns": 1
         + (1 + manifest.verification.max_retries if manifest.verification.enabled else 0),
+    }
+
+
+def _compile_phase_manifest(manifest: HarnessManifest) -> dict[str, Any]:
+    program = manifest.phase_program
+    if program is None:  # pragma: no cover - guarded by the public caller
+        raise ValueError("phase program is required")
+    phase_graph = compile_phase_program(program)
+    phase_nodes = list(phase_graph["nodes"])
+    task_node = phase_nodes.pop(0)
+    output_node = phase_nodes.pop()
+    memory_node = {
+        "id": "memory",
+        "kind": "memory",
+        "label": "Memory",
+        "detail": manifest.memory.mode.title(),
+        "state": "bypassed" if manifest.memory.mode == "off" else "active",
+        "editable": False,
+    }
+    safety_node = {
+        "id": "safety",
+        "kind": "safety",
+        "label": "Safety boundary",
+        "detail": f"{manifest.agent.approval_gate} · {manifest.agent.sandbox}",
+        "editable": False,
+    }
+    nodes = [task_node, memory_node, safety_node, *phase_nodes, output_node]
+    edges = [
+        {"from": left["id"], "to": right["id"], "condition": "next"}
+        for left, right in zip(nodes, nodes[1:], strict=False)
+    ]
+    memory_action = {
+        "off": "disable Codex memory read/generation; inject no prior traces",
+        "all": "enable Codex native memory read/generation and mark the thread eligible",
+        "selected": "disable native memory; read and inject only selected thread IDs",
+    }[manifest.memory.mode]
+    actions = [
+        "initialize experimental app-server client",
+        memory_action,
+        f"thread/start ({manifest.agent.sandbox}, approvals={manifest.agent.approval_gate})",
+    ]
+    for phase in program.phases:
+        if phase.kind == "work":
+            actions.append(
+                f"turn/start work phase '{phase.name}' (Codex manages its internal tool loop)"
+            )
+        elif phase.kind == "checkpoint":
+            actions.append(f"pause for human checkpoint '{phase.name}' (no model call)")
+        else:
+            actions.append(
+                f"turn/start verifier '{phase.name}', then at most "
+                f"{phase.max_repairs} repair turn(s)"
+            )
+    actions.extend(["collect exact app-server events", "write receipt linked to manifest hash"])
+    return {
+        "manifestHash": manifest_hash(manifest),
+        "schemaVersion": manifest.schema_version,
+        "nodes": nodes,
+        "edges": edges,
+        "actions": actions,
+        "maximumTurns": phase_turn_bound(program),
+        "internalLoopSemantics": phase_graph["internalLoopSemantics"],
+        "executionOrder": phase_graph["executionOrder"],
     }
 
 
