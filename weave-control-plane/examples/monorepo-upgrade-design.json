@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "caseId": "monorepo-upgrade-design",
+  "claimLevel": "illustrative-program-only",
+  "prompt": "Upgrade the shared framework dependency across this monorepo without breaking downstream packages. Stage the work so failures can be isolated and reverted.",
+  "ordinaryCodex": {
+    "authoredBoundary": "One task prompt",
+    "adaptiveInterior": "Codex decides how to inspect the dependency graph, edit packages, and run checks.",
+    "observableAfterRun": "Thread items, tool activity, changes, and the final response."
+  },
+  "weaveProgram": {
+    "contextPaths": ["README.md", "package.json", "packages/", "tests/"],
+    "phases": [
+      {
+        "kind": "work",
+        "name": "Map affected packages",
+        "goal": "Inspect manifests, lockfiles, package relationships, compatibility constraints, and the available test matrix before editing."
+      },
+      {
+        "kind": "work",
+        "name": "Propose upgrade batches",
+        "goal": "Group the affected packages into reversible batches and identify public API or build-system risks."
+      },
+      {
+        "kind": "checkpoint",
+        "name": "Approve upgrade sequence",
+        "question": "Continue with the proposed batch order, compatibility strategy, and rollback points?"
+      },
+      {
+        "kind": "work",
+        "name": "Upgrade in batches",
+        "goal": "Apply the approved dependency and source changes, checking each batch before continuing."
+      },
+      {
+        "kind": "verify",
+        "name": "Verify the package matrix",
+        "criteria": "Lockfiles are consistent, affected package builds and focused tests pass, and public compatibility checks show no unexplained regression.",
+        "maxRepairs": 2
+      }
+    ],
+    "runWideControls": [
+      "workspace-write sandbox",
+      "manual protected-action approvals",
+      "memory mode",
+      "manifest-linked receipt"
+    ]
+  },
+  "limits": [
+    "This is an illustrative design and has not been run across a real monorepo.",
+    "A passing focused matrix does not prove every downstream consumer is compatible.",
+    "Codex still owns the adaptive file and tool loop inside each Work phase."
+  ]
+}

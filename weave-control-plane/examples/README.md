@@ -15,3 +15,9 @@ quality, cost, or task success over ordinary Codex.
 `checkout-repair-design.json` is a second, explicitly illustrative example. It contrasts one
 ordinary task prompt with a human-authored reproduce → approve → repair → verify program. It was
 not executed and carries no performance claim.
+
+`database-migration-design.json`, `monorepo-upgrade-design.json`, and
+`incident-response-design.json` are more complex reusable programs. They separate evidence
+gathering and planning from an explicit human decision, implementation, and bounded verification.
+They also define suggested starting paths, but Codex may inspect other workspace files inside its
+native tool loop. All three are design examples rather than executed comparisons.

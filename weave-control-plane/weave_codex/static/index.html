@@ -96,6 +96,9 @@
           <div class="example-tabs" role="tablist" aria-label="Example tasks">
             <button class="example-tab active" data-example="flappy" type="button" role="tab" aria-selected="true">Design a Flappy Bird frontend</button>
             <button class="example-tab" data-example="bugfix" type="button" role="tab" aria-selected="false">Diagnose and repair a checkout bug</button>
+            <button class="example-tab" data-example="migration" type="button" role="tab" aria-selected="false">Migrate a production database</button>
+            <button class="example-tab" data-example="monorepo" type="button" role="tab" aria-selected="false">Upgrade a monorepo</button>
+            <button class="example-tab" data-example="incident" type="button" role="tab" aria-selected="false">Investigate an incident</button>
           </div>
 
           <article class="prompt-card">
@@ -160,6 +163,16 @@
           <section class="design-step task-step" aria-labelledby="task-step-title">
             <header class="step-head"><span>1</span><div><h2 id="task-step-title">What should Codex accomplish?</h2><p>Use the prompt you would normally give Codex. Describe the outcome and definition of done.</p></div></header>
             <label class="goal-field" for="goal-input"><span class="visually-hidden">Task prompt</span><textarea id="goal-input" rows="4" placeholder="For example: Design a polished Flappy Bird frontend in this repository. Inspect what exists, implement it, and verify it in the browser."></textarea></label>
+            <details id="workspace-picker" class="workspace-picker">
+              <summary><span><b>Reference files and folders</b><small>Give Codex a starting point without limiting its native filesystem loop.</small></span><em id="workspace-selection-summary">No starting references</em></summary>
+              <div class="workspace-picker-body">
+                <div class="workspace-picker-intro"><p>Weave records these paths in the run contract. During each Work phase, Codex can still inspect other files and use its normal CLI tools within the selected sandbox. Reading works in either sandbox; edits require <b>Workspace write</b> in Advanced settings.</p><span>Local names only · no file contents are sent to this page</span></div>
+                <div id="workspace-selected" class="workspace-selected"></div>
+                <div class="workspace-search"><label for="workspace-query"><span class="visually-hidden">Search workspace paths</span><input id="workspace-query" placeholder="Search names, for example manifest or src" /></label><button id="search-workspace" class="secondary" type="button">Browse workspace</button></div>
+                <small id="workspace-picker-note" class="workspace-picker-note">Choose Browse workspace to list up to 60 local path names.</small>
+                <div id="workspace-results" class="workspace-results"><div class="workspace-empty">No paths loaded yet.</div></div>
+              </div>
+            </details>
           </section>
 
           <section class="design-step template-step" aria-labelledby="template-title">
@@ -168,6 +181,9 @@
               <button class="template-card" data-preset="direct" type="button"><span>FASTEST</span><b>Delegate directly</b><small>Work → Verify</small><p>Use when the task is clear and low-risk.</p></button>
               <button class="template-card recommended" data-preset="review" type="button"><span>RECOMMENDED</span><b>Plan, approve, build</b><small>Plan → Human → Work → Verify</small><p>Use when direction matters before implementation.</p></button>
               <button class="template-card" data-preset="flappy" type="button"><span>EXAMPLE</span><b>Frontend with browser QA</b><small>Inspect → Human → Build → Verify</small><p>Loaded with the Flappy Bird acceptance criteria.</p></button>
+              <button class="template-card" data-preset="migration" type="button"><span>COMPLEX EXAMPLE</span><b>Zero-downtime migration</b><small>Map → Plan → Human → Migrate → Rehearse</small><p>Separates compatibility design from mutation.</p></button>
+              <button class="template-card" data-preset="monorepo" type="button"><span>COMPLEX EXAMPLE</span><b>Monorepo upgrade</b><small>Map → Batch → Human → Upgrade → Matrix</small><p>Stages a broad change into reversible batches.</p></button>
+              <button class="template-card" data-preset="incident" type="button"><span>COMPLEX EXAMPLE</span><b>Incident mitigation</b><small>Evidence → Hypotheses → Human → Mitigate → Verify</small><p>Requires evidence before repository mutation.</p></button>
             </div>
           </section>
 

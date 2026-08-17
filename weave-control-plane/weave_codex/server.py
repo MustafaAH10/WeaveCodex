@@ -5,9 +5,11 @@ from __future__ import annotations
 import argparse
 import hmac
 import json
+import os
 import re
 import secrets
 import threading
+from collections import deque
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -21,6 +23,94 @@ from .manifest import HarnessManifest, compile_manifest
 from .phase_program import PhaseProgram, compile_phase_program, phase_templates
 from .runtime import HarnessRunner, RunSession
 from .trace_projection import project_thread
+
+_IGNORED_WORKSPACE_NAMES = {
+    ".cache",
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    ".weave-codex",
+    "__pycache__",
+    "build",
+    "dist",
+    "node_modules",
+    "target",
+}
+
+
+def list_workspace_paths(
+    root: Path,
+    *,
+    query: str = "",
+    limit: int = 60,
+    max_scanned: int = 12_000,
+    max_depth: int = 8,
+) -> dict[str, Any]:
+    """Return a bounded, names-only view of a local Codex workspace."""
+
+    if not root.is_absolute():
+        raise ValueError("cwd must be an absolute path")
+    try:
+        resolved = root.resolve(strict=True)
+    except OSError as exc:
+        raise ValueError("cwd must be an existing directory") from exc
+    if not resolved.is_dir():
+        raise ValueError("cwd must be an existing directory")
+    cleaned_query = " ".join(query.strip().lower().split())
+    if len(cleaned_query) > 160:
+        raise ValueError("query must contain at most 160 characters")
+    requested_limit = max(1, min(int(limit), 100))
+    tokens = cleaned_query.split()
+    queue: deque[tuple[Path, int]] = deque([(resolved, 0)])
+    matches: list[dict[str, str]] = []
+    scanned = 0
+
+    while queue and scanned < max_scanned:
+        directory, depth = queue.popleft()
+        try:
+            with os.scandir(directory) as entries:
+                children = sorted(entries, key=lambda item: item.name.lower())
+        except (OSError, PermissionError):
+            continue
+        for child in children:
+            if scanned >= max_scanned:
+                break
+            scanned += 1
+            if child.name in _IGNORED_WORKSPACE_NAMES:
+                continue
+            try:
+                relative = Path(child.path).relative_to(resolved).as_posix()
+                is_symlink = child.is_symlink()
+                is_directory = child.is_dir(follow_symlinks=False)
+            except OSError:
+                continue
+            searchable = relative.lower()
+            if not tokens or all(token in searchable for token in tokens):
+                matches.append(
+                    {
+                        "path": f"{relative}/" if is_directory else relative,
+                        "kind": "symlink"
+                        if is_symlink
+                        else "directory"
+                        if is_directory
+                        else "file",
+                    }
+                )
+            if is_directory and not is_symlink and depth < max_depth:
+                queue.append((Path(child.path), depth + 1))
+
+    matches.sort(key=lambda item: (item["path"].count("/"), item["path"].lower()))
+    return {
+        "root": str(resolved),
+        "query": cleaned_query,
+        "entries": matches[:requested_limit],
+        "scanned": scanned,
+        "truncated": len(matches) > requested_limit or bool(queue),
+        "privacy": "names-only",
+    }
 
 
 class ControlPlane:
@@ -104,7 +194,13 @@ class ControlPlane:
     def product_examples(self) -> list[dict[str, Any]]:
         root = Path(__file__).parents[1] / "examples"
         examples: list[dict[str, Any]] = []
-        for name in ("flappy-bird-observation.json", "checkout-repair-design.json"):
+        for name in (
+            "flappy-bird-observation.json",
+            "checkout-repair-design.json",
+            "database-migration-design.json",
+            "monorepo-upgrade-design.json",
+            "incident-response-design.json",
+        ):
             try:
                 value = json.loads((root / name).read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
@@ -208,6 +304,15 @@ class Handler(BaseHTTPRequestHandler):
             payload = self._body()
             if self.path == "/api/account/login/chatgpt":
                 self._json(HTTPStatus.ACCEPTED, self.server.app.auth.start_chatgpt_login())
+                return
+            if self.path == "/api/workspace/paths":
+                cwd = Path(str(payload.get("cwd", "")))
+                query = str(payload.get("query", ""))
+                limit = int(payload.get("limit", 60))
+                self._json(
+                    HTTPStatus.OK,
+                    list_workspace_paths(cwd, query=query, limit=limit),
+                )
                 return
             if self.path == "/api/compile":
                 manifest = HarnessManifest.model_validate(payload)

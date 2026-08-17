@@ -272,6 +272,9 @@ def test_ui_contains_phase_canvas_thread_projection_and_receipt_surfaces() -> No
         "recent-runs",
         "codex-thread-list",
         "approval-dialog",
+        "workspace-picker",
+        "workspace-query",
+        "workspace-results",
     ):
         assert f'id="{element_id}"' in html
 
@@ -289,6 +292,36 @@ def test_ui_edits_phase_programs_without_expanding_codex_tool_calls() -> None:
     assert ".phase-card.fixed-phase" in stylesheet
     assert ".phase-card.drop-before" in stylesheet
     assert "A canvas block is not a tool call." in (static / "index.html").read_text()
+
+
+def test_ui_offers_three_additional_complex_programs_and_workspace_references() -> None:
+    static = Path(__file__).parents[1] / "weave_codex/static"
+    html = (static / "index.html").read_text()
+    javascript = (static / "app.js").read_text()
+
+    for key in ("migration", "monorepo", "incident"):
+        assert f'data-example="{key}"' in html
+        assert f'data-preset="{key}"' in html
+        assert f"  {key}: {{" in javascript
+    assert 'request("/api/workspace/paths"' in javascript
+    assert "Codex can still inspect other files" in html
+    assert "one or one hundred tool calls" in javascript
+
+
+def test_product_examples_api_source_includes_all_five_examples(tmp_path: Path) -> None:
+    app = ControlPlane("codex", tmp_path)
+    try:
+        examples = app.product_examples()
+    finally:
+        app.close()
+
+    assert [example["caseId"] for example in examples] == [
+        "flappy-bird-local-observation",
+        "checkout-repair-design",
+        "database-migration-design",
+        "monorepo-upgrade-design",
+        "incident-response-design",
+    ]
 
 
 def test_saved_run_index_and_load_are_local_and_bounded(tmp_path: Path) -> None:

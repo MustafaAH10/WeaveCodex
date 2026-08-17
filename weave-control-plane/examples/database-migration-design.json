@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "caseId": "database-migration-design",
+  "claimLevel": "illustrative-program-only",
+  "prompt": "Plan and implement a zero-downtime migration from the legacy customer profile schema to the new schema. Preserve compatibility during rollout and prove the rollback path.",
+  "ordinaryCodex": {
+    "authoredBoundary": "One task prompt",
+    "adaptiveInterior": "Codex decides how to inspect schemas, migration code, deployment configuration, and tests.",
+    "observableAfterRun": "Thread items, tool activity, changes, and the final response."
+  },
+  "weaveProgram": {
+    "contextPaths": ["README.md", "migrations/", "src/", "deploy/"],
+    "phases": [
+      {
+        "kind": "work",
+        "name": "Map schema and traffic",
+        "goal": "Inspect the current schema, read/write paths, deployment order, and rollback constraints without changing files."
+      },
+      {
+        "kind": "work",
+        "name": "Design expand-contract rollout",
+        "goal": "Produce a concrete compatibility, backfill, monitoring, and rollback plan grounded in repository evidence."
+      },
+      {
+        "kind": "checkpoint",
+        "name": "Approve migration plan",
+        "question": "Approve the proposed data movement, compatibility window, and rollback boundary before implementation?"
+      },
+      {
+        "kind": "work",
+        "name": "Implement compatibility",
+        "goal": "Implement the approved expand-contract migration, compatibility paths, and focused tests."
+      },
+      {
+        "kind": "verify",
+        "name": "Rehearse forward and rollback",
+        "criteria": "Forward migration, mixed-version compatibility, idempotent backfill, and rollback evidence all pass without destructive operations.",
+        "maxRepairs": 1
+      }
+    ],
+    "runWideControls": [
+      "workspace-write sandbox",
+      "manual protected-action approvals",
+      "memory mode",
+      "manifest-linked receipt"
+    ]
+  },
+  "limits": [
+    "This is a design example, not an executed migration or benchmark.",
+    "The human checkpoint does not replace database review or production change management.",
+    "Codex still chooses its internal tool actions inside each Work phase."
+  ]
+}

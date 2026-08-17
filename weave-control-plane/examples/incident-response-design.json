@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "caseId": "incident-response-design",
+  "claimLevel": "illustrative-program-only",
+  "prompt": "Investigate the sudden increase in checkout latency using the repository and available local diagnostics. Propose the smallest safe mitigation, implement it only after review, and verify that observability remains intact.",
+  "ordinaryCodex": {
+    "authoredBoundary": "One task prompt",
+    "adaptiveInterior": "Codex decides which code, configuration, tests, and local diagnostic artifacts to inspect.",
+    "observableAfterRun": "Thread items, tool activity, changes, and the final response."
+  },
+  "weaveProgram": {
+    "contextPaths": ["README.md", "src/", "config/", "observability/"],
+    "phases": [
+      {
+        "kind": "work",
+        "name": "Collect evidence read-only",
+        "goal": "Reproduce or characterize the latency increase from local evidence, separating observations from hypotheses and making no mutation."
+      },
+      {
+        "kind": "work",
+        "name": "Rank causal hypotheses",
+        "goal": "Compare plausible causes, identify disconfirming evidence, and propose the smallest reversible mitigation."
+      },
+      {
+        "kind": "checkpoint",
+        "name": "Authorize mitigation",
+        "question": "Approve this mitigation scope and its rollback trigger before any repository change?"
+      },
+      {
+        "kind": "work",
+        "name": "Apply minimal mitigation",
+        "goal": "Implement only the approved mitigation and preserve or improve the relevant instrumentation."
+      },
+      {
+        "kind": "verify",
+        "name": "Verify latency and signals",
+        "criteria": "The local reproduction improves or is resolved, focused regressions pass, instrumentation still reports the relevant signals, and rollback remains possible.",
+        "maxRepairs": 1
+      }
+    ],
+    "runWideControls": [
+      "workspace-write sandbox",
+      "manual protected-action approvals",
+      "memory mode",
+      "manifest-linked receipt"
+    ]
+  },
+  "limits": [
+    "This is a repository-local incident workflow, not authority to mutate production systems.",
+    "This illustrative program has not been executed or scored.",
+    "Codex still chooses its internal diagnostic and edit actions inside each Work phase."
+  ]
+}

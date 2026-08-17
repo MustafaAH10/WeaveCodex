@@ -32,6 +32,10 @@ const EXAMPLES = {
     title: "A reviewable frontend workflow",
     prompt: "Design a polished Flappy Bird frontend in this repository. Inspect what is already here, implement it, and verify it in the browser.",
     benefit: "Approve the visual direction before implementation, then require browser evidence before accepting the result.",
+    contextPaths: ["README.md", "src/"],
+    criteria: "The game is playable in the browser, the layout is polished at desktop and mobile sizes, controls are discoverable, and no visible console or runtime errors remain.",
+    evidenceLabel: "ONE REAL LOCAL OBSERVATION",
+    evidence: "A previously recorded Flappy Bird Weave run contained <b>2 controller turns</b>, <b>36 persisted items</b>, and <b>23 tool calls</b> inside Codex's own loops. This is structural evidence from one run—not an A/B test or a quality claim.",
     phases: [
       { kind: "work", title: "Inspect and propose", detail: "Understand the app, constraints, and visual direction." },
       { kind: "checkpoint", title: "Approve direction", detail: "A human decides whether implementation should begin." },
@@ -44,11 +48,66 @@ const EXAMPLES = {
     title: "A diagnosis-first repair workflow",
     prompt: "Find the cause of the checkout failure in this repository, make the smallest safe repair, and demonstrate that the regression is covered.",
     benefit: "Separate diagnosis from mutation, approve the evidence-backed repair direction, and bound repair attempts after verification.",
+    contextPaths: ["README.md", "src/", "tests/"],
+    criteria: "The reported failure is reproduced or explained, the smallest safe repair is present, and focused regression checks pass.",
+    evidenceLabel: "ILLUSTRATIVE DESIGN",
+    evidence: "This checkout workflow demonstrates the control model. It has not been run as a benchmark, so Weave makes no performance claim for it.",
     phases: [
       { kind: "work", title: "Reproduce and diagnose", detail: "Inspect evidence and isolate the likely failure path." },
       { kind: "checkpoint", title: "Approve repair plan", detail: "A human reviews scope before files change." },
       { kind: "work", title: "Make the repair", detail: "Codex edits, runs focused checks, and adapts as needed." },
       { kind: "verify", title: "Regression check", detail: "Require the original failure and focused tests to pass." },
+    ],
+  },
+  migration: {
+    name: "Zero-downtime database migration",
+    title: "A reversible migration workflow",
+    prompt: "Plan and implement a zero-downtime migration from the legacy customer profile schema to the new schema. Preserve compatibility during rollout and prove the rollback path.",
+    benefit: "Keep schema discovery and rollout design separate from mutation, then require an explicit decision before implementation and rollback rehearsal.",
+    contextPaths: ["README.md", "migrations/", "src/", "deploy/"],
+    criteria: "Forward migration, mixed-version compatibility, idempotent backfill, and rollback evidence all pass without destructive operations.",
+    evidenceLabel: "ILLUSTRATIVE DESIGN",
+    evidence: "This program makes the migration boundary reviewable. It has not been executed against a production database and is not a safety guarantee.",
+    phases: [
+      { kind: "work", title: "Map schema and traffic", detail: "Inspect read/write paths, deployment order, and rollback constraints without changing files." },
+      { kind: "work", title: "Design expand-contract rollout", detail: "Ground compatibility, backfill, monitoring, and rollback steps in repository evidence." },
+      { kind: "checkpoint", title: "Approve migration plan", detail: "A human accepts the data movement and rollback boundary." },
+      { kind: "work", title: "Implement compatibility", detail: "Codex implements the approved migration and focused tests." },
+      { kind: "verify", title: "Rehearse forward and rollback", detail: "Check compatibility, idempotence, and rollback evidence." },
+    ],
+  },
+  monorepo: {
+    name: "Monorepo dependency upgrade",
+    title: "A staged dependency-upgrade workflow",
+    prompt: "Upgrade the shared framework dependency across this monorepo without breaking downstream packages. Stage the work so failures can be isolated and reverted.",
+    benefit: "Make the affected-package map and batch order explicit before edits, then verify the package matrix with bounded repairs.",
+    contextPaths: ["README.md", "package.json", "packages/", "tests/"],
+    criteria: "Lockfiles are consistent, affected package builds and focused tests pass, and public compatibility checks show no unexplained regression.",
+    evidenceLabel: "ILLUSTRATIVE DESIGN",
+    evidence: "This reusable design shows how a large upgrade can be staged. It has not been run across a real monorepo or scored.",
+    phases: [
+      { kind: "work", title: "Map affected packages", detail: "Inspect manifests, lockfiles, package relationships, and the available test matrix." },
+      { kind: "work", title: "Propose upgrade batches", detail: "Group changes into reversible batches and identify compatibility risks." },
+      { kind: "checkpoint", title: "Approve upgrade sequence", detail: "A human accepts the batch order and rollback points." },
+      { kind: "work", title: "Upgrade in batches", detail: "Codex applies the approved changes and checks each batch." },
+      { kind: "verify", title: "Verify package matrix", detail: "Check locks, builds, focused tests, and public compatibility." },
+    ],
+  },
+  incident: {
+    name: "Production incident investigation",
+    title: "An evidence-first mitigation workflow",
+    prompt: "Investigate the sudden increase in checkout latency using the repository and available local diagnostics. Propose the smallest safe mitigation, implement it only after review, and verify that observability remains intact.",
+    benefit: "Force a read-only evidence pass and ranked hypotheses before authorizing a reversible repository-local mitigation.",
+    contextPaths: ["README.md", "src/", "config/", "observability/"],
+    criteria: "The local reproduction improves or is resolved, focused regressions pass, instrumentation still reports the relevant signals, and rollback remains possible.",
+    evidenceLabel: "ILLUSTRATIVE DESIGN",
+    evidence: "This is a repository-local incident workflow, not authority to change production systems. It has not been executed or scored.",
+    phases: [
+      { kind: "work", title: "Collect evidence read-only", detail: "Characterize the latency increase and separate observations from hypotheses." },
+      { kind: "work", title: "Rank causal hypotheses", detail: "Seek disconfirming evidence and propose the smallest reversible mitigation." },
+      { kind: "checkpoint", title: "Authorize mitigation", detail: "A human approves scope and the rollback trigger." },
+      { kind: "work", title: "Apply minimal mitigation", detail: "Codex makes only the approved change and preserves instrumentation." },
+      { kind: "verify", title: "Verify latency and signals", detail: "Check the reproduction, regressions, observability, and rollback." },
     ],
   },
 };
@@ -68,6 +127,7 @@ let capabilities = { phasePrograms: false, compileEndpoint: null, runEndpoint: n
 let currentExample = "flappy";
 let securitySession = null;
 let loginPollTimer = null;
+let workspaceEntries = [];
 
 function makePhase(type, config = {}) {
   return { id: uid(), type, title: PHASE_TYPES[type].defaultTitle, config };
@@ -209,6 +269,71 @@ function lineCount(value) {
   return String(value || "").split("\n").map((line) => line.trim()).filter(Boolean).length;
 }
 
+function contextPaths() {
+  return [...new Set(String(getPhase("context")?.config.paths || "").split("\n").map((line) => line.trim()).filter(Boolean))];
+}
+
+function setContextPaths(paths) {
+  const unique = [...new Set(paths.map((path) => String(path).trim()).filter(Boolean))].slice(0, 12);
+  getPhase("context").config.paths = unique.join("\n");
+  saveDraft();
+  renderCanvas();
+  scheduleCompile();
+}
+
+function renderWorkspaceSelection() {
+  const paths = contextPaths();
+  const summary = $("#workspace-selection-summary");
+  const selected = $("#workspace-selected");
+  if (!summary || !selected) return;
+  summary.textContent = paths.length ? `${paths.length} starting reference${paths.length === 1 ? "" : "s"}` : "No starting references";
+  selected.innerHTML = paths.length
+    ? paths.map((path) => `<button type="button" data-remove-context-path="${escapeHtml(path)}" title="Remove ${escapeHtml(path)}"><span>${escapeHtml(path)}</span><i>×</i></button>`).join("")
+    : `<span class="workspace-empty">Codex can still inspect the workspace when the task requires it.</span>`;
+  $$('[data-remove-context-path]', selected).forEach((button) => button.addEventListener("click", () => setContextPaths(paths.filter((path) => path !== button.dataset.removeContextPath))));
+  renderWorkspaceResults();
+}
+
+function renderWorkspaceResults() {
+  const root = $("#workspace-results");
+  if (!root || !workspaceEntries.length) return;
+  const selected = new Set(contextPaths());
+  root.innerHTML = workspaceEntries.map((entry) => {
+    const active = selected.has(entry.path);
+    const icon = entry.kind === "directory" ? "▣" : entry.kind === "symlink" ? "↗" : "·";
+    return `<button type="button" class="workspace-result ${active ? "selected" : ""}" data-context-path="${escapeHtml(entry.path)}"><i>${icon}</i><span>${escapeHtml(entry.path)}</span><em>${active ? "Added" : entry.kind}</em></button>`;
+  }).join("");
+  $$('[data-context-path]', root).forEach((button) => button.addEventListener("click", () => {
+    const paths = contextPaths();
+    const path = button.dataset.contextPath;
+    if (paths.includes(path)) setContextPaths(paths.filter((item) => item !== path));
+    else if (paths.length < 12) setContextPaths([...paths, path]);
+    else toast("A harness can carry at most 12 starting references");
+  }));
+}
+
+async function searchWorkspacePaths() {
+  const root = $("#workspace-results");
+  const button = $("#search-workspace");
+  root.innerHTML = `<div class="workspace-empty">Reading names from the local workspace…</div>`;
+  button.disabled = true;
+  try {
+    const value = await request("/api/workspace/paths", {
+      method: "POST",
+      body: JSON.stringify({ cwd: $("#cwd").value.trim(), query: $("#workspace-query").value, limit: 60 }),
+    });
+    workspaceEntries = value.entries || [];
+    $("#workspace-picker-note").textContent = `${workspaceEntries.length} name${workspaceEntries.length === 1 ? "" : "s"} shown · ${value.privacy || "names-only"}${value.truncated ? " · narrow the search for more" : ""}`;
+    root.innerHTML = workspaceEntries.length ? "" : `<div class="workspace-empty">No matching paths. Try a shorter search.</div>`;
+    renderWorkspaceResults();
+  } catch (error) {
+    workspaceEntries = [];
+    root.innerHTML = `<div class="workspace-empty error">Workspace browsing is unavailable: ${escapeHtml(error.message)}</div>`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function renderDesignSummary() {
   const task = getPhase("task");
   if (document.activeElement !== $("#goal-input")) $("#goal-input").value = task?.config.goal || "";
@@ -217,6 +342,7 @@ function renderDesignSummary() {
   $("#approval-summary").textContent = ({ manual: "Ask me", "auto-review": "Auto-review", deny: "Deny escalation" })[getPhase("approval")?.config.gate || "manual"];
   $("#output-summary").textContent = `${getPhase("output")?.config.format || "text"} + receipt`;
   $$(".run-settings-strip button").forEach((button) => button.classList.toggle("selected", getPhase(button.dataset.selectType)?.id === selectedPhaseId));
+  renderWorkspaceSelection();
 }
 
 function renderCanvas() {
@@ -850,7 +976,7 @@ function examplePhases(exampleKey) {
   const example = EXAMPLES[exampleKey];
   const fixed = [
     makePhase("task", { goal: example.prompt }),
-    makePhase("context", { paths: "README.md\nsrc/" }),
+    makePhase("context", { paths: example.contextPaths.join("\n") }),
     makePhase("memory", { mode: "off" }),
     makePhase("approval", { gate: "manual" }),
   ];
@@ -865,10 +991,7 @@ function examplePhases(exampleKey) {
       phase.title = item.title;
       return phase;
     }
-    const criteria = exampleKey === "flappy"
-      ? "The game is playable in the browser, the layout is polished at desktop and mobile sizes, controls are discoverable, and no visible console or runtime errors remain."
-      : "The reported failure is reproduced or explained, the smallest safe repair is present, and focused regression checks pass.";
-    const phase = makePhase("verify", { criteria, maxRepairs: 1 });
+    const phase = makePhase("verify", { criteria: example.criteria, maxRepairs: exampleKey === "monorepo" ? 2 : 1 });
     phase.title = item.title;
     return phase;
   });
@@ -878,10 +1001,10 @@ function examplePhases(exampleKey) {
 function loadPreset(key, announce = true) {
   const currentGoal = getPhase("task")?.config.goal || "";
   if (key === "direct") phases = directPhases();
-  else if (key === "flappy" || key === "bugfix") phases = examplePhases(key);
+  else if (EXAMPLES[key]) phases = examplePhases(key);
   else phases = starterPhases();
   if (["direct", "review"].includes(key) && currentGoal && !currentGoal.startsWith("Describe the outcome")) getPhase("task").config.goal = currentGoal;
-  $("#harness-name").value = key === "direct" ? "Direct work with verification" : key === "flappy" || key === "bugfix" ? EXAMPLES[key].name : "Plan, approve, build";
+  $("#harness-name").value = key === "direct" ? "Direct work with verification" : EXAMPLES[key]?.name || "Plan, approve, build";
   selectedPhaseId = programPhases()[0]?.id || null;
   $$(".template-card").forEach((button) => button.classList.toggle("active", button.dataset.preset === key));
   changed();
@@ -899,9 +1022,7 @@ function renderExample(exampleKey) {
   $("#example-title").textContent = example.title;
   $("#example-prompt").textContent = example.prompt;
   $("#example-benefit").textContent = example.benefit;
-  $("#example-evidence").innerHTML = currentExample === "flappy"
-    ? `<span>ONE REAL LOCAL OBSERVATION</span><p>A previously recorded Flappy Bird Weave run contained <b>2 controller turns</b>, <b>36 persisted items</b>, and <b>23 tool calls</b> inside Codex's own loops. This is structural evidence from one run—not an A/B test or a quality claim.</p>`
-    : `<span>ILLUSTRATIVE DESIGN</span><p>This checkout workflow demonstrates the control model. It has not been run as a benchmark, so Weave makes no performance claim for it.</p>`;
+  $("#example-evidence").innerHTML = `<span>${escapeHtml(example.evidenceLabel)}</span><p>${example.evidence}</p>`;
   $("#weave-flow").innerHTML = example.phases.map((phase, index) => `<div class="${escapeHtml(phase.kind === "checkpoint" ? "gate" : phase.kind)}"><i>${phase.kind === "checkpoint" ? "H" : phase.kind === "verify" ? "✓" : String(index + 1).padStart(2, "0")}</i><span><b>${escapeHtml(phase.title)}</b><small>${escapeHtml(phase.detail)}${phase.kind === "work" ? " Codex may use one or one hundred tools inside." : ""}</small></span></div>`).join("");
 }
 
@@ -1023,6 +1144,8 @@ function bindGlobalEvents() {
   $$(".template-card").forEach((button) => button.addEventListener("click", () => loadPreset(button.dataset.preset)));
   $$(".run-settings-strip button").forEach((button) => button.addEventListener("click", () => selectSetup(button.dataset.selectType)));
   $("#goal-input").addEventListener("input", (event) => { getPhase("task").config.goal = event.target.value; saveDraft(); scheduleCompile(); });
+  $("#search-workspace").addEventListener("click", searchWorkspacePaths);
+  $("#workspace-query").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); searchWorkspacePaths(); } });
   $("#refresh-runs").addEventListener("click", () => loadRecentRuns());
   $("#browse-threads").addEventListener("click", browseCodexThreads);
   $("#event-filter").addEventListener("change", () => activeReceipt?.traceProjection ? renderProjectionActivity(activeReceipt.traceProjection) : renderTimeline(activeReceipt?.timeline || []));
@@ -1034,7 +1157,10 @@ function bindGlobalEvents() {
   $("#thread-list").addEventListener("change", scheduleCompile);
   $("#apply-json").addEventListener("click", applyManifest);
   $("#harness-name").addEventListener("input", () => { saveDraft(); scheduleCompile(); });
-  $$("#cwd, #model, #effort, #sandbox").forEach((control) => control.addEventListener("change", scheduleCompile));
+  $$("#cwd, #model, #effort, #sandbox").forEach((control) => control.addEventListener("change", () => {
+    if (control.id === "cwd") { workspaceEntries = []; $("#workspace-results").innerHTML = `<div class="workspace-empty">Workspace changed. Browse to load path names.</div>`; }
+    scheduleCompile();
+  }));
   $("#reset-canvas").addEventListener("click", () => { phases = normalizePhases(phases.filter((phase) => PHASE_TYPES[phase.type].fixed)); selectedPhaseId = null; changed(); });
   $("#load-preset").addEventListener("click", () => loadPreset("review"));
   $("#check-connection").addEventListener("click", checkAccount);

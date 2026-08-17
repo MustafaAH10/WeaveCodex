@@ -6,7 +6,9 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from weave_codex.server import ControlPlane, ControlServer
+import pytest
+
+from weave_codex.server import ControlPlane, ControlServer, list_workspace_paths
 
 
 class FakeAuth:
@@ -108,6 +110,20 @@ def test_local_session_token_guards_side_effects_and_auth_flow(tmp_path: Path) -
         assert status == 200
         assert account["subscriptionAccess"] is True
 
+        (workspace / "src").mkdir()
+        (workspace / "src" / "main.py").write_text("SECRET_FILE_CONTENT", encoding="utf-8")
+        status, paths = _request(
+            port,
+            "POST",
+            "/api/workspace/paths",
+            body={"cwd": str(workspace), "query": "main", "limit": 20},
+            headers=common,
+        )
+        assert status == 200
+        assert paths["privacy"] == "names-only"
+        assert paths["entries"] == [{"path": "src/main.py", "kind": "file"}]
+        assert "SECRET_FILE_CONTENT" not in json.dumps(paths)
+
         status, completed = _request(port, "GET", "/api/account/login/login-1")
         assert status == 200
         assert completed["state"] == "succeeded"
@@ -116,6 +132,53 @@ def test_local_session_token_guards_side_effects_and_auth_flow(tmp_path: Path) -
         server.server_close()
         worker.join(timeout=2)
     assert fake.closed
+
+
+def test_workspace_listing_is_bounded_deterministic_and_skips_heavy_trees(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "project"
+    (root / "src" / "feature").mkdir(parents=True)
+    (root / "src" / "feature" / "view.ts").write_text("private contents", encoding="utf-8")
+    (root / "README.md").write_text("private readme", encoding="utf-8")
+    (root / "node_modules" / "package").mkdir(parents=True)
+    (root / "node_modules" / "package" / "index.js").write_text("hidden", encoding="utf-8")
+    (root / ".git").mkdir()
+    (root / ".git" / "config").write_text("hidden", encoding="utf-8")
+    (root / ".weave-codex").mkdir()
+    (root / ".weave-codex" / "receipt.json").write_text("hidden", encoding="utf-8")
+    (root / "linked-src").symlink_to(root / "src", target_is_directory=True)
+
+    value = list_workspace_paths(root, query="", limit=100)
+
+    assert value["root"] == str(root.resolve())
+    assert value["entries"] == [
+        {"path": "linked-src", "kind": "symlink"},
+        {"path": "README.md", "kind": "file"},
+        {"path": "src/", "kind": "directory"},
+        {"path": "src/feature/", "kind": "directory"},
+        {"path": "src/feature/view.ts", "kind": "file"},
+    ]
+    serialized = json.dumps(value)
+    assert "private contents" not in serialized
+    assert "node_modules" not in serialized
+    assert ".git" not in serialized
+    assert ".weave-codex" not in serialized
+    assert value == list_workspace_paths(root, query="", limit=100)
+
+
+def test_workspace_listing_rejects_invalid_roots_and_caps_results(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="absolute"):
+        list_workspace_paths(Path("relative"))
+    missing = tmp_path / "missing"
+    with pytest.raises(ValueError, match="existing directory"):
+        list_workspace_paths(missing)
+
+    for index in range(120):
+        (tmp_path / f"file-{index:03d}.txt").write_text(str(index), encoding="utf-8")
+    value = list_workspace_paths(tmp_path, limit=1_000)
+    assert len(value["entries"]) == 100
+    assert value["truncated"] is True
 
 
 def test_non_json_and_hostile_host_are_rejected(tmp_path: Path) -> None:
