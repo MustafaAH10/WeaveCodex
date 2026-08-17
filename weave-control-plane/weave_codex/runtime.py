@@ -61,17 +61,35 @@ class RunSession:
                 "runId": self.run_id,
                 "status": self.status,
                 "events": list(self.events[-120:]),
+                "timeline": self.projected_timeline()[-120:],
                 "pendingApproval": self.pending_approval,
                 "result": self.result,
                 "error": self.error,
             }
 
-    def event(self, value: dict[str, Any]) -> None:
+    def event(self, value: dict[str, Any], *, phase: str = "runtime") -> None:
+        value = {**value, "phase": phase}
         encoded = json.dumps(value, default=str)
         if len(encoded) > 16_000:
             value = {"method": value.get("method", "event"), "truncated": True}
         with self._condition:
             self.events.append(value)
+
+    def stage(self, phase: str, title: str, detail: str = "") -> None:
+        self.event(
+            {"method": "harness/stage", "params": {"title": title, "detail": detail}},
+            phase=phase,
+        )
+
+    def projected_timeline(self) -> list[dict[str, Any]]:
+        projected = [
+            item
+            for index, event in enumerate(self.events)
+            if (item := _project_event(event, index)) is not None
+        ]
+        for index, item in enumerate(projected, start=1):
+            item["index"] = index
+        return projected
 
     def request_approval(self, method: str, params: dict[str, Any] | None) -> dict[str, Any]:
         if method not in {
@@ -104,6 +122,95 @@ class RunSession:
 
 class _EmptyResponse(BaseModel):
     pass
+
+
+def _short_text(value: Any, limit: int = 260) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        text = value
+    else:
+        text = json.dumps(value, default=str, sort_keys=True)
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _project_event(event: dict[str, Any], index: int) -> dict[str, Any] | None:
+    """Turn noisy app-server notifications into a small visual timeline vocabulary."""
+
+    method = str(event.get("method", "event"))
+    phase = str(event.get("phase", "runtime"))
+    params = event.get("params", {}) if isinstance(event.get("params"), dict) else {}
+    item = params.get("item", {}) if isinstance(params.get("item"), dict) else {}
+    item_type = str(item.get("type", ""))
+    if method in {"rawResponseItem/completed", "item/agentMessage/delta", "turn/started"}:
+        return None
+    if method == "item/started" and item_type not in {"commandExecution", "fileChange"}:
+        return None
+    if method == "item/completed" and item_type == "userMessage":
+        return None
+    kind = "runtime"
+    title = method
+    detail = ""
+    if method == "harness/stage":
+        kind = "stage"
+        title = str(params.get("title", phase))
+        detail = _short_text(params.get("detail"))
+    elif method == "rawResponse/completed":
+        kind = "model"
+        title = "Model completion"
+        detail = "A model response completed inside this controller turn."
+    elif method == "thread/tokenUsage/updated":
+        kind = "usage"
+        title = "Token usage updated"
+        detail = _short_text(params.get("tokenUsage"))
+    elif method in {"item/started", "item/completed"}:
+        completed = method.endswith("completed")
+        if item_type == "commandExecution":
+            kind = "tool_result" if completed else "tool_call"
+            title = "Command finished" if completed else "Command requested"
+            detail = _short_text(
+                item.get("command")
+                or item.get("parsedCommand")
+                or item.get("status")
+                or item.get("aggregatedOutput")
+            )
+        elif item_type == "fileChange":
+            kind = "tool_result" if completed else "tool_call"
+            title = "File change recorded" if completed else "File change requested"
+            detail = _short_text(item.get("changes") or item.get("status"))
+        elif item_type == "reasoning":
+            kind = "reasoning"
+            title = "Reasoning summary"
+            detail = _short_text(item.get("summary") or item.get("content"))
+        elif item_type == "agentMessage":
+            kind = "answer"
+            title = "Agent answer"
+            detail = _short_text(item.get("text"))
+        else:
+            kind = "item"
+            title = f"{item_type or 'Codex item'} {'completed' if completed else 'started'}"
+            detail = _short_text(item.get("status") or item.get("text"))
+    elif method == "turn/completed":
+        kind = "turn"
+        title = "Controller turn completed"
+        turn = params.get("turn", {})
+        detail = _short_text(turn.get("status") if isinstance(turn, dict) else "")
+    elif "Approval" in method or "approval" in method:
+        kind = "approval"
+        title = "Approval requested"
+        detail = _short_text(params)
+    else:
+        return None
+    return {
+        "index": index + 1,
+        "phase": phase,
+        "kind": kind,
+        "title": title,
+        "detail": detail,
+        "method": method,
+        "truncated": bool(event.get("truncated")),
+    }
 
 
 class SdkGateway:
@@ -234,6 +341,7 @@ class HarnessRunner:
     def run(self, manifest: HarnessManifest, session: RunSession) -> None:
         started_at = int(time.time())
         session.status = "running"
+        session.stage("setup", "Manifest accepted", "Controls are frozen for this run.")
         trace_root = Path(manifest.observability.trace_root)
         if not trace_root.is_absolute():
             trace_root = Path(manifest.cwd) / trace_root
@@ -244,6 +352,7 @@ class HarnessRunner:
         turns: list[str] = []
         usage_by_turn: dict[str, dict[str, Any]] = {}
         try:
+            session.stage("setup", "Codex app-server starting", str(trace_root))
             gateway.start()
             excerpts: list[str] = []
             for thread_id in requested:
@@ -255,6 +364,17 @@ class HarnessRunner:
                 excerpts.append(f"[thread {thread_id}]\n{excerpt}")
                 excerpt_hashes[thread_id] = "sha256:" + hashlib.sha256(excerpt.encode()).hexdigest()
                 resolved.append(thread_id)
+            session.stage(
+                "memory",
+                "Memory prepared",
+                (
+                    f"Injected {len(resolved)} exact thread excerpt(s)."
+                    if manifest.memory.mode == "selected"
+                    else "Native Codex memory enabled."
+                    if manifest.memory.mode == "all"
+                    else "Memory bypassed."
+                ),
+            )
 
             approval_policy = "never" if manifest.agent.approval_gate == "deny" else "on-request"
             params: dict[str, Any] = {
@@ -276,25 +396,34 @@ class HarnessRunner:
             if manifest.agent.model:
                 params["model"] = manifest.agent.model
             thread_id = gateway.start_thread(params)
+            session.stage("setup", "Thread started", f"Sandbox: {manifest.agent.sandbox}")
             gateway.set_memory_mode(
                 thread_id, "enabled" if manifest.memory.mode == "all" else "disabled"
             )
 
+            session.stage("solver", "Solver turn started", "Codex may reason and use native tools.")
             solver = gateway.run_turn(
                 thread_id,
                 build_solver_prompt(manifest, excerpts),
                 effort=manifest.agent.reasoning_effort,
                 output_schema=None,
-                event_sink=session.event,
+                event_sink=lambda event: session.event(event, phase="solver"),
             )
             turns.append(solver.turn_id)
             if solver.usage is not None:
                 usage_by_turn[solver.turn_id] = solver.usage
             answer = solver.final_response
+            session.stage("solver", "Solver turn finished", f"Turn {solver.turn_id}")
             verification: list[dict[str, Any]] = []
             for attempt in range(
                 1 + manifest.verification.max_retries if manifest.verification.enabled else 0
             ):
+                phase = f"verifier-{attempt + 1}"
+                session.stage(
+                    phase,
+                    f"Verifier turn {attempt + 1} started",
+                    "Checks the candidate and may return a repaired answer.",
+                )
                 prompt = (
                     "Verify the candidate against the stated task and this criterion:\n"
                     f"{manifest.verification.criteria}\n\nCandidate:\n{answer}\n\n"
@@ -306,7 +435,9 @@ class HarnessRunner:
                     prompt,
                     effort=manifest.agent.reasoning_effort,
                     output_schema=VERIFIER_SCHEMA,
-                    event_sink=session.event,
+                    event_sink=lambda event, current_phase=phase: session.event(
+                        event, phase=current_phase
+                    ),
                 )
                 turns.append(checked.turn_id)
                 if checked.usage is not None:
@@ -316,6 +447,11 @@ class HarnessRunner:
                     {"attempt": attempt + 1, "status": parsed["status"], "issues": parsed["issues"]}
                 )
                 answer = parsed["answer"]
+                session.stage(
+                    phase,
+                    f"Verifier turn {attempt + 1} finished",
+                    f"Verdict: {parsed['status']}",
+                )
                 if parsed["status"] == "pass":
                     break
 
@@ -326,6 +462,7 @@ class HarnessRunner:
             )
             session.result = {
                 "receiptVersion": 1,
+                "runId": session.run_id,
                 "manifestHash": manifest_hash(manifest),
                 "startedAt": started_at,
                 "completedAt": int(time.time()),
@@ -355,12 +492,16 @@ class HarnessRunner:
                     ),
                     "completedItemsByType": dict(completed_item_types),
                 },
+                "timeline": session.projected_timeline(),
                 "finalResponse": answer,
                 "traceRoot": str(trace_root),
             }
+            session.stage("output", "Final output recorded", "Receipt persisted locally.")
+            session.result["timeline"] = session.projected_timeline()
             session.status = "completed"
         except Exception as exc:  # noqa: BLE001
             session.error = str(exc)
+            session.stage("error", "Run failed", str(exc))
             session.status = "failed"
         finally:
             gateway.close()

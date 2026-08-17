@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import threading
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -40,6 +41,45 @@ class ControlPlane:
         threading.Thread(target=work, name=f"weave-run-{session.run_id[:8]}", daemon=True).start()
         return session
 
+    def saved_runs(self) -> list[dict[str, Any]]:
+        if not self.data_root.exists():
+            return []
+        runs: list[dict[str, Any]] = []
+        paths = sorted(
+            self.data_root.glob("*.json"),
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        )
+        for path in paths:
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            runs.append(
+                {
+                    "runId": payload.get("runId") or path.stem,
+                    "status": "completed" if payload.get("finalResponse") is not None else "failed",
+                    "startedAt": payload.get("startedAt"),
+                    "completedAt": payload.get("completedAt"),
+                    "memoryMode": payload.get("memory", {}).get("mode"),
+                    "sandbox": payload.get("controls", {}).get("sandbox"),
+                    "turnCount": len(payload.get("turnIds", [])),
+                    "verification": payload.get("verification", []),
+                }
+            )
+        return runs[:30]
+
+    def saved_run(self, run_id: str) -> dict[str, Any] | None:
+        if re.fullmatch(r"[0-9a-f-]{36}", run_id) is None:
+            return None
+        path = self.data_root / f"{run_id}.json"
+        if not path.is_file():
+            return None
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+
 
 class Handler(BaseHTTPRequestHandler):
     server: "ControlServer"
@@ -53,12 +93,30 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:  # noqa: BLE001
                 self._json(HTTPStatus.BAD_GATEWAY, {"error": str(exc)})
             return
+        if parsed.path == "/api/runs":
+            self._json(HTTPStatus.OK, {"runs": self.server.app.saved_runs()})
+            return
         if parsed.path.startswith("/api/runs/"):
             run_id = parsed.path.removeprefix("/api/runs/")
             session = self.server.app.sessions.get(run_id)
+            persisted = self.server.app.saved_run(run_id) if session is None else None
             self._json(
-                HTTPStatus.OK if session else HTTPStatus.NOT_FOUND,
-                session.snapshot() if session else {"error": "run not found"},
+                HTTPStatus.OK if session or persisted else HTTPStatus.NOT_FOUND,
+                session.snapshot()
+                if session
+                else {
+                    "runId": run_id,
+                    "status": (
+                        "completed"
+                        if persisted and persisted.get("finalResponse") is not None
+                        else "failed"
+                    ),
+                    "events": [],
+                    "timeline": persisted.get("timeline", []) if persisted else [],
+                    "pendingApproval": None,
+                    "result": persisted,
+                    "error": persisted.get("error") if persisted else "run not found",
+                },
             )
             return
         self._static(parsed.path)

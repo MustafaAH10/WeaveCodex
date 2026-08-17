@@ -74,7 +74,7 @@
             </button>
           </div>
 
-          <label class="field wide"
+          <label id="task-control" class="field wide"
             ><span>Task</span
             ><textarea id="task" rows="6">
 Inspect this repository without changing files. Explain the control flow in three concise bullets and cite the files you inspected.</textarea
@@ -98,7 +98,7 @@ codex-rs/app-server/README.md</textarea
             >
           </label>
 
-          <fieldset>
+          <fieldset id="memory-control">
             <legend>
               <span>02</span>
               <div>
@@ -140,7 +140,7 @@ codex-rs/app-server/README.md</textarea
             </div>
           </fieldset>
 
-          <fieldset>
+          <fieldset id="policy-control">
             <legend>
               <span>03</span>
               <div>
@@ -214,11 +214,14 @@ codex-rs/app-server/README.md</textarea
             <span>04</span>
             <div>
               <h2>Compiled architecture</h2>
-              <p>Read left to right. This is the graph that will run.</p>
+              <p>Read left to right. Click any block to edit the setting that controls it.</p>
             </div>
             <strong id="valid-state">Not checked</strong>
           </header>
           <div id="graph" class="graph" aria-live="polite"></div>
+          <section id="block-inspector" class="block-inspector" aria-live="polite">
+            <div><span>SELECT A BLOCK</span><h3>Click Task, Memory, Safety, Agent, Verify, or Repair above.</h3><p>The graph is the manifest: selecting a block takes you to the exact control that changes it.</p></div>
+          </section>
           <div class="compile-grid">
             <section>
               <h3>App-server operations</h3>
@@ -257,18 +260,23 @@ codex-rs/app-server/README.md</textarea
               </div>
               <span id="run-status">No run</span>
             </header>
-            <div class="run-columns">
-              <div>
-                <h3>Event stream</h3>
-                <div id="events" class="events">
-                  <p>Start a run to see app-server events.</p>
-                </div>
-              </div>
-              <div>
-                <h3>Final receipt</h3>
-                <pre id="receipt">No receipt yet.</pre>
-              </div>
+            <div class="recent-run-bar">
+              <div><b>Saved local runs</b><span>Reload a persisted visual receipt without rerunning Codex.</span></div>
+              <div id="recent-runs" class="recent-runs"><span>No saved runs.</span></div>
             </div>
+            <div class="run-evidence">
+              <section class="timeline-panel">
+                <header><div><h3>Executed timeline</h3><p>Phases, reasoning summaries, tool requests, tool results, and controller turns in observed order.</p></div><span id="timeline-count">0 events</span></header>
+                <div id="timeline" class="timeline"><p>Start a run to see the observed control flow.</p></div>
+              </section>
+              <section class="receipt-panel">
+                <header><div><h3>Run receipt</h3><p>Controls, turns, memory, verification, and model activity.</p></div></header>
+                <div id="receipt-summary" class="receipt-summary"><p>No receipt yet.</p></div>
+                <section class="final-answer"><span>FINAL RESPONSE</span><pre id="final-response">No response yet.</pre></section>
+                <details class="raw-receipt"><summary>Inspect complete receipt JSON</summary><pre id="receipt">No receipt yet.</pre></details>
+              </section>
+            </div>
+            <details class="raw-events"><summary>Inspect raw app-server notifications</summary><div id="events" class="events"><p>Start a run to see app-server events.</p></div></details>
           </section>
         </section>
       </section>

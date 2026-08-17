@@ -404,6 +404,15 @@ legend small {
   border: 1px solid var(--ink);
   background: var(--paper);
   padding: 10px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.node:hover,
+.node.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 -3px 0 var(--accent);
 }
 .node:not(:last-child):after {
   content: "→";
@@ -431,6 +440,69 @@ legend small {
 .node small {
   display: block;
   overflow-wrap: anywhere;
+}
+.block-inspector {
+  display: grid;
+  min-height: 116px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  background: #f7f3ea;
+}
+.block-inspector > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 18px;
+}
+.block-inspector span {
+  color: var(--accent);
+  font: 9px var(--mono);
+  letter-spacing: .08em;
+}
+.block-inspector h3,
+.block-inspector p {
+  grid-column: 1;
+  margin: 0;
+}
+.block-inspector h3 {
+  font: 500 18px/1.2 var(--serif);
+}
+.block-inspector p {
+  max-width: 660px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.block-inspector dl {
+  grid-column: 1;
+  display: flex;
+  gap: 18px;
+  margin: 6px 0 0;
+}
+.block-inspector dl div {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 6px;
+}
+.block-inspector dt {
+  color: var(--muted);
+  font-size: 10px;
+}
+.block-inspector dd {
+  margin: 0;
+  font: 10px var(--mono);
+}
+.block-inspector button {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  align-self: center;
+  padding: 9px 12px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+.editing-highlight {
+  outline: 3px solid rgba(232, 93, 50, .26);
+  outline-offset: 5px;
 }
 .node b {
   margin: 7px 0 3px;
@@ -512,17 +584,233 @@ dialog .primary {
   padding: 5px 8px;
   border: 1px solid var(--line);
 }
-.run-columns {
+.recent-run-bar {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: minmax(180px, .7fr) minmax(0, 1.3fr);
+  gap: 16px;
+  align-items: center;
   margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
 }
-.run-columns > div {
+.recent-run-bar b,
+.recent-run-bar span {
+  display: block;
+}
+.recent-run-bar span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.recent-runs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+.recent-runs button {
+  flex: 0 0 auto;
+  min-width: 140px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  text-align: left;
+  cursor: pointer;
+}
+.recent-runs button:hover {
+  border-color: var(--ink);
+}
+.recent-runs button b,
+.recent-runs button small {
+  display: block;
+}
+.recent-runs button b {
+  font-size: 10px;
+}
+.recent-runs button small {
+  margin-top: 3px;
+  color: var(--muted);
+  font: 9px var(--mono);
+}
+.run-evidence {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(330px, .92fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+.timeline-panel,
+.receipt-panel {
   min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.timeline-panel > header,
+.receipt-panel > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.timeline-panel h3,
+.receipt-panel h3 {
+  margin: 0;
+  font: 500 16px var(--serif);
+  text-transform: none;
+}
+.timeline-panel header p,
+.receipt-panel header p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+.timeline-panel header > span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font: 9px var(--mono);
+}
+.timeline {
+  max-height: 520px;
+  overflow-y: auto;
+  padding: 10px 14px 16px;
+}
+.timeline > p {
+  color: var(--muted);
+}
+.timeline-phase {
+  position: relative;
+  margin: 14px 0 7px;
+  border-top: 1px solid var(--line);
+}
+.timeline-phase span {
+  position: relative;
+  top: -7px;
+  padding-right: 7px;
+  color: var(--accent);
+  background: var(--panel);
+  font: 700 8px var(--mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.timeline-event {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 9px;
+  margin: 5px 0;
+  padding: 9px 10px;
+  border-left: 3px solid #9ba9b9;
+  background: #f2f3f2;
+}
+.timeline-event > i {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  font: 8px var(--mono);
+  font-style: normal;
+}
+.timeline-event span,
+.timeline-event b,
+.timeline-event small {
+  display: block;
+}
+.timeline-event span {
+  color: var(--muted);
+  font: 7px var(--mono);
+  text-transform: uppercase;
+}
+.timeline-event b {
+  margin-top: 2px;
+  font-size: 11px;
+}
+.timeline-event small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+.timeline-event[data-kind="reasoning"] { border-left-color: #7b5ba7; background: #f7f3fb; }
+.timeline-event[data-kind="tool_call"],
+.timeline-event[data-kind="tool_result"] { border-left-color: #b47a25; background: #fff8e9; }
+.timeline-event[data-kind="answer"] { border-left-color: var(--green); background: #f1f8f3; }
+.timeline-event[data-kind="stage"] { border-left-color: var(--accent); background: #fcf2ed; }
+.receipt-summary {
+  padding: 14px;
+}
+.receipt-summary > p {
+  margin: 0;
+  color: var(--muted);
+}
+.receipt-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--line);
+}
+.receipt-metrics article {
+  min-width: 0;
+  padding: 10px;
+  border-right: 1px solid var(--line);
+}
+.receipt-metrics article:last-child { border-right: 0; }
+.receipt-metrics b,
+.receipt-metrics span { display: block; }
+.receipt-metrics b { font: 500 20px var(--serif); }
+.receipt-metrics span { color: var(--muted); font-size: 8px; }
+.receipt-facts {
+  margin: 10px 0 0;
+}
+.receipt-facts > div {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+}
+.receipt-facts dt { color: var(--muted); font-size: 9px; }
+.receipt-facts dd { margin: 0; overflow-wrap: anywhere; font: 9px/1.35 var(--mono); }
+.final-answer {
+  border-top: 1px solid var(--line);
+}
+.final-answer > span {
+  display: block;
+  padding: 10px 14px 0;
+  color: var(--green);
+  font: 8px var(--mono);
+  letter-spacing: .08em;
+}
+.final-answer pre {
+  min-height: 86px;
+  max-height: 230px;
+  margin: 0;
+  padding: 8px 14px 14px;
+  overflow: auto;
+  color: var(--ink);
+  background: transparent;
+  font: 11px/1.55 var(--sans);
+  white-space: pre-wrap;
+}
+.raw-receipt,
+.raw-events {
+  border-top: 1px solid var(--line);
+}
+.raw-receipt summary,
+.raw-events summary {
+  padding: 11px 14px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+.raw-events {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
 }
 .events,
-pre {
+#receipt,
+dialog pre {
   height: 310px;
   overflow: auto;
   margin: 0;
@@ -609,13 +897,25 @@ dialog button {
     position: static;
     max-height: none;
   }
+  .run-evidence {
+    grid-template-columns: 1fr;
+  }
 }
 @media (max-width: 700px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   .topbar {
     padding: 0 16px;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr;
   }
   .runtime {
+    display: none;
+  }
+  .topbar nav {
     display: none;
   }
   .topbar nav a:not(:last-child) {
@@ -628,16 +928,20 @@ dialog button {
     padding: 48px 0;
   }
   .workspace {
-    margin: 0 -16px;
+    width: 100%;
+    margin: 0;
+    border-right: 0;
+    border-left: 0;
   }
   .configuration,
   .preview {
+    width: 100%;
+    min-width: 0;
     padding: 24px 16px;
   }
   .preset-grid,
   .field-row,
   .field-row.thirds,
-  .run-columns,
   .compile-grid {
     grid-template-columns: 1fr;
   }
@@ -682,4 +986,21 @@ dialog button {
   .node small {
     display: block;
   }
+  .block-inspector > div {
+    grid-template-columns: 1fr;
+  }
+  .block-inspector button {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+    margin-top: 8px;
+  }
+  .recent-run-bar {
+    grid-template-columns: 1fr;
+  }
+  .receipt-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .receipt-metrics article:nth-child(2) { border-right: 0; }
+  .receipt-metrics article:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
 }

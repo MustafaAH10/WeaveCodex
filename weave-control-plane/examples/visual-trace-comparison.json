@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "claimScope": "Two real, read-only executions of one task show how enabling the verifier changes the observed Codex controller timeline. This is not a benchmark or quality estimate.",
+  "task": "Read weave-control-plane/README.md and return only its first Markdown heading exactly as written.",
+  "expectedOutput": "# Weave Codex control plane",
+  "sharedControls": {
+    "approvalGate": "deny",
+    "memoryMode": "off",
+    "model": "gpt-5.6-terra",
+    "reasoningEffort": "low",
+    "sandbox": "read-only"
+  },
+  "runs": [
+    {
+      "label": "Solver only",
+      "runId": "59c5611b-91f6-486a-a8d1-a317465be858",
+      "manifestHash": "sha256:a8f17043ff241e0a4ca72c21ec3abed7fd39c4892775e40c9c5961e9094ab96c",
+      "localReceiptSha256": "sha256:2a20d8263ccfcc613b8ebe5218fec166870890c0db5911e75654bf9b7bd8f4fc",
+      "controllerTurns": 1,
+      "observedModelCompletions": 2,
+      "observedCommandExecutions": 1,
+      "verificationTurns": 0,
+      "visiblePhases": ["setup", "memory", "solver", "output"],
+      "finalResponse": "# Weave Codex control plane",
+      "exactMatch": true
+    },
+    {
+      "label": "Solver plus structured verifier",
+      "runId": "4126c720-5f10-48ea-b2c8-6d9b58221b96",
+      "manifestHash": "sha256:1d90d3e12d5afcada463ec68f022a06422ebf98a9a0635ef8e2fea77cdcbf748",
+      "localReceiptSha256": "sha256:b152f92d7d5b7c746a004f00edd83b8b0e544f7c8e9637c73a0b498ec3c75cac",
+      "controllerTurns": 2,
+      "observedModelCompletions": 3,
+      "observedCommandExecutions": 1,
+      "verificationTurns": 1,
+      "verificationVerdict": "pass",
+      "visiblePhases": ["setup", "memory", "solver", "verifier-1", "output"],
+      "finalResponse": "# Weave Codex control plane",
+      "exactMatch": true
+    }
+  ],
+  "limitations": [
+    "One task and one execution per design.",
+    "Codex controls internal tool/model completions within each controller turn.",
+    "The local receipt hashes attest files on this machine; raw receipts remain gitignored.",
+    "No memory was queried or evaluated."
+  ]
+}

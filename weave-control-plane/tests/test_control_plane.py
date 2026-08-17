@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import threading
 import time
 from pathlib import Path
@@ -9,7 +10,8 @@ import pytest
 from pydantic import ValidationError
 
 from weave_codex.manifest import HarnessManifest, compile_manifest
-from weave_codex.runtime import HarnessRunner, RunSession, TurnOutcome
+from weave_codex.runtime import HarnessRunner, RunSession, TurnOutcome, _project_event
+from weave_codex.server import ControlPlane
 
 
 def manifest(**overrides: Any) -> HarnessManifest:
@@ -142,6 +144,51 @@ def test_verifier_repairs_within_declared_bound() -> None:
     assert session.result["finalResponse"] == "better"
     assert len(session.result["turnIds"]) == session.result["controls"]["maximumTurns"] == 3
     assert [item["status"] for item in session.result["verification"]] == ["repair", "pass"]
+    assert [item["phase"] for item in session.result["timeline"] if item["kind"] == "stage"] == [
+        "setup",
+        "setup",
+        "memory",
+        "setup",
+        "solver",
+        "solver",
+        "verifier-1",
+        "verifier-1",
+        "verifier-2",
+        "verifier-2",
+        "output",
+    ]
+
+
+def test_visual_timeline_projects_reasoning_and_tool_rounds() -> None:
+    reasoning = _project_event(
+        {
+            "method": "item/completed",
+            "phase": "solver",
+            "params": {"item": {"type": "reasoning", "summary": ["Inspect first"]}},
+        },
+        0,
+    )
+    tool = _project_event(
+        {
+            "method": "item/started",
+            "phase": "solver",
+            "params": {"item": {"type": "commandExecution", "command": "rg README"}},
+        },
+        1,
+    )
+    result = _project_event(
+        {
+            "method": "item/completed",
+            "phase": "solver",
+            "params": {"item": {"type": "commandExecution", "status": "completed"}},
+        },
+        2,
+    )
+
+    assert reasoning["kind"] == "reasoning"
+    assert tool["kind"] == "tool_call"
+    assert tool["detail"] == "rg README"
+    assert result["kind"] == "tool_result"
 
 
 def test_manual_approval_blocks_until_human_decision() -> None:
@@ -173,6 +220,10 @@ def test_ui_contains_manifest_graph_memory_and_receipt_surfaces() -> None:
         "memory-mode",
         "trace-picker",
         "receipt",
+        "timeline",
+        "receipt-summary",
+        "block-inspector",
+        "recent-runs",
         "approval-dialog",
     ):
         assert f'id="{element_id}"' in html
@@ -184,12 +235,32 @@ def test_ui_recompiles_memory_changes_and_fits_the_graph() -> None:
     stylesheet = (static / "style.css").read_text()
 
     assert 'input.addEventListener("change", recompileMemory)' in javascript
-    assert (
-        '$("#thread-list").addEventListener("change", recompileSelectedThreads)'
-        in javascript
-    )
+    assert '$("#thread-list").addEventListener("change", recompileSelectedThreads)' in javascript
     assert 'renderDraft(manifest, "Checking…"' in javascript
     assert "Select at least one exact thread ID to compile this plan." in javascript
     assert "grid-template-columns: repeat(7, minmax(0, 1fr))" in stylesheet
     graph_rule = stylesheet.split(".graph {", maxsplit=1)[1].split("}", maxsplit=1)[0]
     assert "overflow-x: auto" not in graph_rule
+    assert "Click any block to edit" in (static / "index.html").read_text()
+
+
+def test_saved_run_index_and_load_are_local_and_bounded(tmp_path: Path) -> None:
+    app = ControlPlane("codex", tmp_path)
+    receipt = {
+        "runId": "00000000-0000-0000-0000-000000000001",
+        "startedAt": 1,
+        "completedAt": 2,
+        "turnIds": ["turn-1"],
+        "memory": {"mode": "off"},
+        "controls": {"sandbox": "read-only"},
+        "verification": [],
+        "finalResponse": "done",
+        "timeline": [{"kind": "answer"}],
+    }
+    (tmp_path / "00000000-0000-0000-0000-000000000001.json").write_text(
+        json.dumps(receipt), encoding="utf-8"
+    )
+
+    assert app.saved_runs()[0]["turnCount"] == 1
+    assert app.saved_run(receipt["runId"]) == receipt
+    assert app.saved_run("../outside") is None
