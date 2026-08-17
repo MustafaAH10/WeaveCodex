@@ -15,14 +15,43 @@ const PHASE_TYPES = {
 };
 
 const DEFAULT_PHASES = [
-  makePhase("task", { goal: "Inspect this repository without changing files. Explain the control flow in three concise bullets and cite the files you inspected." }),
-  makePhase("context", { paths: "README.md\ncodex-rs/app-server/README.md" }),
+  makePhase("task", { goal: "Describe the outcome you want Codex to produce." }),
+  makePhase("context", { paths: "README.md" }),
   makePhase("memory", { mode: "off" }),
   makePhase("approval", { gate: "manual" }),
-  makePhase("work", { goal: "Investigate the task thoroughly using Codex's native tools. Report only claims supported by inspected evidence.", reasoningEffort: "inherit" }),
-  makePhase("verify", { criteria: "The answer is correct, complete, grounded in inspected evidence, and follows the task.", maxRepairs: 1 }),
+  makePhase("work", { goal: "Inspect the current implementation and propose a concrete plan.", reasoningEffort: "inherit" }),
+  makePhase("checkpoint", { question: "Continue from the proposed plan into implementation?" }),
+  makePhase("work", { goal: "Implement the approved plan and run focused tests for the change.", reasoningEffort: "inherit" }),
+  makePhase("verify", { criteria: "The implementation satisfies the task and the available test evidence supports the result.", maxRepairs: 1 }),
   makePhase("output", { format: "text" }),
 ];
+
+const EXAMPLES = {
+  flappy: {
+    name: "Flappy Bird frontend with review",
+    title: "A reviewable frontend workflow",
+    prompt: "Design a polished Flappy Bird frontend in this repository. Inspect what is already here, implement it, and verify it in the browser.",
+    benefit: "Approve the visual direction before implementation, then require browser evidence before accepting the result.",
+    phases: [
+      { kind: "work", title: "Inspect and propose", detail: "Understand the app, constraints, and visual direction." },
+      { kind: "checkpoint", title: "Approve direction", detail: "A human decides whether implementation should begin." },
+      { kind: "work", title: "Build the experience", detail: "Codex implements and iterates with its native tools." },
+      { kind: "verify", title: "Browser verification", detail: "Check playability, layout, and visible error states." },
+    ],
+  },
+  bugfix: {
+    name: "Checkout diagnosis and repair",
+    title: "A diagnosis-first repair workflow",
+    prompt: "Find the cause of the checkout failure in this repository, make the smallest safe repair, and demonstrate that the regression is covered.",
+    benefit: "Separate diagnosis from mutation, approve the evidence-backed repair direction, and bound repair attempts after verification.",
+    phases: [
+      { kind: "work", title: "Reproduce and diagnose", detail: "Inspect evidence and isolate the likely failure path." },
+      { kind: "checkpoint", title: "Approve repair plan", detail: "A human reviews scope before files change." },
+      { kind: "work", title: "Make the repair", detail: "Codex edits, runs focused checks, and adapts as needed." },
+      { kind: "verify", title: "Regression check", detail: "Require the original failure and focused tests to pass." },
+    ],
+  },
+};
 
 let phases = normalizePhases(loadDraft() || DEFAULT_PHASES);
 let selectedPhaseId = phases.find((phase) => phase.type === "work")?.id || phases[0]?.id || null;
@@ -36,6 +65,9 @@ let pollTimer = null;
 let draggedPhaseId = null;
 let draggedPaletteType = null;
 let capabilities = { phasePrograms: false, compileEndpoint: null, runEndpoint: null };
+let currentExample = "flappy";
+let securitySession = null;
+let loginPollTimer = null;
 
 function makePhase(type, config = {}) {
   return { id: uid(), type, title: PHASE_TYPES[type].defaultTitle, config };
@@ -88,7 +120,10 @@ function toast(message) {
 }
 
 async function request(path, options = {}) {
-  const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
+  const method = String(options.method || "GET").toUpperCase();
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  if (method !== "GET" && securitySession?.csrfToken) headers["X-Weave-CSRF"] = securitySession.csrfToken;
+  const response = await fetch(path, { ...options, method, headers });
   const text = await response.text();
   let data;
   try { data = text ? JSON.parse(text) : {}; } catch (_) { data = { error: text || `HTTP ${response.status}` }; }
@@ -96,38 +131,55 @@ async function request(path, options = {}) {
   return data;
 }
 
+async function bootstrapSession() {
+  securitySession = await request("/api/session");
+  if (securitySession.loopbackOnly !== true || securitySession.authenticationOwner !== "codexAppServer") throw new Error("The local Weave session did not report the expected security boundary.");
+  if (securitySession.workspaceRoot && !$("#cwd").value.trim()) $("#cwd").value = securitySession.workspaceRoot;
+  return securitySession;
+}
+
 async function detectCapabilities() {
+  const indicator = $("#runtime-indicator");
   try {
     const response = await fetch("/api/phase-templates", { headers: { Accept: "application/json" } });
-    if (!response.ok) return;
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     capabilities = {
       phasePrograms: data.phasePrograms === true || Array.isArray(data.templates),
       compileEndpoint: data.compileEndpoint || null,
       runEndpoint: data.runEndpoint || null,
     };
+    indicator.className = "runtime connected";
+    $("span", indicator).textContent = "Local Codex connected";
+    renderConnectionStatus({ connected: true });
   } catch (_) {
     // The current v1 server has no capabilities endpoint; the fixed-manifest adapter remains usable.
+    indicator.className = "runtime error";
+    $("span", indicator).textContent = "Runtime unavailable";
+    renderConnectionStatus({ connected: false });
   }
 }
 
-function switchView(view) {
+function switchView(view, updateHistory = true) {
+  const aliases = { build: "design", observe: "runs" };
+  view = aliases[view] || view;
+  if (!$("#" + view + "-view")) view = "home";
   $$(".view-tab").forEach((button) => button.classList.toggle("active", button.dataset.view === view));
   $$(".app-view").forEach((panel) => panel.classList.toggle("active", panel.id === `${view}-view`));
-  history.replaceState(null, "", view === "build" ? "#build" : "#observe");
+  if (updateHistory && location.hash !== `#${view}`) history.pushState({ view }, "", `#${view}`);
   window.scrollTo({ top: 0, behavior: "smooth" });
+  if (view === "setup" && securitySession) void checkAccount();
 }
 
 function renderPalette() {
-  const item = ([type, definition], fixed) => `<button class="palette-item ${fixed ? "fixed-control" : ""}" type="button" draggable="${fixed ? "false" : "true"}" ${fixed ? `data-select-type="${type}"` : `data-phase-type="${type}"`}>
-      <span class="phase-icon type-${type}">${definition.icon}</span><span><b>${definition.label}</b><small>${definition.description}</small></span><i aria-hidden="true">${fixed ? "↗" : "＋"}</i>
+  const item = ([type, definition]) => `<button class="palette-item" type="button" draggable="true" data-phase-type="${type}">
+      <span class="phase-icon type-${type}">${definition.icon}</span><span><b>${definition.label}</b><small>${definition.description}</small></span><i aria-hidden="true">＋</i>
     </button>`;
-  const entries = Object.entries(PHASE_TYPES);
-  $("#phase-palette").innerHTML = `<p class="palette-group-label">EXECUTABLE PHASES</p>${entries.filter(([, value]) => !value.fixed).map((entry) => item(entry, false)).join("")}<p class="palette-group-label">RUN-WIDE SETUP</p>${entries.filter(([, value]) => value.fixed).map((entry) => item(entry, true)).join("")}`;
+  const entries = Object.entries(PHASE_TYPES).filter(([, value]) => !value.fixed);
+  $("#phase-palette").innerHTML = entries.map(item).join("");
   $$(".palette-item").forEach((button) => {
-    button.addEventListener("click", () => button.dataset.phaseType ? addPhase(button.dataset.phaseType) : selectSetup(button.dataset.selectType));
+    button.addEventListener("click", () => addPhase(button.dataset.phaseType));
     button.addEventListener("dragstart", (event) => {
-      if (!button.dataset.phaseType) { event.preventDefault(); return; }
       draggedPaletteType = button.dataset.phaseType;
       draggedPhaseId = null;
       event.dataTransfer.effectAllowed = "copy";
@@ -157,24 +209,35 @@ function lineCount(value) {
   return String(value || "").split("\n").map((line) => line.trim()).filter(Boolean).length;
 }
 
+function renderDesignSummary() {
+  const task = getPhase("task");
+  if (document.activeElement !== $("#goal-input")) $("#goal-input").value = task?.config.goal || "";
+  $("#context-summary").textContent = lineCount(getPhase("context")?.config.paths) ? `${lineCount(getPhase("context")?.config.paths)} suggested path${lineCount(getPhase("context")?.config.paths) === 1 ? "" : "s"}` : "No suggested files";
+  $("#memory-summary").textContent = ({ off: "Off · clean run", all: "All native memory", selected: `${selectedThreads().length || 0} selected tasks` })[getPhase("memory")?.config.mode || "off"];
+  $("#approval-summary").textContent = ({ manual: "Ask me", "auto-review": "Auto-review", deny: "Deny escalation" })[getPhase("approval")?.config.gate || "manual"];
+  $("#output-summary").textContent = `${getPhase("output")?.config.format || "text"} + receipt`;
+  $$(".run-settings-strip button").forEach((button) => button.classList.toggle("selected", getPhase(button.dataset.selectType)?.id === selectedPhaseId));
+}
+
 function renderCanvas() {
   const canvas = $("#phase-canvas");
-  if (!phases.length) {
-    canvas.innerHTML = `<div class="canvas-empty"><b>Your canvas is empty</b><span>Add Task, Codex Work Loop, and Output to make an executable starting point.</span></div>`;
+  const program = programPhases();
+  if (!program.length) {
+    canvas.innerHTML = `<div class="canvas-empty"><b>No executable phases yet</b><span>Add a Codex Work Loop first, then optional checkpoints and verification.</span></div>`;
   } else {
-    canvas.innerHTML = phases.map((phase, index) => {
+    canvas.innerHTML = program.map((phase, index) => {
       const definition = PHASE_TYPES[phase.type];
-      const fixed = Boolean(definition.fixed);
-      return `<article class="phase-card ${fixed ? "fixed-phase" : "executable-phase"} ${selectedPhaseId === phase.id ? "selected" : ""}" draggable="${fixed ? "false" : "true"}" data-phase-id="${escapeHtml(phase.id)}" data-phase-type="${phase.type}" tabindex="0">
-        <div class="phase-rail"><button class="drag-handle" type="button" aria-label="${fixed ? "Run-wide control" : `Drag ${escapeHtml(phase.title)}`}" ${fixed ? "disabled" : ""}>${fixed ? "◆" : "⠿"}</button><span>${String(index + 1).padStart(2, "0")}</span></div>
+      return `<article class="phase-card executable-phase ${selectedPhaseId === phase.id ? "selected" : ""}" draggable="true" data-phase-id="${escapeHtml(phase.id)}" data-phase-type="${phase.type}" tabindex="0">
+        <div class="phase-rail"><button class="drag-handle" type="button" aria-label="Drag ${escapeHtml(phase.title)}">⠿</button><span>${String(index + 1).padStart(2, "0")}</span></div>
         <span class="phase-icon type-${phase.type}">${definition.icon}</span>
-        <div class="phase-copy"><small>${fixed ? "RUN-WIDE CONTROL" : "EXECUTABLE PHASE"} · ${definition.label}${phase.type === "work" ? " · CODEX-MANAGED INTERIOR" : ""}</small><b>${escapeHtml(phase.title)}</b><p>${escapeHtml(phaseSummary(phase))}</p>${phase.type === "work" ? `<em>May contain many reasoning and tool iterations</em>` : ""}</div>
-        ${fixed ? `<div class="phase-controls"><span class="fixed-label">FIXED</span></div>` : `<div class="phase-controls"><button type="button" data-move="up" aria-label="Move up">↑</button><button type="button" data-move="down" aria-label="Move down">↓</button><button type="button" data-remove aria-label="Remove phase">×</button></div>`}
+        <div class="phase-copy"><small>${definition.label}${phase.type === "work" ? " · ONE CODEX TURN" : ""}</small><b>${escapeHtml(phase.title)}</b><p>${escapeHtml(phaseSummary(phase))}</p>${phase.type === "work" ? `<em>May contain one or one hundred tool calls</em>` : ""}</div>
+        <div class="phase-controls"><button type="button" data-move="up" aria-label="Move up">↑</button><button type="button" data-move="down" aria-label="Move down">↓</button><button type="button" data-remove aria-label="Remove phase">×</button></div>
       </article>`;
     }).join("");
   }
   bindCanvasEvents();
   renderInspector();
+  renderDesignSummary();
   $("#phase-bound").textContent = programPhases().length || "0";
 }
 
@@ -265,7 +328,7 @@ function renderInspector() {
   const definition = PHASE_TYPES[phase.type];
   $("#inspector-subtitle").textContent = definition.label;
   root.innerHTML = `<div class="inspector-type"><span class="phase-icon type-${phase.type}">${definition.icon}</span><div><b>${definition.label}</b><small>${definition.description}</small></div></div>
-    <label class="field"><span>Phase name</span><input data-phase-field="title" value="${escapeHtml(phase.title)}" /></label>
+    <label class="field"><span>${definition.fixed ? "Setting name" : "Phase name"}</span><input data-phase-field="title" value="${escapeHtml(phase.title)}" /></label>
     ${inspectorFields(phase)}
     ${phase.type === "work" ? `<div class="codex-boundary"><b>Inside this phase, Codex decides the steps.</b><p>It can inspect files, reason, call tools, edit, and test repeatedly. Weave records that internal loop; it does not turn each tool call into a canvas block.</p></div>` : ""}`;
   $$('[data-phase-field]', root).forEach((control) => {
@@ -294,6 +357,7 @@ function updatePhaseField(phase, control) {
   if (phase.type === "memory" && key === "mode") $("#thread-picker").classList.toggle("hidden", control.value !== "selected");
   const card = $(`.phase-card[data-phase-id="${phase.id}"]`);
   if (card) { $(".phase-copy b", card).textContent = phase.title; $(".phase-copy p", card).textContent = phaseSummary(phase); }
+  renderDesignSummary();
   saveDraft();
   scheduleCompile();
 }
@@ -432,7 +496,7 @@ async function run() {
   const endpoint = capabilities.phasePrograms && capabilities.runEndpoint ? capabilities.runEndpoint : "/api/runs";
   const payload = capabilities.phasePrograms && capabilities.runEndpoint ? phaseManifest() : manifestFromCanvas();
   $("#run-button").disabled = true;
-  switchView("observe");
+  switchView("runs");
   showTraceLoading("Starting Codex…");
   try {
     const data = await request(endpoint, { method: "POST", body: JSON.stringify(payload) });
@@ -478,9 +542,24 @@ async function browseCodexThreads() {
   root.innerHTML = "<p>Reading Codex thread metadata…</p>";
   try {
     const data = await request(`/api/threads?cwd=${encodeURIComponent($("#cwd").value.trim())}`);
-    root.innerHTML = data.threads?.length ? data.threads.map((thread) => `<button type="button" data-thread-id="${escapeHtml(thread.id)}"><b>${escapeHtml(thread.name || thread.preview || "Untitled Codex thread")}</b><small>${escapeHtml(thread.id)}</small></button>`).join("") : "<p>No Codex threads were found for this workspace.</p>";
+    root.innerHTML = data.threads?.length ? data.threads.map((thread, index) => {
+      const label = readableThreadLabel(thread, index);
+      return `<button type="button" data-thread-id="${escapeHtml(thread.id)}"><b>${escapeHtml(label)}</b><small>Codex task · ${escapeHtml(String(thread.id || "").slice(0, 13))}</small></button>`;
+    }).join("") : "<p>No Codex threads were found for this workspace.</p>";
     $$('[data-thread-id]', root).forEach((button) => button.addEventListener("click", () => loadThreadProjection(button.dataset.threadId, $("b", button).textContent)));
   } catch (error) { root.innerHTML = `<p>Thread browsing is unavailable: ${escapeHtml(error.message)}</p>`; }
+}
+
+function readableThreadLabel(thread, index) {
+  const source = String(thread.name || thread.preview || "").replace(/\s+/g, " ").trim();
+  const taggedTask = source.match(/<(?:overall_task|task)>\s*([\s\S]*?)\s*<\/(?:overall_task|task)>/i)?.[1];
+  const withoutMarkup = String(taggedTask || source)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const fallback = `Codex task ${index + 1}`;
+  const label = withoutMarkup || fallback;
+  return label.length > 78 ? `${label.slice(0, 75).trimEnd()}…` : label;
 }
 
 async function loadThreadProjection(threadId, name) {
@@ -524,6 +603,7 @@ function phaseGroups(timeline) {
     let group = groups.find((item) => item.id === id);
     if (!group) { group = { id, label: humanPhase(id), events: [] }; groups.push(group); }
     group.events.push(event);
+    if (event.kind === "stage" && event.title) group.label = String(event.title).replace(/ started$/i, "").replace(/ finished$/i, "").replace(/: verification$/i, "");
   });
   return groups;
 }
@@ -538,7 +618,10 @@ function renderTrace(result, status = "completed", error = null) {
   activeReceipt = result;
   const timeline = result.timeline || [];
   const projection = result.traceProjection || null;
-  const groups = projection ? projection.graph?.nodes || [] : phaseGroups(timeline);
+  const authoredIds = new Set((result.phaseProgram?.executions || []).map((item) => item.phaseId));
+  const authoredGroups = phaseGroups(timeline).filter((group) => authoredIds.has(group.id));
+  const hasAuthoredPhases = authoredGroups.length > 0;
+  const groups = hasAuthoredPhases ? authoredGroups : projection ? projectionClusters(projection) : phaseGroups(timeline);
   const observed = result.observed || {};
   const tools = projection?.counts?.toolCalls ?? timeline.filter((event) => event.kind === "tool_call").length;
   $("#trace-empty").classList.add("hidden");
@@ -546,15 +629,19 @@ function renderTrace(result, status = "completed", error = null) {
   $("#trace-status").className = `status-pill ${status}`;
   $("#trace-status").textContent = status === "completed" ? "Complete" : status === "failed" ? "Failed" : "Running";
   $("#trace-title").textContent = status === "running" ? "Codex is working" : result.threadName || "Codex execution trace";
-  $("#trace-meta").textContent = projection ? `${String(result.runId || "thread").slice(0, 16)} · derived phase view · ${projection.projectionBasis}` : `${result.runId ? result.runId.slice(0, 8) : "live"} · ${result.controls?.sandbox || "control pending"} · memory ${result.memory?.mode || "off"}${error ? ` · ${error}` : ""}`;
-  $("#use-run-controls").textContent = projection ? "Use this trace shape" : "Use these controls";
+  $("#trace-meta").textContent = hasAuthoredPhases ? `${String(result.runId || "run").slice(0, 16)} · exact Weave phase receipt · ${result.controls?.sandbox || "control pending"}` : projection ? `${String(result.runId || "thread").slice(0, 16)} · derived activity view · ${projection.projectionBasis}` : `${result.runId ? result.runId.slice(0, 8) : "live"} · ${result.controls?.sandbox || "control pending"} · memory ${result.memory?.mode || "off"}${error ? ` · ${error}` : ""}`;
+  $("#use-run-controls").textContent = hasAuthoredPhases ? "Reuse this harness shape" : projection ? "Use this trace shape" : "Use these controls";
   $("#metric-phases").textContent = groups.length;
+  $("#metric-phases").nextElementSibling.textContent = hasAuthoredPhases ? "authored phases" : projection ? "derived activity groups" : "goal phases";
   $("#metric-tools").textContent = tools;
   $("#metric-model").textContent = projection?.counts?.modelCompletions ?? observed.modelCompletions ?? "—";
   $("#metric-turns").textContent = projection?.counts?.turns ?? result.turnIds?.length ?? "—";
   const observationCount = projection?.counts?.events ?? projection?.counts?.items ?? timeline.length;
-  $("#trace-event-count").textContent = `${observationCount} source observation${observationCount === 1 ? "" : "s"}${projection ? " · derived grouping" : ""}`;
-  if (projection) renderProjectionMap(projection);
+  $("#trace-event-count").textContent = `${observationCount} source observation${observationCount === 1 ? "" : "s"}${projection && !hasAuthoredPhases ? " · derived grouping" : " · observed inside exact phases"}`;
+  $(".execution-map-panel h3").textContent = hasAuthoredPhases ? "Authored phase map" : projection ? "Derived activity map" : "Phase map";
+  $(".execution-map-panel header p").textContent = hasAuthoredPhases ? "Exact phase boundaries from this Weave run; tools remain inside Work." : projection ? "A compact interpretation of persisted Codex items—not native phase objects." : "Large cards are meaningful goals. Tool calls stay inside Work phases.";
+  if (hasAuthoredPhases) renderExecutionMap(groups);
+  else if (projection) renderProjectionMap(projection);
   else renderExecutionMap(groups);
   if (projection && !timeline.length) renderProjectionActivity(projection);
   else renderTimeline(timeline);
@@ -562,11 +649,36 @@ function renderTrace(result, status = "completed", error = null) {
   renderReceipt(result);
 }
 
-function renderProjectionMap(projection) {
+function projectionClusters(projection) {
+  const definitions = [
+    { id: "orient", title: "Orient", kinds: ["task", "setup", "memory"], summary: "Task, environment, and context setup" },
+    { id: "understand", title: "Understand", kinds: ["explore", "plan"], summary: "Inspection and planning activity" },
+    { id: "act", title: "Act", kinds: ["execute", "integrate", "change"], summary: "Tool execution and workspace changes" },
+    { id: "check", title: "Check", kinds: ["verify", "repair", "approval"], summary: "Verification, repair, and approval activity" },
+    { id: "communicate", title: "Communicate", kinds: ["model", "deliver"], summary: "Model responses and delivery activity" },
+  ];
   const nodes = projection.graph?.nodes || [];
+  return definitions.map((definition) => {
+    const members = nodes.filter((node) => definition.kinds.includes(node.kind));
+    return {
+      ...definition,
+      kind: "derived",
+      confidence: "interpretation",
+      members,
+      counts: {
+        items: members.reduce((sum, node) => sum + Number(node.counts?.items || node.counts?.events || 1), 0),
+        toolCalls: members.reduce((sum, node) => sum + Number(node.counts?.toolCalls || 0), 0),
+      },
+      turnIds: [...new Set(members.flatMap((node) => node.turnIds || []))],
+    };
+  }).filter((cluster) => cluster.members.length);
+}
+
+function renderProjectionMap(projection) {
+  const nodes = projectionClusters(projection);
   const root = $("#execution-map");
   if (!nodes.length) { root.innerHTML = `<div class="map-empty">This thread contains no projectable phases.</div>`; return; }
-  root.innerHTML = nodes.map((node, index) => `<button class="executed-phase derived ${activeTracePhase === node.id ? "active" : ""}" type="button" data-trace-phase="${escapeHtml(node.id)}"><span>${String(index + 1).padStart(2, "0")}</span><div><small>${escapeHtml(node.kind)} · ${escapeHtml(node.confidence)}</small><b>${escapeHtml(node.title)}</b><p>${Number(node.counts?.toolCalls || 0)} tool call${Number(node.counts?.toolCalls || 0) === 1 ? "" : "s"} · ${Number(node.counts?.items || node.counts?.events || 0)} source items</p></div><em>${escapeHtml(node.summary || "Derived from persisted Codex records")}</em></button>`).join("");
+  root.innerHTML = nodes.map((node, index) => `<button class="executed-phase derived ${activeTracePhase === node.id ? "active" : ""}" type="button" data-trace-phase="${escapeHtml(node.id)}"><span>${String(index + 1).padStart(2, "0")}</span><div><small>DERIVED ACTIVITY GROUP</small><b>${escapeHtml(node.title)}</b><p>${Number(node.counts?.toolCalls || 0)} observed tool call${Number(node.counts?.toolCalls || 0) === 1 ? "" : "s"} · ${node.members.length} projected nodes</p></div><em>${escapeHtml(node.summary)}</em></button>`).join("");
   $$(".executed-phase", root).forEach((button) => button.addEventListener("click", () => {
     activeTracePhase = activeTracePhase === button.dataset.tracePhase ? null : button.dataset.tracePhase;
     renderProjectionMap(projection);
@@ -575,10 +687,10 @@ function renderProjectionMap(projection) {
 }
 
 function renderProjectionActivity(projection) {
-  const nodes = (projection.graph?.nodes || []).filter((node) => !activeTracePhase || node.id === activeTracePhase);
+  const nodes = projectionClusters(projection).filter((node) => !activeTracePhase || node.id === activeTracePhase);
   const root = $("#timeline");
   if (!nodes.length) { root.innerHTML = `<div class="timeline-empty">No projected activity is available.</div>`; return; }
-  root.innerHTML = nodes.map((node) => `<div class="timeline-phase"><span>${escapeHtml(node.title)}</span><i>derived · ${escapeHtml(node.confidence)}</i></div><article class="timeline-event kind-${escapeHtml(node.kind)}"><span class="event-index">${escapeHtml(node.kind.slice(0, 2).toUpperCase())}</span><div><small>${escapeHtml(node.kind)} phase</small><b>${escapeHtml(node.summary)}</b><p>${Number(node.counts?.toolCalls || 0)} tool calls · ${Number(node.counts?.items || 0)} items · ${node.turnIds?.length || 0} turns${node.toolBurst?.labels?.length ? ` · ${escapeHtml(node.toolBurst.labels.join(", "))}` : ""}</p></div></article>`).join("");
+  root.innerHTML = nodes.map((node) => `<div class="timeline-phase"><span>${escapeHtml(node.title)}</span><i>derived interpretation</i></div><article class="timeline-event kind-${escapeHtml(node.kind)}"><span class="event-index">${escapeHtml(node.id.slice(0, 2).toUpperCase())}</span><div><small>derived activity group</small><b>${escapeHtml(node.summary)}</b><p>${Number(node.counts?.toolCalls || 0)} tool calls · ${node.members.length} projected nodes · ${node.turnIds?.length || 0} turns</p></div></article>`).join("");
 }
 
 function renderExecutionMap(groups) {
@@ -722,6 +834,149 @@ function starterPhases() {
   ];
 }
 
+function directPhases() {
+  return [
+    makePhase("task", { goal: getPhase("task")?.config.goal || "Describe the outcome you want Codex to produce." }),
+    makePhase("context", { paths: getPhase("context")?.config.paths || "README.md" }),
+    makePhase("memory", { mode: getPhase("memory")?.config.mode || "off" }),
+    makePhase("approval", { gate: getPhase("approval")?.config.gate || "manual" }),
+    makePhase("work", { goal: "Complete the task using the current repository as evidence. Use the native Codex tool loop as needed.", reasoningEffort: "inherit" }),
+    makePhase("verify", { criteria: "The result satisfies the task and focused evidence supports the final response.", maxRepairs: 1 }),
+    makePhase("output", { format: "text" }),
+  ];
+}
+
+function examplePhases(exampleKey) {
+  const example = EXAMPLES[exampleKey];
+  const fixed = [
+    makePhase("task", { goal: example.prompt }),
+    makePhase("context", { paths: "README.md\nsrc/" }),
+    makePhase("memory", { mode: "off" }),
+    makePhase("approval", { gate: "manual" }),
+  ];
+  const program = example.phases.map((item) => {
+    if (item.kind === "work") {
+      const phase = makePhase("work", { goal: item.detail, reasoningEffort: "inherit" });
+      phase.title = item.title;
+      return phase;
+    }
+    if (item.kind === "checkpoint") {
+      const phase = makePhase("checkpoint", { question: `${item.detail} Continue into the next phase?` });
+      phase.title = item.title;
+      return phase;
+    }
+    const criteria = exampleKey === "flappy"
+      ? "The game is playable in the browser, the layout is polished at desktop and mobile sizes, controls are discoverable, and no visible console or runtime errors remain."
+      : "The reported failure is reproduced or explained, the smallest safe repair is present, and focused regression checks pass.";
+    const phase = makePhase("verify", { criteria, maxRepairs: 1 });
+    phase.title = item.title;
+    return phase;
+  });
+  return normalizePhases([...fixed, ...program, makePhase("output", { format: "text" })]);
+}
+
+function loadPreset(key, announce = true) {
+  const currentGoal = getPhase("task")?.config.goal || "";
+  if (key === "direct") phases = directPhases();
+  else if (key === "flappy" || key === "bugfix") phases = examplePhases(key);
+  else phases = starterPhases();
+  if (["direct", "review"].includes(key) && currentGoal && !currentGoal.startsWith("Describe the outcome")) getPhase("task").config.goal = currentGoal;
+  $("#harness-name").value = key === "direct" ? "Direct work with verification" : key === "flappy" || key === "bugfix" ? EXAMPLES[key].name : "Plan, approve, build";
+  selectedPhaseId = programPhases()[0]?.id || null;
+  $$(".template-card").forEach((button) => button.classList.toggle("active", button.dataset.preset === key));
+  changed();
+  if (announce) toast("Starting workflow loaded — every phase remains editable");
+}
+
+function renderExample(exampleKey) {
+  currentExample = EXAMPLES[exampleKey] ? exampleKey : "flappy";
+  const example = EXAMPLES[currentExample];
+  $$(".example-tab").forEach((button) => {
+    const active = button.dataset.example === currentExample;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+  $("#example-title").textContent = example.title;
+  $("#example-prompt").textContent = example.prompt;
+  $("#example-benefit").textContent = example.benefit;
+  $("#example-evidence").innerHTML = currentExample === "flappy"
+    ? `<span>ONE REAL LOCAL OBSERVATION</span><p>A previously recorded Flappy Bird Weave run contained <b>2 controller turns</b>, <b>36 persisted items</b>, and <b>23 tool calls</b> inside Codex's own loops. This is structural evidence from one run—not an A/B test or a quality claim.</p>`
+    : `<span>ILLUSTRATIVE DESIGN</span><p>This checkout workflow demonstrates the control model. It has not been run as a benchmark, so Weave makes no performance claim for it.</p>`;
+  $("#weave-flow").innerHTML = example.phases.map((phase, index) => `<div class="${escapeHtml(phase.kind === "checkpoint" ? "gate" : phase.kind)}"><i>${phase.kind === "checkpoint" ? "H" : phase.kind === "verify" ? "✓" : String(index + 1).padStart(2, "0")}</i><span><b>${escapeHtml(phase.title)}</b><small>${escapeHtml(phase.detail)}${phase.kind === "work" ? " Codex may use one or one hundred tools inside." : ""}</small></span></div>`).join("");
+}
+
+function renderConnectionStatus({ connected, account = null, error = "" }) {
+  const root = $("#connection-status");
+  if (!root) return;
+  root.className = `connection-status ${connected ? "connected" : "error"}`;
+  $("b", root).textContent = connected ? "Weave can reach the local Codex adapter" : "The local Codex adapter is unavailable";
+  $("span", root).textContent = connected ? "This confirms the control plane, not subscription authentication." : (error || "Start Weave with a working Codex installation, then retry.");
+  if (account) renderAccountDetail(account);
+}
+
+function renderAccountDetail(account) {
+  const root = $("#account-detail");
+  if (!root) return;
+  const signedIn = account.canRun === true;
+  const type = account.accountType === "chatgpt" ? "ChatGPT" : account.accountType === "apiKey" ? "API key" : account.accountType || "Codex";
+  const plan = account.planType ? `${account.planType} plan` : "";
+  root.className = `account-detail ${signedIn ? "signed-in" : "signed-out"}`;
+  root.innerHTML = `<b>${signedIn ? "Ready to run through " + escapeHtml(type) : "Codex needs authentication"}</b><span>${escapeHtml(account.message || [type, plan].filter(Boolean).join(" · ") || "Use the ChatGPT browser flow or run codex login.")}</span>${account.privacy ? `<small>No secrets or email are returned to this page.</small>` : ""}`;
+  $("#chatgpt-login").classList.toggle("hidden", signedIn && account.accountType === "chatgpt");
+}
+
+async function checkAccount() {
+  try {
+    await detectCapabilities();
+    const account = await request("/api/account");
+    renderAccountDetail(account);
+    return account;
+  } catch (error) {
+    renderAccountDetail({ authenticated: false });
+    renderConnectionStatus({ connected: capabilities.phasePrograms, error: error.message });
+    return null;
+  }
+}
+
+async function startChatGptLogin() {
+  const button = $("#chatgpt-login");
+  button.disabled = true;
+  button.textContent = "Opening ChatGPT sign-in…";
+  try {
+    const result = await request("/api/account/login/chatgpt", { method: "POST", body: JSON.stringify({}) });
+    if (result.authUrl) window.open(result.authUrl, "_blank", "noopener,noreferrer");
+    $("#account-detail").className = "account-detail waiting";
+    $("#account-detail").innerHTML = `<b>Finish signing in in the browser</b><span>${escapeHtml(result.message || "Codex is waiting for ChatGPT authentication.")}</span>`;
+    if (result.loginId) pollLogin(result.loginId);
+    toast("Complete the ChatGPT sign-in flow opened by Codex");
+  } catch (error) {
+    toast(`Codex sign-in could not start: ${error.message}`);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Sign in with ChatGPT";
+  }
+}
+
+async function pollLogin(loginId) {
+  clearTimeout(loginPollTimer);
+  try {
+    const result = await request(`/api/account/login/${encodeURIComponent(loginId)}`);
+    if (result.state === "succeeded") {
+      renderAccountDetail(result.account || await request("/api/account"));
+      toast("ChatGPT sign-in completed in Codex");
+      return;
+    }
+    if (result.state === "failed") {
+      renderAccountDetail({ canRun: false, message: result.message });
+      return;
+    }
+    $("#account-detail").innerHTML = `<b>Waiting for the browser sign-in</b><span>${escapeHtml(result.message || "Return here after ChatGPT confirms the connection.")}</span>`;
+    loginPollTimer = setTimeout(() => pollLogin(loginId), 900);
+  } catch (error) {
+    renderAccountDetail({ canRun: false, message: error.message });
+  }
+}
+
 function useRunControls() {
   if (!activeReceipt) return;
   if (activeReceipt.traceProjection) {
@@ -743,7 +998,7 @@ function useRunControls() {
     phases = normalizePhases([...fixed, ...editable.slice(0, 8)]);
     selectedPhaseId = programPhases()[0]?.id;
     changed();
-    switchView("build");
+    switchView("design");
     toast("Created an editable draft from the derived trace shape; review its generic goals before running");
     return;
   }
@@ -753,14 +1008,21 @@ function useRunControls() {
   if (memory) memory.config.mode = activeReceipt.memory?.mode === "selected" ? "off" : (activeReceipt.memory?.mode || "off");
   $("#sandbox").value = activeReceipt.controls?.sandbox || $("#sandbox").value;
   changed();
-  switchView("build");
+  switchView("design");
   toast("Copied available controls; saved receipts do not include the original task text");
 }
 
 function bindGlobalEvents() {
   $$(".view-tab").forEach((button) => button.addEventListener("click", () => switchView(button.dataset.view)));
-  $$('[data-open-builder]').forEach((button) => button.addEventListener("click", () => switchView("build")));
-  $("#new-harness").addEventListener("click", () => switchView("build"));
+  $$('[data-view-link]').forEach((control) => control.addEventListener("click", (event) => { event.preventDefault(); switchView(control.dataset.viewLink); }));
+  $$('[data-open-builder]').forEach((button) => button.addEventListener("click", () => switchView("design")));
+  $("#new-harness").addEventListener("click", () => switchView("design"));
+  $$(".example-tab").forEach((button) => button.addEventListener("click", () => renderExample(button.dataset.example)));
+  $("#copy-example-prompt").addEventListener("click", async () => { await navigator.clipboard.writeText(EXAMPLES[currentExample].prompt); toast("Prompt copied"); });
+  $("#use-example").addEventListener("click", () => { loadPreset(currentExample); switchView("design"); });
+  $$(".template-card").forEach((button) => button.addEventListener("click", () => loadPreset(button.dataset.preset)));
+  $$(".run-settings-strip button").forEach((button) => button.addEventListener("click", () => selectSetup(button.dataset.selectType)));
+  $("#goal-input").addEventListener("input", (event) => { getPhase("task").config.goal = event.target.value; saveDraft(); scheduleCompile(); });
   $("#refresh-runs").addEventListener("click", () => loadRecentRuns());
   $("#browse-threads").addEventListener("click", browseCodexThreads);
   $("#event-filter").addEventListener("change", () => activeReceipt?.traceProjection ? renderProjectionActivity(activeReceipt.traceProjection) : renderTimeline(activeReceipt?.timeline || []));
@@ -773,13 +1035,17 @@ function bindGlobalEvents() {
   $("#apply-json").addEventListener("click", applyManifest);
   $("#harness-name").addEventListener("input", () => { saveDraft(); scheduleCompile(); });
   $$("#cwd, #model, #effort, #sandbox").forEach((control) => control.addEventListener("change", scheduleCompile));
-  $("#reset-canvas").addEventListener("click", () => { phases = normalizePhases([]); selectedPhaseId = getPhase("task")?.id || null; changed(); });
-  $("#load-preset").addEventListener("click", () => { phases = starterPhases(); selectedPhaseId = phases.find((phase) => phase.type === "work").id; changed(); });
+  $("#reset-canvas").addEventListener("click", () => { phases = normalizePhases(phases.filter((phase) => PHASE_TYPES[phase.type].fixed)); selectedPhaseId = null; changed(); });
+  $("#load-preset").addEventListener("click", () => loadPreset("review"));
+  $("#check-connection").addEventListener("click", checkAccount);
+  $("#chatgpt-login").addEventListener("click", startChatGptLogin);
+  $$(".copy-command").forEach((button) => button.addEventListener("click", async () => { await navigator.clipboard.writeText(button.dataset.copy); toast("Command copied"); }));
   const dropzone = $("#canvas-dropzone");
   dropzone.addEventListener("dragover", (event) => { event.preventDefault(); dropzone.classList.add("over"); });
   dropzone.addEventListener("dragleave", () => dropzone.classList.remove("over"));
   dropzone.addEventListener("drop", (event) => { event.preventDefault(); dropzone.classList.remove("over"); dropAt(phases.length); });
   $$('[data-decision]').forEach((button) => button.addEventListener("click", (event) => { event.preventDefault(); approve(button.dataset.decision); }));
+  window.addEventListener("popstate", () => switchView(location.hash.slice(1) || "home", false));
 }
 
 async function init() {
@@ -787,11 +1053,15 @@ async function init() {
   if (stored?.name) $("#harness-name").value = stored.name;
   renderPalette();
   renderCanvas();
+  renderExample("flappy");
   bindGlobalEvents();
+  try { await bootstrapSession(); } catch (error) { renderConnectionStatus({ connected: false, error: error.message }); }
   await detectCapabilities();
   await compile();
   await loadRecentRuns(true);
-  if (location.hash === "#build") switchView("build");
+  const requestedView = location.hash.slice(1) || "home";
+  switchView(requestedView, false);
+  if (!location.hash) history.replaceState({ view: "home" }, "", "#home");
 }
 
 init();

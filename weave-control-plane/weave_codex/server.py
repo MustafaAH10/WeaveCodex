@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import hmac
 import json
 import re
+import secrets
 import threading
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -14,6 +16,7 @@ from urllib.parse import parse_qs, urlparse
 
 from pydantic import ValidationError
 
+from .auth_service import NativeAuthService
 from .manifest import HarnessManifest, compile_manifest
 from .phase_program import PhaseProgram, compile_phase_program, phase_templates
 from .runtime import HarnessRunner, RunSession
@@ -21,11 +24,25 @@ from .trace_projection import project_thread
 
 
 class ControlPlane:
-    def __init__(self, codex_bin: str, data_root: Path) -> None:
+    def __init__(
+        self,
+        codex_bin: str,
+        data_root: Path,
+        workspace_root: Path | None = None,
+    ) -> None:
         self.runner = HarnessRunner(codex_bin)
+        self.auth = NativeAuthService(codex_bin)
         self.data_root = data_root
+        current = Path.cwd().resolve()
+        self.workspace_root = (
+            workspace_root or (current.parent if current.name == "weave-control-plane" else current)
+        ).resolve()
         self.sessions: dict[str, RunSession] = {}
+        self.csrf_token = secrets.token_urlsafe(32)
         self._lock = threading.Lock()
+
+    def close(self) -> None:
+        self.auth.close()
 
     def create_run(self, manifest: HarnessManifest) -> RunSession:
         session = RunSession()
@@ -84,12 +101,61 @@ class ControlPlane:
         except (OSError, json.JSONDecodeError):
             return None
 
+    def product_examples(self) -> list[dict[str, Any]]:
+        root = Path(__file__).parents[1] / "examples"
+        examples: list[dict[str, Any]] = []
+        for name in ("flappy-bird-observation.json", "checkout-repair-design.json"):
+            try:
+                value = json.loads((root / name).read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if isinstance(value, dict):
+                examples.append(value)
+        return examples
+
 
 class Handler(BaseHTTPRequestHandler):
     server: "ControlServer"
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        if not self._local_request():
+            self._json(HTTPStatus.FORBIDDEN, {"error": "WeaveCodex is local-only"})
+            return
+        if parsed.path == "/api/session":
+            self._json(
+                HTTPStatus.OK,
+                {
+                    "csrfToken": self.server.app.csrf_token,
+                    "loopbackOnly": True,
+                    "authenticationOwner": "codexAppServer",
+                    "workspaceRoot": str(self.server.app.workspace_root),
+                },
+            )
+            return
+        if parsed.path == "/api/account":
+            try:
+                self._json(HTTPStatus.OK, self.server.app.auth.status())
+            except Exception:  # noqa: BLE001 - never return raw auth errors
+                self._json(
+                    HTTPStatus.BAD_GATEWAY,
+                    {"error": "Codex account status is unavailable."},
+                )
+            return
+        if parsed.path == "/api/examples":
+            self._json(HTTPStatus.OK, {"examples": self.server.app.product_examples()})
+            return
+        if parsed.path.startswith("/api/account/login/"):
+            login_id = parsed.path.removeprefix("/api/account/login/")
+            if re.fullmatch(r"[A-Za-z0-9_-]{1,160}", login_id) is None:
+                self._json(HTTPStatus.BAD_REQUEST, {"error": "invalid login id"})
+                return
+            status = self.server.app.auth.login_status(login_id)
+            self._json(
+                HTTPStatus.OK if status is not None else HTTPStatus.NOT_FOUND,
+                status or {"error": "login attempt not found"},
+            )
+            return
         if parsed.path == "/api/phase-templates":
             self._json(
                 HTTPStatus.OK,
@@ -138,7 +204,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         try:
+            self._require_local_json()
             payload = self._body()
+            if self.path == "/api/account/login/chatgpt":
+                self._json(HTTPStatus.ACCEPTED, self.server.app.auth.start_chatgpt_login())
+                return
             if self.path == "/api/compile":
                 manifest = HarnessManifest.model_validate(payload)
                 self._json(HTTPStatus.OK, compile_manifest(manifest))
@@ -179,6 +249,28 @@ class Handler(BaseHTTPRequestHandler):
         except (ValidationError, ValueError, json.JSONDecodeError) as exc:
             details = exc.errors() if isinstance(exc, ValidationError) else str(exc)
             self._json(HTTPStatus.BAD_REQUEST, {"error": details})
+
+    def _local_request(self) -> bool:
+        host = self.headers.get("Host", "")
+        hostname = host.rsplit(":", 1)[0].strip("[]").lower()
+        if hostname not in {"127.0.0.1", "localhost", "::1"}:
+            return False
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        parsed = urlparse(origin)
+        origin_host = (parsed.hostname or "").lower()
+        return parsed.scheme == "http" and origin_host in {"127.0.0.1", "localhost", "::1"}
+
+    def _require_local_json(self) -> None:
+        if not self._local_request():
+            raise ValueError("WeaveCodex accepts requests only from its loopback origin")
+        media_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if media_type != "application/json":
+            raise ValueError("POST requests require application/json")
+        supplied = self.headers.get("X-Weave-CSRF", "")
+        if not hmac.compare_digest(supplied, self.server.app.csrf_token):
+            raise ValueError("missing or invalid local session token")
 
     def _body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"))
@@ -222,6 +314,10 @@ class ControlServer(ThreadingHTTPServer):
         super().__init__(address, Handler)
         self.app = app
 
+    def server_close(self) -> None:
+        self.app.close()
+        super().server_close()
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the local Weave Codex control plane")
@@ -229,10 +325,19 @@ def main() -> None:
     parser.add_argument("--port", default=8790, type=int)
     parser.add_argument("--codex-bin", default="codex")
     parser.add_argument("--data-root", default=".weave-codex/runs", type=Path)
+    parser.add_argument("--workspace-root", type=Path)
     args = parser.parse_args()
-    server = ControlServer((args.host, args.port), ControlPlane(args.codex_bin, args.data_root))
+    if args.host not in {"127.0.0.1", "localhost", "::1"}:
+        parser.error("WeaveCodex currently binds only to a loopback host")
+    server = ControlServer(
+        (args.host, args.port),
+        ControlPlane(args.codex_bin, args.data_root, args.workspace_root),
+    )
     print(f"Weave Codex listening on http://{args.host}:{args.port}")
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    finally:
+        server.server_close()
 
 
 if __name__ == "__main__":

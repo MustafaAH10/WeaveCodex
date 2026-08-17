@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "caseId": "flappy-bird-local-observation",
+  "claimLevel": "structural-observation-only",
+  "prompt": "Build me a functional Flappy Bird app.",
+  "workPhaseGoal": "Make it as beautiful as possible.",
+  "source": {
+    "kind": "privacySafeThreadProjection",
+    "projectionSha256": "9f278d0947eea649bf5a1b99560316fd084f17bfe75176351f9def0c19464878",
+    "projectionVersion": "codex-phase-projection/1",
+    "projectionBasis": "derivedFromPersistedThreadItems"
+  },
+  "observed": {
+    "turns": 2,
+    "items": 36,
+    "itemsByType": {
+      "agentMessage": 11,
+      "fileChange": 3,
+      "mcpToolCall": 20,
+      "userMessage": 2
+    },
+    "toolCalls": 23,
+    "modelCompletions": null,
+    "approvalRequests": null,
+    "verificationAttempts": null,
+    "projectedVerificationPhases": 0,
+    "projectedRepairPhases": 0,
+    "declinedOperations": 0
+  },
+  "privacy": {
+    "mode": "structuralMetadataOnly",
+    "excluded": [
+      "userMessageText",
+      "agentMessageText",
+      "reasoningContent",
+      "commandStrings",
+      "commandOutput",
+      "toolArgumentsAndResults",
+      "fileContentsAndDiffs"
+    ],
+    "included": [
+      "sourceIdentifiers",
+      "protocolMethods",
+      "itemAndActionTypes",
+      "toolNames",
+      "statuses",
+      "aggregateCounts"
+    ]
+  },
+  "limits": [
+    "One observed local run, not a benchmark or ordinary-Codex comparison.",
+    "Persisted thread history does not expose exact model-completion or approval counts.",
+    "No correctness or quality score was assigned."
+  ]
+}

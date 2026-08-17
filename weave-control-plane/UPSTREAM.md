@@ -1,6 +1,6 @@
 # Source provenance
 
-This repository is a private downstream import, not a GitHub fork.
+This repository is an independent downstream import, not a GitHub fork.
 
 - Upstream: `https://github.com/openai/codex.git`
 - Pinned upstream commit: `9ded177ce7c1c0bd2047f902936c177612ab3434`
@@ -9,8 +9,8 @@ This repository is a private downstream import, not a GitHub fork.
 - License and notice: the upstream `LICENSE` and `NOTICE` remain at the repository root.
 
 At commit `34998ea`, `git rev-parse HEAD^{tree}` equals the pinned upstream tree. The import was
-squashed because GitHub cannot represent a private fork relationship to a public repository.
-The `upstream` remote still points to OpenAI so future updates can be fetched and reviewed.
+squashed so the downstream control-plane history remains separate from upstream Codex. The
+`upstream` remote still points to OpenAI so future updates can be fetched and reviewed.
 
 To inspect drift without merging it:
 

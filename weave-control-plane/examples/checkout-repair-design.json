@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "caseId": "checkout-repair-design",
+  "claimLevel": "illustrative-program-only",
+  "prompt": "Fix the intermittent checkout failure without changing the public API.",
+  "ordinaryCodex": {
+    "authoredBoundary": "One task prompt",
+    "adaptiveInterior": "Codex decides how to inspect, edit, and test inside its turn.",
+    "observableAfterRun": "Thread items, tool activity, changes, and the final response."
+  },
+  "weaveProgram": {
+    "phases": [
+      {
+        "kind": "work",
+        "name": "Reproduce and isolate",
+        "goal": "Reproduce the failure and identify the smallest supported cause before editing."
+      },
+      {
+        "kind": "checkpoint",
+        "name": "Approve the repair plan",
+        "question": "Continue with the proposed scope and compatibility constraints?"
+      },
+      {
+        "kind": "work",
+        "name": "Implement the repair",
+        "goal": "Apply the approved fix and add a focused regression check."
+      },
+      {
+        "kind": "verify",
+        "name": "Verify behavior and compatibility",
+        "criteria": "The reproduction is fixed, the public API is unchanged, and focused checks pass.",
+        "maxRepairs": 1
+      }
+    ],
+    "runWideControls": [
+      "workspace-write sandbox",
+      "manual protected-action approvals",
+      "memory mode",
+      "manifest-linked receipt"
+    ]
+  },
+  "limits": [
+    "This is a design example, not an executed comparison.",
+    "The phase program adds control and observability; it does not guarantee a better result.",
+    "Codex still chooses its internal model and tool actions inside each Work phase."
+  ]
+}

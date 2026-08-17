@@ -53,14 +53,43 @@ uv run python -m weave_codex.server \
   --port 8790
 ```
 
-Open `http://127.0.0.1:8790`. Start in **Observe** to inspect a saved Weave run or project an
-existing Codex thread into privacy-reduced, explicitly derived phases. Open **Build** to add,
-remove, reorder, and edit Work, Human Checkpoint, and Verification phases. The default design is
-read-only and has memory off.
+When launched from `weave-control-plane/`, the parent repository is selected as the initial
+workspace. Use `--workspace-root /absolute/path/to/project` to choose another default; the Design
+page can change it before a run.
+
+Open `http://127.0.0.1:8790`. The product is organized as a short, explicit journey:
+
+1. **Why Weave** explains the boundary: people author goal-level phases and handoffs, while Codex
+   keeps control of the adaptive model-and-tool loop inside each Work phase.
+2. **Examples** compares ordinary Codex with a reviewable Weave program for a frontend task and a
+   diagnosis-first program for a bug repair. These are architectural comparisons, not benchmark
+   claims.
+3. **Design** lets you edit Work, Human Checkpoint, and Verify + Repair phases, then inspect the
+   exact app-server operations before execution.
+4. **Runs** shows saved Weave receipts or projects an existing Codex thread into a smaller set of
+   privacy-reduced, explicitly derived activity groups.
+5. **Setup** checks the native Codex account and starts the official ChatGPT browser flow when
+   sign-in is required.
+
+For a Codex-first explanation, open `http://127.0.0.1:8790/deep-dive.html`. The article initially
+describes Codex by itself. **Reveal Weave layer** then adds track-change annotations and transforms
+the architecture to show the exact additions.
 
 Choose **Selected** memory and load saved workspace threads to inject only checked histories; the
 receipt lists the requested/resolved IDs and hashes each excerpt. In **All** mode, Codex decides
 which consolidated memories are relevant, so the receipt does not invent exact source-thread IDs.
+
+## Authentication and subscription use
+
+Weave spawns the official local `codex app-server` and inherits the same environment and default
+`CODEX_HOME` as the Codex CLI. If the user is already signed in with ChatGPT, that Codex-managed
+session is reused and eligible usage remains attached to the user's ChatGPT subscription. Weave
+does not read or copy `auth.json`, access tokens, email addresses, or API keys.
+
+The Setup page reads a secret-free status through `account/read`. If sign-in is required, an
+explicit click starts the documented `account/login/start` ChatGPT browser flow. The app-server,
+not Weave, owns the callback and credential storage. Weave is loopback-only and protects all local
+POST endpoints with a per-process session token and same-origin checks.
 
 ## Test
 

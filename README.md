@@ -1,3 +1,55 @@
+# WeaveCodex
+
+WeaveCodex is an experimental, human-designable control plane built on the open-source Codex
+runtime. It is an independent downstream project, not an OpenAI product.
+
+Ordinary Codex lets you state a goal and lets its agent loop decide how to complete it. WeaveCodex
+keeps that adaptive loop intact, then adds a layer around it that a person can inspect and edit:
+
+- goal-level Work phases, where one phase may contain many Codex model and tool iterations;
+- explicit human checkpoints between phases;
+- structured verification with a declared repair bound;
+- run-wide memory, sandbox, and approval choices;
+- a manifest preview showing the exact app-server operations before execution; and
+- a receipt that links the authored program to the turns and activity Codex actually produced.
+
+It does **not** turn every tool call into a canvas block, expose private reasoning, or replace
+Codex's native tools, sandbox, approvals, authentication, compaction, or agent loop.
+
+## Run WeaveCodex locally
+
+Prerequisites are Python 3.11+, `uv`, and an installed Codex CLI. Sign in with your ChatGPT
+subscription using `codex login`; WeaveCodex talks to the official local app-server and reuses the
+Codex-managed session. It does not copy tokens into this repository.
+
+```bash
+cd weave-control-plane
+uv sync
+uv run python -m weave_codex.server \
+  --codex-bin "$(command -v codex)" \
+  --host 127.0.0.1 \
+  --port 8790
+```
+
+Then open <http://127.0.0.1:8790/>. The app separates **Why Weave**, **Examples**, **Design**,
+**Runs**, and **Setup** so a first-time user can understand the control model before editing it.
+The interactive [Codex internals deep dive](http://127.0.0.1:8790/deep-dive.html) begins with Codex
+alone and reveals Weave as an optional track-changes layer.
+
+Read the [control-plane guide](weave-control-plane/README.md), the complete source-level article
+[Codex is not a flowchart](weave-control-plane/docs/CODEX_HARNESS_INTERNALS.md), and the
+[upstream provenance record](weave-control-plane/UPSTREAM.md).
+
+The `weave-control-plane/` directory is additive. The pinned Codex source remains available below
+it so the integration can be audited and updated against upstream.
+
+---
+
+## Upstream Codex
+
+The remainder of this README describes the embedded OpenAI Codex source at the pinned upstream
+revision. OpenAI owns and maintains Codex; WeaveCodex owns only its downstream control layer.
+
 <p align="center"><strong>Codex CLI</strong> is a coding agent from OpenAI that runs locally on your computer.
 <p align="center">
   <img src="https://github.com/openai/codex/blob/main/.github/codex-cli-splash.png" alt="Codex CLI splash" width="80%" />
