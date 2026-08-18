@@ -184,12 +184,8 @@ def run_study(args: argparse.Namespace) -> dict[str, Any]:
                     if arm == "ordinary"
                     else _weave_run(task, workspace, args.codex_bin, args.model)
                 )
-                raw_path.write_text(
-                    json.dumps(raw, indent=2, default=str) + "\n", encoding="utf-8"
-                )
-            task_results[arm] = _public_arm(
-                arm, raw, workspace, grade_task(task, workspace)
-            )
+                raw_path.write_text(json.dumps(raw, indent=2, default=str) + "\n", encoding="utf-8")
+            task_results[arm] = _public_arm(arm, raw, workspace, grade_task(task, workspace))
         if len(set(starting_digests.values())) != 1:
             raise RuntimeError(f"starting fixture drift for {task.id}")
         results.append(

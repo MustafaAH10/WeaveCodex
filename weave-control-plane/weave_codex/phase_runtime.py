@@ -160,9 +160,7 @@ def execute_phase_program(
                 ),
                 effort=effort,
                 output_schema=None,
-                event_sink=lambda event, phase_id=phase.id: session.event(
-                    event, phase=phase_id
-                ),
+                event_sink=lambda event, phase_id=phase.id: session.event(event, phase=phase_id),
             )
             _record_turn(result, turn)
             phase_turn_ids.append(turn.turn_id)

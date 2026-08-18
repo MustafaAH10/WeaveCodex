@@ -173,9 +173,7 @@ def test_phase_program_executes_controller_turns_and_real_human_checkpoint() -> 
     fake = PhaseGatewayFake()
     session = RunSession(run_id="phase-run")
     worker = threading.Thread(
-        target=lambda: HarnessRunner("codex", lambda *_: fake).run(
-            executable_manifest(), session
-        )
+        target=lambda: HarnessRunner("codex", lambda *_: fake).run(executable_manifest(), session)
     )
     worker.start()
     deadline = time.monotonic() + 2

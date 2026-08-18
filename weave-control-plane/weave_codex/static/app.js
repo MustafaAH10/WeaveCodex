@@ -861,7 +861,7 @@ function renderExecutionMap(groups) {
     const tools = group.events.filter((event) => event.kind === "tool_call").length;
     const reasoning = group.events.filter((event) => event.kind === "reasoning").length;
     const kind = executions.get(group.id) || "work";
-    return `<button class="executed-phase ${activeTracePhase === group.id ? "active" : ""}" type="button" data-trace-phase="${escapeHtml(group.id)}"><span>${String(index + 1).padStart(2, "0")}</span><div><small>${escapeHtml(kind === "verify" ? "VERIFY + REPAIR" : "AUTHORED WORK GOAL")}</small><b>${escapeHtml(group.label)}</b><p>${tools} tool request${tools === 1 ? "" : "s"} · ${reasoning} reasoning summar${reasoning === 1 ? "y" : "ies"}</p><div class="phase-inside"><i>Codex loop</i><i>tools nested here</i></div></div></button>`;
+    return `<button class="executed-phase ${activeTracePhase === group.id ? "active" : ""}" type="button" data-trace-phase="${escapeHtml(group.id)}"><span>${String(index + 1).padStart(2, "0")}</span><div><small>${escapeHtml(kind === "verify" ? "VERIFY + REPAIR" : "AUTHORED WORK GOAL")}</small><b>${escapeHtml(group.label)}</b><p>${tools} tool request${tools === 1 ? "" : "s"} · ${reasoning} reasoning ${reasoning === 1 ? "summary" : "summaries"}</p><div class="phase-inside"><i>Codex loop</i><i>tools nested here</i></div></div></button>`;
   }).join("");
   root.innerHTML = `<div class="map-boundary"><small>INPUT</small><b>Task contract</b><span>context · memory · integrations · safety</span></div>${phaseMarkup}<div class="map-boundary output"><small>OUTPUT</small><b>Answer + receipt</b><span>result · counts · provenance</span></div>`;
   $$(".executed-phase", root).forEach((button) => button.addEventListener("click", () => {

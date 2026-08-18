@@ -134,9 +134,7 @@ def test_preserved_summary_is_self_consistent() -> None:
         for arm in ("ordinary", "weave")
     )
     docs_trial = next(
-        result
-        for result in summary["results"]
-        if result["taskId"] == "codex-app-server-contract"
+        result for result in summary["results"] if result["taskId"] == "codex-app-server-contract"
     )
     assert docs_trial["weave"]["observedIntegrationToolItems"] == [
         {

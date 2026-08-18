@@ -135,8 +135,7 @@ class HarnessManifest(StrictModel):
             unknown = set(request.phase_ids) - phase_ids
             if unknown:
                 raise ValueError(
-                    "integration phaseIds must reference work phases: "
-                    + ", ".join(sorted(unknown))
+                    "integration phaseIds must reference work phases: " + ", ".join(sorted(unknown))
                 )
         return self
 

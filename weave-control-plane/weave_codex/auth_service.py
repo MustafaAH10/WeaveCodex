@@ -231,14 +231,17 @@ class NativeAuthService:
                 for item in apps
             ],
         }
-        inventory_id = "sha256:" + hashlib.sha256(
-            json.dumps(
-                inventory_payload,
-                ensure_ascii=False,
-                separators=(",", ":"),
-                sort_keys=True,
-            ).encode()
-        ).hexdigest()
+        inventory_id = (
+            "sha256:"
+            + hashlib.sha256(
+                json.dumps(
+                    inventory_payload,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ).encode()
+            ).hexdigest()
+        )
 
         return {
             "cwd": str(workspace),

@@ -80,11 +80,11 @@ TASKS = (
         files={
             "index.html": (
                 "<!doctype html>\n"
-                "<html lang=\"en\"><body>\n"
-                "  <button id=\"open-confirmation\">Delete project</button>\n"
-                "  <section id=\"confirmation-dialog\">\n"
-                "    <h2 id=\"confirmation-title\">Delete project?</h2>\n"
-                "    <button id=\"confirm-delete\">Delete</button>\n"
+                '<html lang="en"><body>\n'
+                '  <button id="open-confirmation">Delete project</button>\n'
+                '  <section id="confirmation-dialog">\n'
+                '    <h2 id="confirmation-title">Delete project?</h2>\n'
+                '    <button id="confirm-delete">Delete</button>\n'
                 "  </section>\n"
                 "</body></html>\n"
             )
@@ -320,8 +320,6 @@ def event_counts(events: list[dict[str, Any]]) -> dict[str, Any]:
         item_type = str(item.get("type") or "unknown")
         completed_items[item_type] = completed_items.get(item_type, 0) + 1
     return {
-        "modelCompletions": sum(
-            event.get("method") == "rawResponse/completed" for event in events
-        ),
+        "modelCompletions": sum(event.get("method") == "rawResponse/completed" for event in events),
         "completedItemsByType": dict(sorted(completed_items.items())),
     }
