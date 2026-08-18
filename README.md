@@ -32,13 +32,16 @@ uv run python -m weave_codex.server \
 ```
 
 Then open <http://127.0.0.1:8790/>. The app separates **Why Weave**, **Examples**, **Design**,
-**Runs**, and **Setup** so a first-time user can understand the control model before editing it.
+**Runs**, **Integrations**, and **Setup** so a first-time user can understand the control model
+before editing it.
 The interactive [Codex internals deep dive](http://127.0.0.1:8790/deep-dive.html) begins with Codex
 alone and reveals Weave as an optional track-changes layer.
 
 Read the [control-plane guide](weave-control-plane/README.md), the complete source-level article
 [Codex is not a flowchart](weave-control-plane/docs/CODEX_HARNESS_INTERNALS.md), and the
-[upstream provenance record](weave-control-plane/UPSTREAM.md).
+[upstream provenance record](weave-control-plane/UPSTREAM.md). The
+[matched ordinary-Codex versus WeaveCodex trials](weave-control-plane/docs/MATCHED_CODEX_WEAVE_TRIALS.md)
+report three real memory-off pairs and their compute/observability tradeoff.
 
 The `weave-control-plane/` directory is additive. The pinned Codex source remains available below
 it so the integration can be audited and updated against upstream.

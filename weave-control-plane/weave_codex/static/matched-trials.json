@@ -1,0 +1,592 @@
+{
+  "schemaVersion": 1,
+  "studyId": "sha256:a25c3f45533fe523ab418dd31abb15488aad00781092337594807b08eb74a7e5",
+  "createdAt": 1787021007,
+  "model": "gpt-5.6-terra",
+  "memory": "off",
+  "design": {
+    "ordinary": "one normal Codex controller turn",
+    "weave": "inspect work turn \u2192 produce work turn \u2192 structured verification turn",
+    "same": [
+      "task fixture",
+      "model",
+      "reasoning effort",
+      "sandbox",
+      "memory mode"
+    ],
+    "different": [
+      "phase program",
+      "explicit integration request",
+      "turn ceiling"
+    ],
+    "order": "alternated by task; one rollout per arm"
+  },
+  "aggregate": {
+    "tasks": 3,
+    "executions": 6,
+    "ordinaryArtifactsPassed": 3,
+    "weaveArtifactsPassed": 3,
+    "ordinaryControllerTurns": 3,
+    "weaveControllerTurns": 9,
+    "ordinaryModelCompletions": 15,
+    "weaveModelCompletions": 46,
+    "ordinaryInputTokens": 448476,
+    "weaveInputTokens": 1424224,
+    "ordinaryOutputTokens": 1998,
+    "weaveOutputTokens": 6810
+  },
+  "results": [
+    {
+      "taskId": "finance-variance",
+      "title": "Explain a regional margin variance",
+      "domain": "finance",
+      "executionOrder": [
+        "ordinary",
+        "weave"
+      ],
+      "startingWorkspaceDigest": "sha256:49be53238fa6bd5e44c4882dccadb5b959fc294d60f8fa0981689a0b1fc690c6",
+      "integrationTreatment": {
+        "kind": "skill",
+        "id": "spreadsheets:Spreadsheets",
+        "label": "Spreadsheets",
+        "phaseIds": [
+          "inspect",
+          "produce"
+        ]
+      },
+      "ordinary": {
+        "arm": "Ordinary Codex",
+        "runStatus": "completed",
+        "artifact": {
+          "taskId": "finance-variance",
+          "score": 1.0,
+          "passed": true,
+          "checksPassed": 8,
+          "checksTotal": 8,
+          "checks": [
+            {
+              "name": "valid result.json",
+              "passed": true,
+              "observed": true
+            },
+            {
+              "name": "total_revenue",
+              "passed": true,
+              "observed": 1200
+            },
+            {
+              "name": "total_cost",
+              "passed": true,
+              "observed": 860
+            },
+            {
+              "name": "gross_profit",
+              "passed": true,
+              "observed": 340
+            },
+            {
+              "name": "gross_margin",
+              "passed": true,
+              "observed": 0.2833
+            },
+            {
+              "name": "weakest_region",
+              "passed": true,
+              "observed": "EMEA"
+            },
+            {
+              "name": "weakest_region_margin",
+              "passed": true,
+              "observed": 0.1667
+            },
+            {
+              "name": "source CSV unchanged",
+              "passed": true,
+              "observed": "matched"
+            }
+          ]
+        },
+        "controllerTurns": 1,
+        "modelCompletions": 4,
+        "tokenUsage": {
+          "inputTokens": 95167,
+          "cachedInputTokens": 80896,
+          "outputTokens": 545,
+          "reasoningOutputTokens": 40
+        },
+        "elapsedSeconds": 23,
+        "startedAt": 1787020628,
+        "completedAt": 1787020651,
+        "completedItemsByType": {
+          "agentMessage": 2,
+          "commandExecution": 2,
+          "fileChange": 1,
+          "reasoning": 1,
+          "userMessage": 1
+        },
+        "requestedIntegrations": [],
+        "observedIntegrationToolItems": [],
+        "workspaceDigest": "sha256:fd728f28b807518ff8c7ffdeab3f4cc69220d1604e100dfb8118f31274ee5374",
+        "receiptId": "sha256:9db91416740ed9347855bd7e3719eb79fb3c57f83457fcbc1a5ff7e4c2fadeda"
+      },
+      "weave": {
+        "arm": "WeaveCodex",
+        "runStatus": "completed",
+        "artifact": {
+          "taskId": "finance-variance",
+          "score": 1.0,
+          "passed": true,
+          "checksPassed": 8,
+          "checksTotal": 8,
+          "checks": [
+            {
+              "name": "valid result.json",
+              "passed": true,
+              "observed": true
+            },
+            {
+              "name": "total_revenue",
+              "passed": true,
+              "observed": 1200
+            },
+            {
+              "name": "total_cost",
+              "passed": true,
+              "observed": 860
+            },
+            {
+              "name": "gross_profit",
+              "passed": true,
+              "observed": 340
+            },
+            {
+              "name": "gross_margin",
+              "passed": true,
+              "observed": 0.2833
+            },
+            {
+              "name": "weakest_region",
+              "passed": true,
+              "observed": "EMEA"
+            },
+            {
+              "name": "weakest_region_margin",
+              "passed": true,
+              "observed": 0.1667
+            },
+            {
+              "name": "source CSV unchanged",
+              "passed": true,
+              "observed": "matched"
+            }
+          ]
+        },
+        "controllerTurns": 3,
+        "modelCompletions": 8,
+        "tokenUsage": {
+          "inputTokens": 248488,
+          "cachedInputTokens": 189696,
+          "outputTokens": 2062,
+          "reasoningOutputTokens": 348
+        },
+        "elapsedSeconds": 57,
+        "startedAt": 1787020651,
+        "completedAt": 1787020708,
+        "completedItemsByType": {
+          "userMessage": 3,
+          "reasoning": 8,
+          "agentMessage": 6,
+          "commandExecution": 4,
+          "fileChange": 1
+        },
+        "requestedIntegrations": [
+          {
+            "kind": "skill",
+            "id": "spreadsheets:Spreadsheets",
+            "label": "Spreadsheets",
+            "phaseIds": [
+              "inspect",
+              "produce"
+            ]
+          }
+        ],
+        "observedIntegrationToolItems": [],
+        "workspaceDigest": "sha256:fd728f28b807518ff8c7ffdeab3f4cc69220d1604e100dfb8118f31274ee5374",
+        "receiptId": "sha256:a7b26fcbb15b4458312d80539529d8aed3991def4a67925c788786aef3a44a6d"
+      }
+    },
+    {
+      "taskId": "codex-app-server-contract",
+      "title": "Specify a Codex app-server client contract",
+      "domain": "developer-platform",
+      "executionOrder": [
+        "weave",
+        "ordinary"
+      ],
+      "startingWorkspaceDigest": "sha256:6d8c621c93d9dfe8bc15c0c38174a6a24b6632258be446f864509bfad4a55ec0",
+      "integrationTreatment": {
+        "kind": "mcp",
+        "id": "openaiDeveloperDocs",
+        "label": "OpenAI developer docs",
+        "phaseIds": [
+          "inspect"
+        ]
+      },
+      "ordinary": {
+        "arm": "Ordinary Codex",
+        "runStatus": "completed",
+        "artifact": {
+          "taskId": "codex-app-server-contract",
+          "score": 1.0,
+          "passed": true,
+          "checksPassed": 7,
+          "checksTotal": 7,
+          "checks": [
+            {
+              "name": "valid architecture.json",
+              "passed": true,
+              "observed": true
+            },
+            {
+              "name": "auth_status_endpoint",
+              "passed": true,
+              "observed": "account/read"
+            },
+            {
+              "name": "thread_start_endpoint",
+              "passed": true,
+              "observed": "thread/start"
+            },
+            {
+              "name": "turn_start_endpoint",
+              "passed": true,
+              "observed": "turn/start"
+            },
+            {
+              "name": "auth_owner",
+              "passed": true,
+              "observed": "codex-app-server"
+            },
+            {
+              "name": "official source",
+              "passed": true,
+              "observed": "https://developers.openai.com/codex/app-server"
+            },
+            {
+              "name": "no extra files",
+              "passed": true,
+              "observed": [
+                "README.md",
+                "architecture.json"
+              ]
+            }
+          ]
+        },
+        "controllerTurns": 1,
+        "modelCompletions": 7,
+        "tokenUsage": {
+          "inputTokens": 258111,
+          "cachedInputTokens": 220416,
+          "outputTokens": 919,
+          "reasoningOutputTokens": 144
+        },
+        "elapsedSeconds": 39,
+        "startedAt": 1787020776,
+        "completedAt": 1787020815,
+        "completedItemsByType": {
+          "agentMessage": 3,
+          "commandExecution": 2,
+          "fileChange": 1,
+          "reasoning": 6,
+          "userMessage": 1,
+          "webSearch": 3
+        },
+        "requestedIntegrations": [],
+        "observedIntegrationToolItems": [],
+        "workspaceDigest": "sha256:e3a773281b63ff2bd41639ee8baaeb2006ddc2a63a64b88e35770c0db08472cb",
+        "receiptId": "sha256:bf0a4d11446b347b4cc89a3f56757d7c729cb18a9dd0f21393b23bc4be633620"
+      },
+      "weave": {
+        "arm": "WeaveCodex",
+        "runStatus": "completed",
+        "artifact": {
+          "taskId": "codex-app-server-contract",
+          "score": 1.0,
+          "passed": true,
+          "checksPassed": 7,
+          "checksTotal": 7,
+          "checks": [
+            {
+              "name": "valid architecture.json",
+              "passed": true,
+              "observed": true
+            },
+            {
+              "name": "auth_status_endpoint",
+              "passed": true,
+              "observed": "account/read"
+            },
+            {
+              "name": "thread_start_endpoint",
+              "passed": true,
+              "observed": "thread/start"
+            },
+            {
+              "name": "turn_start_endpoint",
+              "passed": true,
+              "observed": "turn/start"
+            },
+            {
+              "name": "auth_owner",
+              "passed": true,
+              "observed": "codex-app-server"
+            },
+            {
+              "name": "official source",
+              "passed": true,
+              "observed": "https://learn.chatgpt.com/docs/app-server"
+            },
+            {
+              "name": "no extra files",
+              "passed": true,
+              "observed": [
+                "README.md",
+                "architecture.json"
+              ]
+            }
+          ]
+        },
+        "controllerTurns": 3,
+        "modelCompletions": 14,
+        "tokenUsage": {
+          "inputTokens": 535438,
+          "cachedInputTokens": 443136,
+          "outputTokens": 2119,
+          "reasoningOutputTokens": 403
+        },
+        "elapsedSeconds": 68,
+        "startedAt": 1787020708,
+        "completedAt": 1787020776,
+        "completedItemsByType": {
+          "userMessage": 3,
+          "reasoning": 13,
+          "agentMessage": 6,
+          "commandExecution": 5,
+          "unknown": 3,
+          "mcpToolCall": 1,
+          "fileChange": 1
+        },
+        "requestedIntegrations": [
+          {
+            "kind": "mcp",
+            "id": "openaiDeveloperDocs",
+            "label": "OpenAI developer docs",
+            "phaseIds": [
+              "inspect"
+            ]
+          }
+        ],
+        "observedIntegrationToolItems": [
+          {
+            "itemType": "mcpToolCall",
+            "status": "completed",
+            "server": "openaiDeveloperDocs",
+            "tool": "search_openai_docs"
+          }
+        ],
+        "workspaceDigest": "sha256:5eb0efd592d2baa47c38af38f485f030c03c70ebdf3b469029f5a6fe7e4640b5",
+        "receiptId": "sha256:a09e444e8fe37ef58828b0937e82515c38ca5a6e37a01684f57beaad856e3c9e"
+      }
+    },
+    {
+      "taskId": "accessible-confirmation",
+      "title": "Repair an inaccessible confirmation dialog",
+      "domain": "frontend",
+      "executionOrder": [
+        "ordinary",
+        "weave"
+      ],
+      "startingWorkspaceDigest": "sha256:40d9c37a1a7034ba7e980f7719cd723c29d8240ed06469cb0f3f64684d87e7cd",
+      "integrationTreatment": {
+        "kind": "skill",
+        "id": "code-review",
+        "label": "Code review",
+        "phaseIds": [
+          "inspect",
+          "produce"
+        ]
+      },
+      "ordinary": {
+        "arm": "Ordinary Codex",
+        "runStatus": "completed",
+        "artifact": {
+          "taskId": "accessible-confirmation",
+          "score": 1.0,
+          "passed": true,
+          "checksPassed": 8,
+          "checksTotal": 8,
+          "checks": [
+            {
+              "name": "button declares dialog",
+              "passed": true,
+              "observed": "aria-haspopup=\"dialog\""
+            },
+            {
+              "name": "button controls dialog",
+              "passed": true,
+              "observed": "aria-controls=\"confirmation-dialog\""
+            },
+            {
+              "name": "dialog role",
+              "passed": true,
+              "observed": "role=\"dialog\""
+            },
+            {
+              "name": "dialog modal",
+              "passed": true,
+              "observed": "aria-modal=\"true\""
+            },
+            {
+              "name": "dialog label",
+              "passed": true,
+              "observed": "aria-labelledby=\"confirmation-title\""
+            },
+            {
+              "name": "open button id preserved",
+              "passed": true,
+              "observed": "id=\"open-confirmation\""
+            },
+            {
+              "name": "dialog id preserved",
+              "passed": true,
+              "observed": "id=\"confirmation-dialog\""
+            },
+            {
+              "name": "heading id preserved",
+              "passed": true,
+              "observed": "id=\"confirmation-title\""
+            }
+          ]
+        },
+        "controllerTurns": 1,
+        "modelCompletions": 4,
+        "tokenUsage": {
+          "inputTokens": 95198,
+          "cachedInputTokens": 80896,
+          "outputTokens": 534,
+          "reasoningOutputTokens": 31
+        },
+        "elapsedSeconds": 22,
+        "startedAt": 1787020815,
+        "completedAt": 1787020837,
+        "completedItemsByType": {
+          "agentMessage": 2,
+          "commandExecution": 2,
+          "fileChange": 1,
+          "reasoning": 1,
+          "userMessage": 1
+        },
+        "requestedIntegrations": [],
+        "observedIntegrationToolItems": [],
+        "workspaceDigest": "sha256:7469d4c6ccdc03d7e3b486109a885b1effa2a752259a53f1510f1c1d57f2371e",
+        "receiptId": "sha256:75919381319147392c4cd572559917428826286d7ff03c9a2453e1196c0ffb0f"
+      },
+      "weave": {
+        "arm": "WeaveCodex",
+        "runStatus": "completed",
+        "artifact": {
+          "taskId": "accessible-confirmation",
+          "score": 1.0,
+          "passed": true,
+          "checksPassed": 8,
+          "checksTotal": 8,
+          "checks": [
+            {
+              "name": "button declares dialog",
+              "passed": true,
+              "observed": "aria-haspopup=\"dialog\""
+            },
+            {
+              "name": "button controls dialog",
+              "passed": true,
+              "observed": "aria-controls=\"confirmation-dialog\""
+            },
+            {
+              "name": "dialog role",
+              "passed": true,
+              "observed": "role=\"dialog\""
+            },
+            {
+              "name": "dialog modal",
+              "passed": true,
+              "observed": "aria-modal=\"true\""
+            },
+            {
+              "name": "dialog label",
+              "passed": true,
+              "observed": "aria-labelledby=\"confirmation-title\""
+            },
+            {
+              "name": "open button id preserved",
+              "passed": true,
+              "observed": "id=\"open-confirmation\""
+            },
+            {
+              "name": "dialog id preserved",
+              "passed": true,
+              "observed": "id=\"confirmation-dialog\""
+            },
+            {
+              "name": "heading id preserved",
+              "passed": true,
+              "observed": "id=\"confirmation-title\""
+            }
+          ]
+        },
+        "controllerTurns": 3,
+        "modelCompletions": 24,
+        "tokenUsage": {
+          "inputTokens": 640298,
+          "cachedInputTokens": 580864,
+          "outputTokens": 2629,
+          "reasoningOutputTokens": 435
+        },
+        "elapsedSeconds": 170,
+        "startedAt": 1787020837,
+        "completedAt": 1787021007,
+        "completedItemsByType": {
+          "userMessage": 3,
+          "reasoning": 17,
+          "agentMessage": 6,
+          "commandExecution": 4,
+          "subAgentActivity": 8,
+          "collabAgentToolCall": 6,
+          "fileChange": 1
+        },
+        "requestedIntegrations": [
+          {
+            "kind": "skill",
+            "id": "code-review",
+            "label": "Code review",
+            "phaseIds": [
+              "inspect",
+              "produce"
+            ]
+          }
+        ],
+        "observedIntegrationToolItems": [],
+        "workspaceDigest": "sha256:7469d4c6ccdc03d7e3b486109a885b1effa2a752259a53f1510f1c1d57f2371e",
+        "receiptId": "sha256:a84ffa94df0cec42940f26b5e5b3d5d607b050f281366db0cb460e1cef2f21ff"
+      }
+    }
+  ],
+  "claimLimits": [
+    "Three local product-acceptance fixtures are not a benchmark.",
+    "One rollout per arm cannot establish a quality advantage.",
+    "Weave receives more controller turns; compute is not matched.",
+    "Integration requests are instructional, not a hard tool allowlist.",
+    "Skill loading is not observable; only completed MCP/dynamic tool items count as observed use.",
+    "Subscription execution exposes usage events, not invoice-level cost attribution."
+  ],
+  "summarySha256": "sha256:503152bfa4fb8a3e67d17ade0bbf0642fd2a477b106397088b67dc45481c83d0"
+}

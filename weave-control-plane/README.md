@@ -34,6 +34,7 @@ flowchart LR
 | Human checkpoint | `phaseProgram.phases[].kind=checkpoint` | Pauses between turns for a continue-or-stop decision without calling a model. |
 | Verification | `phaseProgram.phases[].kind=verify` | Runs a JSON-schema-constrained later turn and at most two declared repair turns. |
 | Safety | `agent.sandbox`, `approvalGate` | Applies run-wide; native action-approval requests can pause inside any Work phase. |
+| Integrations | `integrations.requested[]` | Requests a Skill, MCP server, or connected App in all Work phases or exact named phases; the receipt reports the request separately from observable use. |
 | Observability | `observability.traceRoot` | Enables Codex's local rollout-trace bundle and records a separate manifest-linked receipt. |
 
 `maximumTurns` bounds control-plane turns. It does not pretend to cap internal Codex tool calls;
@@ -70,14 +71,19 @@ Open `http://127.0.0.1:8790`. The product is organized as a short, explicit jour
    phases; existing Codex threads show explicitly derived activity groups. Result, activity, raw
    notifications, and receipt JSON are progressive-disclosure tabs rather than one long trace wall.
 5. **Integrations** reads a secret-free inventory of workspace Skills, configured MCP servers, and
-   connector Apps from the local Codex app-server. Accessible Skills and Apps can be added visibly
-   to the next task; AGENTS.md remains inherited and MCP policy remains Codex-owned.
+   connected Apps from the local Codex app-server. Any of the three can be requested in all Work
+   phases or one named phase. AGENTS.md remains inherited, credentials and policy remain
+   Codex-owned, and the receipt distinguishes a request from an observed MCP/dynamic tool item.
 6. **Setup** checks the native Codex account and starts the official ChatGPT browser flow when
    sign-in is required.
 
 Open `http://127.0.0.1:8790/compare.html` to place a Codex-only thread projection beside an exact
 Weave receipt. The comparison reports observable structure and human coordination; it does not
 claim answer-quality improvement unless an external matched evaluation exists.
+
+That comparison page also contains [three matched memory-off product trials](docs/MATCHED_CODEX_WEAVE_TRIALS.md).
+All six artifacts passed, while Weave used 46 model completions versus 15 for ordinary Codex. The
+result is presented as an observability/compute tradeoff, not an improvement claim.
 
 For a Codex-first explanation, open `http://127.0.0.1:8790/deep-dive.html`. The article initially
 describes Codex by itself. **Reveal Weave layer** then adds track-change annotations and transforms

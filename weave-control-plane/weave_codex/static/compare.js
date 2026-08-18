@@ -66,6 +66,48 @@ function renderWeave() {
 
 function metrics(items) { return items.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join(""); }
 
+function formatNumber(value) { return new Intl.NumberFormat("en-US").format(Number(value || 0)); }
+
+function integrationEvidence(result) {
+  const treatment = result.integrationTreatment;
+  const observed = result.weave.observedIntegrationToolItems || [];
+  if (observed.length) {
+    const first = observed[0];
+    return `Observed ${first.server || first.itemType} · ${first.tool || "tool completed"}`;
+  }
+  return treatment.kind === "skill"
+    ? "Requested; Codex does not expose a skill-loaded event"
+    : "Requested; no matching integration tool item observed";
+}
+
+function matchedTrialHtml(result) {
+  const ordinary = result.ordinary;
+  const weave = result.weave;
+  const computeRatio = ordinary.modelCompletions
+    ? (weave.modelCompletions / ordinary.modelCompletions).toFixed(1)
+    : "—";
+  return `<article class="trial-card">
+    <header><div><span>${escapeHtml(result.domain)}</span><h3>${escapeHtml(result.title)}</h3></div><em>${ordinary.artifact.passed && weave.artifact.passed ? "Both artifacts accepted" : "Outcomes differed"}</em></header>
+    <div class="trial-arms">
+      <section><b>Ordinary Codex</b><strong>${ordinary.artifact.checksPassed}/${ordinary.artifact.checksTotal}</strong><p>1 adaptive controller turn</p><small>${ordinary.modelCompletions} model completions · ${formatNumber(ordinary.tokenUsage.inputTokens)} input tokens</small></section>
+      <section class="weave-arm"><b>WeaveCodex</b><strong>${weave.artifact.checksPassed}/${weave.artifact.checksTotal}</strong><p>Inspect → produce → verify</p><small>${weave.modelCompletions} model completions · ${formatNumber(weave.tokenUsage.inputTokens)} input tokens</small></section>
+    </div>
+    <dl><div><dt>Integration request</dt><dd>${escapeHtml(result.integrationTreatment.label)} · ${escapeHtml(result.integrationTreatment.phaseIds.join(" + "))}</dd></div><div><dt>Observed evidence</dt><dd>${escapeHtml(integrationEvidence(result))}</dd></div><div><dt>Compute ratio</dt><dd>${escapeHtml(computeRatio)}× model completions for Weave</dd></div></dl>
+  </article>`;
+}
+
+async function loadMatchedTrials() {
+  const summary = $("#matched-summary");
+  try {
+    const data = await request("/matched-trials.json");
+    const aggregate = data.aggregate || {};
+    summary.innerHTML = `<div><b>${aggregate.ordinaryArtifactsPassed}/${aggregate.tasks}</b><span>ordinary artifacts accepted</span></div><div><b>${aggregate.weaveArtifactsPassed}/${aggregate.tasks}</b><span>Weave artifacts accepted</span></div><div><b>${aggregate.ordinaryModelCompletions}</b><span>ordinary model completions</span></div><div><b>${aggregate.weaveModelCompletions}</b><span>Weave model completions</span></div>`;
+    $("#matched-trials").innerHTML = (data.results || []).map(matchedTrialHtml).join("");
+  } catch (error) {
+    summary.innerHTML = `<span>Matched evidence unavailable: ${escapeHtml(error.message)}</span>`;
+  }
+}
+
 function renderMatrix() {
   const codex = codexProjection;
   const weave = weaveReceipt;
@@ -99,6 +141,7 @@ async function selectWeave(runId) {
 
 async function init() {
   try {
+    await loadMatchedTrials();
     const session = await request("/api/session"); csrfToken = session.csrfToken; cwd = session.workspaceRoot;
     const [runs, threads] = await Promise.all([request("/api/runs"), request(`/api/threads?cwd=${encodeURIComponent(cwd)}`)]);
     $("#weave-select").innerHTML = `<option value="">Choose a Weave run</option>${(runs.runs || []).map((run) => `<option value="${escapeHtml(run.runId)}">${escapeHtml(`${run.phaseCount || 0} phases · ${run.turnCount || 0} turns · ${run.runId.slice(0, 8)}`)}</option>`).join("")}`;
