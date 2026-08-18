@@ -77,7 +77,6 @@ def _public_receipt(receipt: dict[str, Any] | None) -> dict[str, Any]:
     return {
         "receiptId": canonical_hash(receipt),
         "manifestHash": receipt.get("manifestHash"),
-        "threadId": receipt.get("threadId"),
         "controllerTurns": len(receipt.get("turnIds") or []),
         "modelCompletions": int(observed.get("modelCompletions") or 0),
         "completedItemsByType": observed.get("completedItemsByType") or {},
