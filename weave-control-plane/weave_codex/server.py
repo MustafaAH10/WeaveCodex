@@ -174,6 +174,9 @@ class ControlPlane:
                     "sandbox": payload.get("controls", {}).get("sandbox"),
                     "turnCount": len(payload.get("turnIds", [])),
                     "phaseCount": len((payload.get("phaseProgram") or {}).get("executions", [])),
+                    "integrationCount": len(
+                        (payload.get("integrations") or {}).get("requested", [])
+                    ),
                     "completionStatus": payload.get("completionStatus", "completed"),
                     "verification": payload.get("verification", []),
                 }

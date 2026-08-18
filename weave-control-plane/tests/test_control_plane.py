@@ -133,6 +133,7 @@ def test_compiler_exposes_phase_level_program_without_expanding_tool_calls() -> 
     assert [node["id"] for node in compiled["nodes"]] == [
         "task",
         "memory",
+        "integrations",
         "safety",
         "inspect",
         "gate",
@@ -147,6 +148,118 @@ def test_selected_memory_requires_explicit_unique_ids() -> None:
         manifest(memory={"mode": "selected", "selectedThreadIds": []})
     with pytest.raises(ValidationError, match="duplicates"):
         manifest(memory={"mode": "selected", "selectedThreadIds": ["x", "x"]})
+
+
+def test_integration_requests_are_typed_scoped_and_compiled() -> None:
+    value = manifest(
+        schemaVersion=2,
+        integrations={
+            "inventoryId": "sha256:" + "a" * 64,
+            "requested": [
+                {
+                    "kind": "skill",
+                    "id": "code-review",
+                    "label": "Code review",
+                    "phaseIds": ["inspect"],
+                },
+                {
+                    "kind": "mcp",
+                    "id": "openaiDeveloperDocs",
+                    "label": "OpenAI developer docs",
+                    "phaseIds": [],
+                },
+            ],
+        },
+        phaseProgram={
+            "projectionVersion": 1,
+            "phases": [
+                {
+                    "id": "inspect",
+                    "kind": "work",
+                    "name": "Inspect",
+                    "goal": "Inspect the relevant project evidence.",
+                }
+            ],
+        },
+    )
+
+    compiled = compile_manifest(value)
+
+    integration_node = next(node for node in compiled["nodes"] if node["id"] == "integrations")
+    assert integration_node["detail"] == "2 requested · instructional binding"
+    assert any("request skill 'Code review' in inspect" in item for item in compiled["actions"])
+    assert any(
+        "request mcp 'OpenAI developer docs' in all work phases" in item
+        for item in compiled["actions"]
+    )
+
+    with pytest.raises(ValidationError, match="must reference work phases"):
+        manifest(
+            schemaVersion=2,
+            integrations={
+                "requested": [
+                    {
+                        "kind": "skill",
+                        "id": "code-review",
+                        "label": "Code review",
+                        "phaseIds": ["missing"],
+                    }
+                ]
+            },
+            phaseProgram={
+                "projectionVersion": 1,
+                "phases": [
+                    {
+                        "id": "inspect",
+                        "kind": "work",
+                        "name": "Inspect",
+                        "goal": "Inspect the relevant project evidence.",
+                    }
+                ],
+            },
+        )
+
+
+def test_runner_binds_requested_integrations_to_prompt_and_receipt() -> None:
+    fake = FakeGateway(outcomes=["reviewed", '{"status":"pass","answer":"done","issues":[]}'])
+    runner = HarnessRunner("codex", lambda *_: fake)
+    session = RunSession(run_id="run-integrations")
+    selected = manifest(
+        integrations={
+            "inventoryId": "sha256:" + "b" * 64,
+            "requested": [
+                {
+                    "kind": "skill",
+                    "id": "code-review",
+                    "label": "Code review",
+                    "phaseIds": [],
+                }
+            ],
+        }
+    )
+
+    runner.run(selected, session)
+
+    assert "$code-review" in fake.prompts[0]
+    assert "not a hard tool allowlist" in fake.prompts[0]
+    assert session.result is not None
+    assert session.result["integrations"] == {
+        "inventoryId": "sha256:" + "b" * 64,
+        "bindingMode": "instructional",
+        "requested": [
+            {
+                "kind": "skill",
+                "id": "code-review",
+                "label": "Code review",
+                "phaseIds": [],
+            }
+        ],
+        "observedToolItems": [],
+        "attribution": (
+            "Requests are manifest-bound. Use is claimed only when an observable integration "
+            "tool item is present; skill loading is not inferred."
+        ),
+    }
 
 
 def test_runner_injects_only_selected_threads_and_records_hashes() -> None:
@@ -193,6 +306,7 @@ def test_verifier_repairs_within_declared_bound() -> None:
         "setup",
         "setup",
         "memory",
+        "integrations",
         "setup",
         "solver",
         "solver",

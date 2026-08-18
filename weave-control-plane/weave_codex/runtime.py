@@ -228,6 +228,34 @@ def _project_event(event: dict[str, Any], index: int) -> dict[str, Any] | None:
     }
 
 
+def _integration_observations(events: list[dict[str, Any]]) -> list[dict[str, str]]:
+    """Project only integration identity/status fields from completed tool items."""
+
+    observations: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for event in events:
+        if event.get("method") != "item/completed":
+            continue
+        params = event.get("params") if isinstance(event.get("params"), dict) else {}
+        item = params.get("item") if isinstance(params.get("item"), dict) else {}
+        item_type = str(item.get("type", ""))
+        if item_type not in {"mcpToolCall", "dynamicToolCall"}:
+            continue
+        server = str(item.get("server") or item.get("serverName") or "")
+        tool = str(item.get("tool") or item.get("toolName") or item.get("name") or "")
+        key = (item_type, server, tool)
+        if key in seen:
+            continue
+        seen.add(key)
+        observation = {"itemType": item_type, "status": str(item.get("status") or "completed")}
+        if server:
+            observation["server"] = server
+        if tool:
+            observation["tool"] = tool
+        observations.append(observation)
+    return observations
+
+
 class SdkGateway:
     """Thin adapter over the pinned Codex Python SDK and app-server."""
 
@@ -401,6 +429,16 @@ class HarnessRunner:
                     else "Memory bypassed."
                 ),
             )
+            session.stage(
+                "integrations",
+                "Integration contract prepared",
+                (
+                    f"Requested {len(manifest.integrations.requested)} integration(s); "
+                    "requests are instructional, not a hard tool allowlist."
+                    if manifest.integrations.requested
+                    else "Inherited the Codex environment without explicit integration requests."
+                ),
+            )
 
             approval_policy = "never" if manifest.agent.approval_gate == "deny" else "on-request"
             params: dict[str, Any] = {
@@ -524,6 +562,19 @@ class HarnessRunner:
                     "requestedThreadIds": requested,
                     "resolvedThreadIds": resolved if manifest.memory.mode == "selected" else None,
                     "excerptHashes": excerpt_hashes,
+                },
+                "integrations": {
+                    "inventoryId": manifest.integrations.inventory_id,
+                    "bindingMode": "instructional",
+                    "requested": [
+                        item.model_dump(by_alias=True, mode="json")
+                        for item in manifest.integrations.requested
+                    ],
+                    "observedToolItems": _integration_observations(session.events),
+                    "attribution": (
+                        "Requests are manifest-bound. Use is claimed only when an observable "
+                        "integration tool item is present; skill loading is not inferred."
+                    ),
                 },
                 "controls": {
                     "sandbox": manifest.agent.sandbox,

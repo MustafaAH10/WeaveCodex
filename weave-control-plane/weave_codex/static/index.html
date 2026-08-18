@@ -199,6 +199,7 @@
                 <div class="run-settings-strip" aria-label="Run-wide settings">
                   <button data-select-type="context" type="button"><span>C</span><b>Context</b><small id="context-summary">Suggested files</small></button>
                   <button data-select-type="memory" type="button"><span>M</span><b>Memory</b><small id="memory-summary">Off</small></button>
+                  <button data-view-link="integrations" type="button"><span>I</span><b>Integrations</b><small id="integration-summary">Inherit only</small></button>
                   <button data-select-type="approval" type="button"><span>A</span><b>Tool approvals</b><small id="approval-summary">Ask me</small></button>
                   <button data-select-type="output" type="button"><span>O</span><b>Output</b><small id="output-summary">Text + receipt</small></button>
                 </div>
@@ -308,25 +309,33 @@
       <section id="integrations-view" class="app-view" aria-labelledby="integrations-title">
         <header class="page-intro page-shell">
           <p class="eyebrow">CODEX-NATIVE INTEGRATIONS</p>
-          <h1 id="integrations-title">Use what your Codex already knows</h1>
-          <p>Weave reads a redacted inventory from the local Codex app-server. It does not copy skill files, connector credentials, MCP secrets, or account tokens.</p>
-          <button id="refresh-integrations" class="primary" type="button">Read my Codex setup</button>
+          <h1 id="integrations-title">Choose what this harness should request</h1>
+          <p>Codex already loads project instructions and its configured environment. Weave lets you make selected skills, MCP servers, and connected apps visible in the harness contract without copying their files or credentials.</p>
         </header>
-        <div class="integration-model page-shell">
+        <ol class="integration-steps page-shell" aria-label="Integration workflow">
+          <li><span>1</span><div><b>Read the workspace inventory</b><small>Names and availability only; secrets remain with Codex.</small></div></li>
+          <li><span>2</span><div><b>Choose what to request</b><small>Leave everything else inherited and available.</small></div></li>
+          <li><span>3</span><div><b>Assign requests to work phases</b><small>The manifest and receipt preserve your choices.</small></div></li>
+        </ol>
+        <div class="integration-model page-shell" aria-label="How Codex integrations differ">
           <article><span>Automatic</span><h2>AGENTS.md</h2><p>Codex loads global guidance, then project guidance from the repository root toward the working directory. Weave inherits that behavior.</p><a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md" target="_blank" rel="noreferrer">Instruction precedence ↗</a></article>
-          <article><span>Invocable</span><h2>Skills</h2><p>Reusable procedures discovered by Codex for this workspace. The inventory shows names and enablement, not file contents.</p><a href="https://learn.chatgpt.com/docs/build-skills" target="_blank" rel="noreferrer">Skills documentation ↗</a></article>
-          <article><span>Tool runtime</span><h2>MCP servers</h2><p>External tools and resources configured in Codex. Their own auth, policy, sandbox, and approval rules still apply.</p><a href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli" target="_blank" rel="noreferrer">MCP documentation ↗</a></article>
-          <article><span>Connected data</span><h2>Apps</h2><p>Codex-owned connector apps. Weave shows accessibility and installation links without receiving connector credentials.</p><a href="https://learn.chatgpt.com/docs/app-server" target="_blank" rel="noreferrer">App-server documentation ↗</a></article>
+          <article><span>Explicit procedure</span><h2>Skills</h2><p>Request a named reusable procedure for selected work phases. Codex still loads the skill and owns its execution.</p><a href="https://learn.chatgpt.com/docs/build-skills" target="_blank" rel="noreferrer">Skills documentation ↗</a></article>
+          <article><span>External tools</span><h2>MCP servers</h2><p>Request a configured server where it is relevant. Its auth, policy, sandbox, and native approvals still apply.</p><a href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli" target="_blank" rel="noreferrer">MCP documentation ↗</a></article>
+          <article><span>Connected data</span><h2>Apps</h2><p>Request an already connected Codex app without exposing its credentials to Weave.</p><a href="https://learn.chatgpt.com/docs/app-server" target="_blank" rel="noreferrer">App-server documentation ↗</a></article>
         </div>
         <section class="integration-inventory page-shell">
-          <header><div><h2>Your current inventory</h2><p id="integration-status">Choose “Read my Codex setup” to inspect the current workspace.</p></div><span>Read-only · local</span></header>
+          <header><div><p class="eyebrow">STEP 1</p><h2>Read this workspace</h2><p id="integration-status">Scan the workspace to read Codex's redacted integration inventory.</p></div><button id="refresh-integrations" class="primary" type="button">Read my Codex setup</button></header>
           <div class="integration-columns">
             <section><h3>Skills <em id="skill-count">0</em></h3><div id="skill-inventory" class="inventory-list"><p>Not loaded.</p></div></section>
             <section><h3>MCP servers <em id="mcp-count">0</em></h3><div id="mcp-inventory" class="inventory-list"><p>Not loaded.</p></div></section>
-            <section><h3>Connector apps <em id="app-count">0</em></h3><div id="app-inventory" class="inventory-list"><p>Not loaded.</p></div></section>
+            <section><h3>Connected apps <em id="app-count">0</em></h3><p id="app-inventory-note" class="inventory-note">Unconnected catalog entries stay hidden.</p><div id="app-inventory" class="inventory-list"><p>Not loaded.</p></div></section>
           </div>
-          <div class="integration-selection"><div><b>Selected for the next harness</b><p id="integration-selection">Nothing selected. Skills and connected Apps can be added as visible invocation markers in your task.</p></div><button id="apply-integrations" class="primary" type="button" disabled>Add to task and open designer</button></div>
-          <div class="integration-boundary"><b>What “available” means</b><p>This page inventories the effective Codex environment. It does not claim every integration is invoked in every run, and it does not bypass Codex policies. Per-phase hard allowlisting is not implemented yet; until it is, an integration request belongs in the visible task instruction.</p></div>
+          <section class="integration-contract">
+            <header><div><p class="eyebrow">STEPS 2–3</p><h2>Build the integration contract</h2><p>For each request, choose all Codex work phases or one specific phase.</p></div><span><b id="integration-selection-count">0</b> requested</span></header>
+            <div id="integration-selection-list" class="integration-selection-list"><div class="integration-empty"><b>No explicit requests</b><p>Codex still inherits AGENTS.md and its configured environment.</p></div></div>
+            <div class="integration-contract-actions"><p><b>Instructional binding:</b> the request is hashed into the manifest and receipt. It is not a hard tool allowlist, and observed tool evidence is reported separately.</p><button id="apply-integrations" class="primary" type="button" disabled>Review in harness designer</button></div>
+          </section>
+          <div class="integration-boundary"><b>What selecting an integration means</b><p>Weave asks Codex to use it in the chosen phase and records the request. Codex may still use other tools required by the task. Weave never claims a selected skill, server, or app was used unless observable run evidence supports that statement.</p></div>
         </section>
       </section>
 

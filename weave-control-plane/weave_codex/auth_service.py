@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import threading
 import uuid
 from collections.abc import Callable
@@ -196,11 +198,54 @@ class NativeAuthService:
             apps_truncated = False
             warnings.append("Codex could not enumerate connector apps.")
 
+        skills = sorted(skills, key=lambda value: value["name"].lower())
+        mcp_servers = sorted(mcp_servers, key=lambda value: value["name"].lower())
+        apps = sorted(
+            apps,
+            key=lambda value: (not value["accessible"], value["name"].lower()),
+        )
+        inventory_payload = {
+            "workspace": str(workspace),
+            "skills": [
+                {
+                    "name": item["name"],
+                    "enabled": item["enabled"],
+                    "scope": item["scope"],
+                }
+                for item in skills
+            ],
+            "mcpServers": [
+                {
+                    "name": item["name"],
+                    "authStatus": item["authStatus"],
+                    "tools": item["tools"],
+                }
+                for item in mcp_servers
+            ],
+            "apps": [
+                {
+                    "id": item["id"],
+                    "accessible": item["accessible"],
+                    "enabled": item["enabled"],
+                }
+                for item in apps
+            ],
+        }
+        inventory_id = "sha256:" + hashlib.sha256(
+            json.dumps(
+                inventory_payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+
         return {
             "cwd": str(workspace),
-            "skills": sorted(skills, key=lambda value: value["name"].lower()),
-            "mcpServers": sorted(mcp_servers, key=lambda value: value["name"].lower()),
-            "apps": sorted(apps, key=lambda value: value["name"].lower()),
+            "inventoryId": inventory_id,
+            "skills": skills,
+            "mcpServers": mcp_servers,
+            "apps": apps,
             "warnings": warnings,
             "pagination": {
                 "mcpTruncated": mcp_truncated,

@@ -112,7 +112,8 @@ const EXAMPLES = {
   },
 };
 
-let phases = normalizePhases(loadDraft() || DEFAULT_PHASES);
+const storedDraft = loadDraft();
+let phases = normalizePhases(storedDraft?.phases || DEFAULT_PHASES);
 let selectedPhaseId = phases.find((phase) => phase.type === "work")?.id || phases[0]?.id || null;
 let compiled = null;
 let compileTimer = null;
@@ -129,6 +130,10 @@ let securitySession = null;
 let loginPollTimer = null;
 let workspaceEntries = [];
 const selectedIntegrations = new Map();
+let integrationInventoryId = storedDraft?.integrationInventoryId || null;
+for (const item of storedDraft?.integrations || []) {
+  if (item?.kind && item?.id && item?.label) selectedIntegrations.set(`${item.kind}:${item.id}`, { ...item });
+}
 
 function makePhase(type, config = {}) {
   return { id: uid(), type, title: PHASE_TYPES[type].defaultTitle, config };
@@ -137,7 +142,7 @@ function makePhase(type, config = {}) {
 function loadDraft() {
   try {
     const draft = JSON.parse(localStorage.getItem("weave-codex-phase-draft"));
-    return Array.isArray(draft?.phases) && draft.phases.every((phase) => PHASE_TYPES[phase.type]) ? draft.phases : null;
+    return Array.isArray(draft?.phases) && draft.phases.every((phase) => PHASE_TYPES[phase.type]) ? draft : null;
   } catch (_) {
     return null;
   }
@@ -165,7 +170,12 @@ function normalizePhases(value) {
 
 function saveDraft() {
   try {
-    localStorage.setItem("weave-codex-phase-draft", JSON.stringify({ phases, name: $("#harness-name").value }));
+    localStorage.setItem("weave-codex-phase-draft", JSON.stringify({
+      phases,
+      name: $("#harness-name").value,
+      integrationInventoryId,
+      integrations: [...selectedIntegrations.values()],
+    }));
     $("#draft-status").textContent = "Draft saved locally";
   } catch (_) {
     $("#draft-status").textContent = "Draft not saved";
@@ -341,6 +351,7 @@ function renderDesignSummary() {
   if (document.activeElement !== $("#goal-input")) $("#goal-input").value = task?.config.goal || "";
   $("#context-summary").textContent = lineCount(getPhase("context")?.config.paths) ? `${lineCount(getPhase("context")?.config.paths)} suggested path${lineCount(getPhase("context")?.config.paths) === 1 ? "" : "s"}` : "No suggested files";
   $("#memory-summary").textContent = ({ off: "Off · clean run", all: "All native memory", selected: `${selectedThreads().length || 0} selected tasks` })[getPhase("memory")?.config.mode || "off"];
+  if ($("#integration-summary")) $("#integration-summary").textContent = selectedIntegrations.size ? `${selectedIntegrations.size} requested` : "Inherit only";
   $("#approval-summary").textContent = ({ manual: "Ask me", "auto-review": "Auto-review", deny: "Deny escalation" })[getPhase("approval")?.config.gate || "manual"];
   $("#output-summary").textContent = `${getPhase("output")?.config.format || "text"} + receipt`;
   $$(".run-settings-strip button").forEach((button) => button.classList.toggle("selected", getPhase(button.dataset.selectType)?.id === selectedPhaseId));
@@ -501,6 +512,19 @@ function getPhases(type) { return phases.filter((phase) => phase.type === type);
 function programPhases() { return phases.filter((phase) => ["work", "checkpoint", "verify"].includes(phase.type)); }
 function selectedThreads() { return $$("#thread-list input:checked").map((input) => input.value); }
 
+function integrationManifest() {
+  const workIds = getPhases("work").map((phase) => phase.id);
+  return {
+    inventoryId: integrationInventoryId,
+    requested: [...selectedIntegrations.values()].map((item) => ({
+      kind: item.kind,
+      id: item.id,
+      label: item.label,
+      phaseIds: item.scope && item.scope !== "all" && workIds.includes(item.scope) ? [item.scope] : [],
+    })),
+  };
+}
+
 function compatibilityIssues() {
   const issues = [];
   const program = programPhases();
@@ -538,6 +562,7 @@ function manifestFromCanvas() {
     cwd: $("#cwd").value.trim(),
     task: { instructions: instruction, contextPaths: String(context?.config.paths || "").split("\n").map((line) => line.trim()).filter(Boolean) },
     memory: { mode: memory?.config.mode || "off", selectedThreadIds: memory?.config.mode === "selected" ? selectedThreads() : [] },
+    integrations: integrationManifest(),
     agent: { model: $("#model").value.trim() || null, reasoningEffort: $("#effort").value, sandbox: $("#sandbox").value, approvalGate: approval?.config.gate || "deny" },
     verification: { enabled: Boolean(verify), criteria: verify?.config.criteria || "The result satisfies the task.", maxRetries: verify ? Number(verify?.config.maxRepairs || 0) : 0 },
     output: { format: output?.config.format || "text" },
@@ -657,7 +682,7 @@ async function loadRecentRuns(autoLoad = false) {
   const root = $("#recent-runs");
   try {
     const data = await request("/api/runs");
-    root.innerHTML = data.runs?.length ? data.runs.map((run) => `<button class="run-item" type="button" data-run-id="${escapeHtml(run.runId)}"><span class="run-dot ${run.status}"></span><span><b>${run.verification?.at(-1)?.status === "pass" ? "Verified Codex run" : "Codex run"}</b><small>${formatDate(run.completedAt || run.startedAt)} · ${escapeHtml(run.memoryMode || "memory off")}</small></span><em>${Number(run.turnCount || 0)} turn${Number(run.turnCount || 0) === 1 ? "" : "s"}</em></button>`).join("") : `<div class="run-list-empty"><b>No saved runs yet</b><p>Build and run a harness. Its real Codex trace will appear here.</p></div>`;
+    root.innerHTML = data.runs?.length ? data.runs.map((run) => `<button class="run-item" type="button" data-run-id="${escapeHtml(run.runId)}"><span class="run-dot ${run.status}"></span><span><b>${run.verification?.at(-1)?.status === "pass" ? "Verified Codex run" : "Codex run"}</b><small>${formatDate(run.completedAt || run.startedAt)} · ${escapeHtml(run.memoryMode || "memory off")} · ${Number(run.integrationCount || 0)} integration request${Number(run.integrationCount || 0) === 1 ? "" : "s"}</small></span><em>${Number(run.turnCount || 0)} turn${Number(run.turnCount || 0) === 1 ? "" : "s"}</em></button>`).join("") : `<div class="run-list-empty"><b>No saved runs yet</b><p>Build and run a harness. Its real Codex trace will appear here.</p></div>`;
     $$(".run-item", root).forEach((button) => button.addEventListener("click", () => loadSavedRun(button.dataset.runId)));
     if (autoLoad && data.runs?.length) await loadSavedRun(data.runs[0].runId);
   } catch (error) {
@@ -838,7 +863,7 @@ function renderExecutionMap(groups) {
     const kind = executions.get(group.id) || "work";
     return `<button class="executed-phase ${activeTracePhase === group.id ? "active" : ""}" type="button" data-trace-phase="${escapeHtml(group.id)}"><span>${String(index + 1).padStart(2, "0")}</span><div><small>${escapeHtml(kind === "verify" ? "VERIFY + REPAIR" : "AUTHORED WORK GOAL")}</small><b>${escapeHtml(group.label)}</b><p>${tools} tool request${tools === 1 ? "" : "s"} · ${reasoning} reasoning summar${reasoning === 1 ? "y" : "ies"}</p><div class="phase-inside"><i>Codex loop</i><i>tools nested here</i></div></div></button>`;
   }).join("");
-  root.innerHTML = `<div class="map-boundary"><small>INPUT</small><b>Task contract</b><span>context · memory · safety</span></div>${phaseMarkup}<div class="map-boundary output"><small>OUTPUT</small><b>Answer + receipt</b><span>result · counts · provenance</span></div>`;
+  root.innerHTML = `<div class="map-boundary"><small>INPUT</small><b>Task contract</b><span>context · memory · integrations · safety</span></div>${phaseMarkup}<div class="map-boundary output"><small>OUTPUT</small><b>Answer + receipt</b><span>result · counts · provenance</span></div>`;
   $$(".executed-phase", root).forEach((button) => button.addEventListener("click", () => {
     activeTracePhase = activeTracePhase === button.dataset.tracePhase ? null : button.dataset.tracePhase;
     renderExecutionMap(groups);
@@ -868,7 +893,7 @@ function renderReceipt(result) {
     return;
   }
   const verification = result.verification || [];
-  $("#receipt-summary").innerHTML = `<dl><div><dt>Manifest</dt><dd>${escapeHtml(result.manifestHash || "—")}</dd></div><div><dt>Memory</dt><dd>${escapeHtml(result.memory?.mode || "off")}${result.memory?.resolvedThreadIds?.length ? ` · ${result.memory.resolvedThreadIds.length} selected threads` : ""}</dd></div><div><dt>Safety</dt><dd>${escapeHtml(result.controls?.sandbox || "—")} · ${escapeHtml(result.controls?.approvalGate || "—")}</dd></div><div><dt>Verifier</dt><dd>${escapeHtml(verification.at(-1)?.status || "not enabled")}</dd></div></dl>`;
+  $("#receipt-summary").innerHTML = `<dl><div><dt>Manifest</dt><dd>${escapeHtml(result.manifestHash || "—")}</dd></div><div><dt>Memory</dt><dd>${escapeHtml(result.memory?.mode || "off")}${result.memory?.resolvedThreadIds?.length ? ` · ${result.memory.resolvedThreadIds.length} selected threads` : ""}</dd></div><div><dt>Integrations</dt><dd>${Number(result.integrations?.requested?.length || 0)} requested · ${Number(result.integrations?.observedToolItems?.length || 0)} observed tool items</dd></div><div><dt>Safety</dt><dd>${escapeHtml(result.controls?.sandbox || "—")} · ${escapeHtml(result.controls?.approvalGate || "—")}</dd></div><div><dt>Verifier</dt><dd>${escapeHtml(verification.at(-1)?.status || "not enabled")}</dd></div></dl>`;
   $("#receipt").textContent = JSON.stringify(result, null, 2);
 }
 
@@ -929,19 +954,24 @@ async function loadIntegrations() {
   status.textContent = "Reading the effective Codex inventory for this workspace…";
   try {
     const data = await request(`/api/integrations?cwd=${encodeURIComponent($("#cwd").value.trim())}`);
+    integrationInventoryId = data.inventoryId || null;
     status.dataset.loaded = "true";
     status.textContent = `Inventory from ${data.cwd}. No credentials or configuration contents were returned.`;
     const skills = data.skills || [];
     const servers = data.mcpServers || [];
     const apps = data.apps || [];
+    const connectedApps = apps.filter((app) => app.accessible);
     $("#skill-count").textContent = skills.length;
     $("#mcp-count").textContent = servers.length;
-    $("#app-count").textContent = apps.length;
-    $("#skill-inventory").innerHTML = skills.length ? skills.map((skill) => `<article><b>${escapeHtml(skill.name)}</b><small>${escapeHtml(skill.description || "No description")}</small><span class="inventory-state">${skill.enabled ? "enabled" : "disabled"} · ${escapeHtml(skill.scope || "scope unknown")}</span>${skill.enabled ? `<button type="button" data-integration-marker="$${escapeHtml(skill.name)}" data-integration-label="Skill: ${escapeHtml(skill.name)}">Include in task</button>` : ""}</article>`).join("") : "<p>No skills were reported for this workspace.</p>";
-    $("#mcp-inventory").innerHTML = servers.length ? servers.map((server) => `<article><b>${escapeHtml(server.name)}</b><small>${server.tools.length} tool${server.tools.length === 1 ? "" : "s"}: ${escapeHtml(server.tools.slice(0, 5).join(", ") || "none exposed")}${server.tools.length > 5 ? "…" : ""}</small><span class="inventory-state">auth ${escapeHtml(server.authStatus)}</span></article>`).join("") : "<p>No MCP servers were reported by Codex.</p>";
-    $("#app-inventory").innerHTML = apps.length ? apps.map((app) => `<article><b>${escapeHtml(app.name)}</b><small>${escapeHtml(app.description || "Codex connector app")}</small><span class="inventory-state">${app.accessible ? "connected" : app.enabled ? "available" : "disabled"}</span>${app.accessible ? `<button type="button" data-integration-marker="$${escapeHtml(app.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""))}" data-integration-label="App: ${escapeHtml(app.name)}">Include in task</button>` : app.installUrl ? `<a href="${escapeHtml(app.installUrl)}" target="_blank" rel="noreferrer">Connect in Codex ↗</a>` : ""}</article>`).join("") : "<p>No connector apps were reported by Codex.</p>";
-    $$('[data-integration-marker]').forEach((button) => button.addEventListener("click", () => toggleIntegration(button)));
+    $("#app-count").textContent = connectedApps.length;
+    $("#skill-inventory").innerHTML = skills.length ? skills.map((skill) => `<article><b>${escapeHtml(skill.name)}</b><small>${escapeHtml(skill.description || "No description")}</small><span class="inventory-state">${skill.enabled ? "enabled" : "disabled"} · ${escapeHtml(skill.scope || "scope unknown")}</span>${skill.enabled ? integrationChoiceButton("skill", skill.name, skill.name) : ""}</article>`).join("") : "<p>No skills were reported for this workspace.</p>";
+    $("#mcp-inventory").innerHTML = servers.length ? servers.map((server) => `<article><b>${escapeHtml(server.name)}</b><small>${server.tools.length} tool${server.tools.length === 1 ? "" : "s"}: ${escapeHtml(server.tools.slice(0, 5).join(", ") || "none exposed")}${server.tools.length > 5 ? "…" : ""}</small><span class="inventory-state">auth ${escapeHtml(server.authStatus)}</span>${integrationChoiceButton("mcp", server.name, server.name)}</article>`).join("") : "<p>No MCP servers were reported by Codex.</p>";
+    $("#app-inventory").innerHTML = connectedApps.length ? connectedApps.map((app) => `<article><b>${escapeHtml(app.name)}</b><small>${escapeHtml(app.description || "Codex connector app")}</small><span class="inventory-state">connected</span>${integrationChoiceButton("app", app.id, app.name)}</article>`).join("") : `<p>No connected apps were reported. Connect apps in Codex first; Weave never receives their credentials.</p>`;
+    $("#app-inventory-note").textContent = `${connectedApps.length} connected · ${Math.max(0, apps.length - connectedApps.length)} other catalog entries hidden`;
+    $$('[data-integration-id]').forEach((button) => button.addEventListener("click", () => toggleIntegration(button)));
     renderIntegrationSelection();
+    saveDraft();
+    scheduleCompile();
     if (data.pagination?.appsTruncated) status.textContent += " The connector list shows the first 100 entries reported by Codex.";
     if (data.pagination?.mcpTruncated) status.textContent += " The MCP list is paginated and this view shows its first page.";
     if (data.warnings?.length) status.textContent += ` ${data.warnings.join(" ")}`;
@@ -950,29 +980,66 @@ async function loadIntegrations() {
   }
 }
 
+function integrationChoiceButton(kind, id, label) {
+  const key = `${kind}:${id}`;
+  return `<button type="button" data-integration-kind="${escapeHtml(kind)}" data-integration-id="${escapeHtml(id)}" data-integration-label="${escapeHtml(label)}" class="${selectedIntegrations.has(key) ? "selected" : ""}">${selectedIntegrations.has(key) ? "Selected" : "Request in harness"}</button>`;
+}
+
 function toggleIntegration(button) {
-  const marker = button.dataset.integrationMarker;
-  if (selectedIntegrations.has(marker)) selectedIntegrations.delete(marker);
-  else selectedIntegrations.set(marker, button.dataset.integrationLabel || marker);
-  $$('[data-integration-marker]').forEach((item) => item.classList.toggle("selected", selectedIntegrations.has(item.dataset.integrationMarker)));
+  const item = { kind: button.dataset.integrationKind, id: button.dataset.integrationId, label: button.dataset.integrationLabel || button.dataset.integrationId, scope: "all" };
+  const key = `${item.kind}:${item.id}`;
+  if (selectedIntegrations.has(key)) selectedIntegrations.delete(key);
+  else selectedIntegrations.set(key, item);
+  syncIntegrationButtons();
   renderIntegrationSelection();
+  saveDraft();
+  scheduleCompile();
+}
+
+function syncIntegrationButtons() {
+  $$('[data-integration-id]').forEach((choice) => {
+    const choiceKey = `${choice.dataset.integrationKind}:${choice.dataset.integrationId}`;
+    const selected = selectedIntegrations.has(choiceKey);
+    choice.classList.toggle("selected", selected);
+    choice.textContent = selected ? "Selected" : "Request in harness";
+  });
 }
 
 function renderIntegrationSelection() {
-  const labels = [...selectedIntegrations.values()];
-  $("#integration-selection").textContent = labels.length ? labels.join(" · ") : "Nothing selected. Skills and connected Apps can be added as visible invocation markers in your task.";
-  $("#apply-integrations").disabled = labels.length === 0;
+  const values = [...selectedIntegrations.values()];
+  const work = getPhases("work");
+  const root = $("#integration-selection-list");
+  root.innerHTML = values.length ? values.map((item) => {
+    const key = `${item.kind}:${item.id}`;
+    const validScope = work.some((phase) => phase.id === item.scope) ? item.scope : "all";
+    item.scope = validScope;
+    return `<article><span>${escapeHtml(item.kind)}</span><div><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.id)}</small></div><label>Use during<select data-integration-scope="${escapeHtml(key)}"><option value="all" ${validScope === "all" ? "selected" : ""}>All Codex work phases</option>${work.map((phase) => `<option value="${escapeHtml(phase.id)}" ${validScope === phase.id ? "selected" : ""}>${escapeHtml(phase.title)}</option>`).join("")}</select></label><button type="button" data-remove-integration="${escapeHtml(key)}" aria-label="Remove ${escapeHtml(item.label)}">×</button></article>`;
+  }).join("") : `<div class="integration-empty"><b>No explicit requests</b><p>Codex still inherits AGENTS.md and its configured environment. Choose only what this harness should visibly request.</p></div>`;
+  $$('[data-integration-scope]', root).forEach((select) => select.addEventListener("change", () => {
+    const item = selectedIntegrations.get(select.dataset.integrationScope);
+    if (item) item.scope = select.value;
+    saveDraft();
+    renderDesignSummary();
+    scheduleCompile();
+  }));
+  $$('[data-remove-integration]', root).forEach((button) => button.addEventListener("click", () => {
+    selectedIntegrations.delete(button.dataset.removeIntegration);
+    syncIntegrationButtons();
+    renderIntegrationSelection();
+    saveDraft();
+    scheduleCompile();
+  }));
+  $("#integration-selection-count").textContent = String(values.length);
+  $("#apply-integrations").disabled = values.length === 0;
+  renderDesignSummary();
 }
 
 function applySelectedIntegrations() {
   if (!selectedIntegrations.size) return;
-  const markerLine = `Use these Codex integrations when relevant: ${[...selectedIntegrations.keys()].join(" ")}.`;
-  const task = getPhase("task");
-  task.config.goal = `${task.config.goal || "Describe the task here."}\n\n${markerLine}`.trim();
-  selectedPhaseId = task.id;
-  changed();
+  saveDraft();
+  scheduleCompile();
   switchView("design");
-  toast("Selected integration markers were added visibly to the task");
+  toast("Integration requests are now bound to the harness manifest");
 }
 
 async function approve(decision) {
@@ -1008,6 +1075,17 @@ function applyManifest() {
     if (manifest.memory?.mode === "selected") {
       $("#thread-list").innerHTML = (manifest.memory.selectedThreadIds || []).map((id) => `<label><input type="checkbox" value="${escapeHtml(id)}" checked><span><b>Selected Codex thread</b><small>${escapeHtml(id)}</small></span></label>`).join("");
     }
+    selectedIntegrations.clear();
+    integrationInventoryId = manifest.integrations?.inventoryId || null;
+    for (const item of manifest.integrations?.requested || []) {
+      const scope = item.phaseIds?.length === 1 ? item.phaseIds[0] : "all";
+      selectedIntegrations.set(`${item.kind}:${item.id}`, {
+        kind: item.kind,
+        id: item.id,
+        label: item.label,
+        scope,
+      });
+    }
     getPhase("approval").config.gate = manifest.agent?.approvalGate || "manual";
     if (manifest.phaseProgram?.phases?.length) {
       const editable = manifest.phaseProgram.phases.map((item) => {
@@ -1024,6 +1102,7 @@ function applyManifest() {
     getPhase("output").config.format = manifest.output?.format || "text";
     selectedPhaseId = phases.find((phase) => phase.type === "task")?.id;
     changed();
+    renderIntegrationSelection();
     toast("Supported manifest fields applied");
   } catch (error) { toast(`Invalid manifest: ${error.message}`); }
 }
@@ -1265,6 +1344,7 @@ async function init() {
   if (stored?.name) $("#harness-name").value = stored.name;
   renderPalette();
   renderCanvas();
+  renderIntegrationSelection();
   renderExample("flappy");
   bindGlobalEvents();
   try { await bootstrapSession(); } catch (error) { renderConnectionStatus({ connected: false, error: error.message }); }

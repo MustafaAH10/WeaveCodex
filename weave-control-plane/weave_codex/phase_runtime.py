@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
-from .manifest import VERIFIER_SCHEMA, HarnessManifest
+from .manifest import VERIFIER_SCHEMA, HarnessManifest, integration_prompt
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -87,6 +87,9 @@ def _work_prompt(
 <selected_memory mode="{manifest.memory.mode}">
 {memory}
 </selected_memory>
+<requested_integrations binding="instructional">
+{integration_prompt(manifest, phase_id)}
+</requested_integrations>
 
 {continuity}
 One phase is one controller turn, not one tool call. Use as many native Codex reasoning and tool

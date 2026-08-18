@@ -43,6 +43,35 @@ class MemoryBlock(StrictModel):
         return self
 
 
+class IntegrationRequest(StrictModel):
+    kind: Literal["skill", "mcp", "app"]
+    id: str = Field(min_length=1, max_length=160, pattern=r"^[^\x00-\x1f]+$")
+    label: str = Field(min_length=1, max_length=160)
+    phase_ids: list[str] = Field(default_factory=list, alias="phaseIds", max_length=8)
+
+    @model_validator(mode="after")
+    def check_phase_ids(self) -> IntegrationRequest:
+        if len(self.phase_ids) != len(set(self.phase_ids)):
+            raise ValueError("integration phaseIds must not contain duplicates")
+        return self
+
+
+class IntegrationsBlock(StrictModel):
+    inventory_id: str | None = Field(
+        default=None,
+        alias="inventoryId",
+        pattern=r"^sha256:[0-9a-f]{64}$",
+    )
+    requested: list[IntegrationRequest] = Field(default_factory=list, max_length=12)
+
+    @model_validator(mode="after")
+    def check_requests(self) -> IntegrationsBlock:
+        identities = [(item.kind, item.id) for item in self.requested]
+        if len(identities) != len(set(identities)):
+            raise ValueError("integration requests must be unique by kind and id")
+        return self
+
+
 class AgentBlock(StrictModel):
     model: str | None = Field(default=None, max_length=100)
     reasoning_effort: Literal["low", "medium", "high", "xhigh"] = Field(
@@ -80,6 +109,7 @@ class HarnessManifest(StrictModel):
     cwd: str = Field(min_length=1, max_length=1_000)
     task: TaskBlock
     memory: MemoryBlock = Field(default_factory=MemoryBlock)
+    integrations: IntegrationsBlock = Field(default_factory=IntegrationsBlock)
     agent: AgentBlock = Field(default_factory=AgentBlock)
     verification: VerificationBlock = Field(default_factory=VerificationBlock)
     output: OutputBlock = Field(default_factory=OutputBlock)
@@ -94,6 +124,20 @@ class HarnessManifest(StrictModel):
             raise ValueError("schemaVersion 2 requires phaseProgram")
         if self.schema_version == 1 and self.phase_program is not None:
             raise ValueError("phaseProgram requires schemaVersion 2")
+        phase_ids = {
+            phase.id
+            for phase in (self.phase_program.phases if self.phase_program is not None else [])
+            if phase.kind == "work"
+        }
+        for request in self.integrations.requested:
+            if request.phase_ids and self.phase_program is None:
+                raise ValueError("scoped integrations require schemaVersion 2 phaseProgram")
+            unknown = set(request.phase_ids) - phase_ids
+            if unknown:
+                raise ValueError(
+                    "integration phaseIds must reference work phases: "
+                    + ", ".join(sorted(unknown))
+                )
         return self
 
 
@@ -121,6 +165,7 @@ def compile_manifest(manifest: HarnessManifest) -> dict[str, Any]:
             "detail": manifest.memory.mode.title(),
             "state": "bypassed" if manifest.memory.mode == "off" else "active",
         },
+        _integration_node(manifest),
         {
             "id": "approval",
             "kind": "safety",
@@ -164,6 +209,7 @@ def compile_manifest(manifest: HarnessManifest) -> dict[str, Any]:
     actions = [
         "initialize experimental app-server client",
         memory_action,
+        *_integration_actions(manifest),
         f"thread/start ({manifest.agent.sandbox}, approvals={approval_policy})",
         "turn/start solver",
     ]
@@ -200,6 +246,8 @@ def _compile_phase_manifest(manifest: HarnessManifest) -> dict[str, Any]:
         "state": "bypassed" if manifest.memory.mode == "off" else "active",
         "editable": False,
     }
+    integration_node = _integration_node(manifest)
+    integration_node["editable"] = False
     safety_node = {
         "id": "safety",
         "kind": "safety",
@@ -207,7 +255,7 @@ def _compile_phase_manifest(manifest: HarnessManifest) -> dict[str, Any]:
         "detail": f"{manifest.agent.approval_gate} · {manifest.agent.sandbox}",
         "editable": False,
     }
-    nodes = [task_node, memory_node, safety_node, *phase_nodes, output_node]
+    nodes = [task_node, memory_node, integration_node, safety_node, *phase_nodes, output_node]
     edges = [
         {"from": left["id"], "to": right["id"], "condition": "next"}
         for left, right in zip(nodes, nodes[1:], strict=False)
@@ -220,6 +268,7 @@ def _compile_phase_manifest(manifest: HarnessManifest) -> dict[str, Any]:
     actions = [
         "initialize experimental app-server client",
         memory_action,
+        *_integration_actions(manifest),
         f"thread/start ({manifest.agent.sandbox}, approvals={manifest.agent.approval_gate})",
     ]
     for phase in program.phases:
@@ -247,6 +296,57 @@ def _compile_phase_manifest(manifest: HarnessManifest) -> dict[str, Any]:
     }
 
 
+def _integration_node(manifest: HarnessManifest) -> dict[str, Any]:
+    count = len(manifest.integrations.requested)
+    return {
+        "id": "integrations",
+        "kind": "integration",
+        "label": "Codex integrations",
+        "detail": (
+            f"{count} requested · instructional binding"
+            if count
+            else "Inherited environment · no explicit requests"
+        ),
+        "state": "active" if count else "bypassed",
+    }
+
+
+def _integration_actions(manifest: HarnessManifest) -> list[str]:
+    if not manifest.integrations.requested:
+        return ["inherit Codex integrations; request none explicitly"]
+    actions: list[str] = []
+    for request in manifest.integrations.requested:
+        scope = ", ".join(request.phase_ids) if request.phase_ids else "all work phases"
+        actions.append(
+            f"request {request.kind} '{request.label}' in {scope} (instructional, not allowlisted)"
+        )
+    return actions
+
+
+def integration_prompt(manifest: HarnessManifest, phase_id: str | None = None) -> str:
+    requests = [
+        item
+        for item in manifest.integrations.requested
+        if not item.phase_ids or phase_id is None or phase_id in item.phase_ids
+    ]
+    if not requests:
+        return "No Codex integration is explicitly requested for this phase."
+    lines = []
+    for request in requests:
+        if request.kind == "skill":
+            instruction = f"invoke the ${request.id} skill and follow its loaded procedure"
+        elif request.kind == "mcp":
+            instruction = f"use tools from the configured {request.label} MCP server when relevant"
+        else:
+            instruction = f"use the connected {request.label} app when relevant"
+        lines.append(f"- {request.kind} {request.label} ({request.id}): {instruction}.")
+    lines.append(
+        "These are visible requests, not a hard tool allowlist. Do not claim an integration was "
+        "used unless the run contains observable supporting activity."
+    )
+    return "\n".join(lines)
+
+
 def build_solver_prompt(manifest: HarnessManifest, selected_excerpts: list[str]) -> str:
     context = "\n".join(f"- {path}" for path in manifest.task.context_paths) or "- none"
     memory = "\n\n".join(selected_excerpts) or "No selected trace content was supplied."
@@ -261,6 +361,9 @@ def build_solver_prompt(manifest: HarnessManifest, selected_excerpts: list[str])
 <selected_memory mode=\"{manifest.memory.mode}\">
 {memory}
 </selected_memory>
+<requested_integrations binding=\"instructional\">
+{integration_prompt(manifest)}
+</requested_integrations>
 
 Do not claim that a file, command, test, or memory was used unless it was actually inspected."""
 

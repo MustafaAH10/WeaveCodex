@@ -253,6 +253,8 @@ def test_integration_inventory_is_allowlisted_and_secret_free(tmp_path: Path) ->
     ]
     assert result["mcpServers"][0]["tools"] == ["search"]
     assert result["apps"][0]["accessible"] is True
+    assert result["inventoryId"].startswith("sha256:")
+    assert len(result["inventoryId"]) == 71
     assert "/private/skills" not in encoded
     assert "token" not in encoded.lower()
     assert result["privacy"]["secretsIncluded"] is False
