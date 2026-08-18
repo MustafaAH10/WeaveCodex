@@ -66,6 +66,9 @@ def _git(repo: Path, *args: str) -> str:
 
 
 def _plan_core(args: argparse.Namespace) -> dict[str, Any]:
+    codex_version = subprocess.run(
+        [args.codex_bin, "--version"], check=True, capture_output=True, text=True
+    ).stdout.strip()
     tasks = []
     for task in TASKS:
         source = args.sources_root / task.directory
@@ -94,6 +97,7 @@ def _plan_core(args: argparse.Namespace) -> dict[str, Any]:
         "schemaVersion": 1,
         "study": "Matched OSS implementation acceptance trials",
         "model": args.model,
+        "codexRuntime": {"binary": str(Path(args.codex_bin).resolve()), "version": codex_version},
         "reasoningEffort": "low",
         "memory": "off",
         "sandbox": "workspace-write",
