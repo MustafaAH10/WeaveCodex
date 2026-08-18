@@ -1,0 +1,520 @@
+{
+  "schemaVersion": 1,
+  "study": "Runloop repository harness acceptance trials",
+  "environment": "isolated Runloop devbox; Codex authenticated through official device flow",
+  "model": "gpt-5.6-terra",
+  "memory": "off",
+  "design": "Each authored Work phase is one persistent Codex controller turn containing any number of native reasoning/tool iterations; tool calls are observed, not authored.",
+  "results": [
+    {
+      "trialId": "click-default-map",
+      "repository": "https://github.com/pallets/click",
+      "cwd": "/home/user/weave-lab/repos/click",
+      "commit": "cbd7a4109da16ce58f54c2a618b4c986e3041fcf",
+      "manifestHash": "sha256:996c79e7d199d14c1aa1a2755d32f4e31f9b6f0193603d3772f2bd45090dcfb9",
+      "maximumControllerTurns": 4,
+      "title": "Click nested default-map resolution",
+      "question": "How does a value in a nested command Context.default_map become the final option value, and where does it sit in Click's value-precedence rules?",
+      "runStatus": "completed",
+      "grade": {
+        "passed": true,
+        "checks": [
+          {
+            "name": "identity",
+            "passed": true,
+            "detail": "click-default-map"
+          },
+          {
+            "name": "commit",
+            "passed": true,
+            "detail": "cbd7a4109da16ce58f54c2a618b4c986e3041fcf"
+          },
+          {
+            "name": "finding-count",
+            "passed": true,
+            "detail": "4"
+          },
+          {
+            "name": "tracked-references",
+            "passed": true,
+            "detail": "6/6"
+          },
+          {
+            "name": "source-reference",
+            "passed": true,
+            "detail": "src/click/core.py, tests/test_defaults.py, docs/commands.md, tests/test_context.py, docs/options.md, docs/commands-and-groups.md"
+          },
+          {
+            "name": "test-reference",
+            "passed": true,
+            "detail": "src/click/core.py, tests/test_defaults.py, docs/commands.md, tests/test_context.py, docs/options.md, docs/commands-and-groups.md"
+          },
+          {
+            "name": "required-concepts",
+            "passed": true,
+            "detail": "all present"
+          },
+          {
+            "name": "source-unchanged",
+            "passed": true,
+            "detail": "only .weave artifact and .weave-codex runtime evidence"
+          }
+        ],
+        "artifactPath": "/home/user/weave-lab/repos/click/.weave/evidence/click-default-map.json",
+        "artifactSha256": "sha256:c78eccedeef1e9376098fdd73422149fa660223b761c33c3e4654f9a58babc8a",
+        "referencedFiles": [
+          {
+            "path": "/home/user/weave-lab/repos/click/src/click/core.py",
+            "sha256": "sha256:4c65a613c1c407dce907a4e123b12cec5fe0f62088a8b9f86fabd4b60c4b6d78"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/click/tests/test_defaults.py",
+            "sha256": "sha256:8e424ea80ac72ec614855b7b51e8af149fb8275e0e3d4de2f81f428dd0e71b88"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/click/docs/commands.md",
+            "sha256": "sha256:63d4a95a1ca6f6f2d9976a9cf8f8a55b0697115526a2c1e98af8151cebe922e1"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/click/tests/test_context.py",
+            "sha256": "sha256:187b7b8f9b1e666af21629c93d69702239b06a8ecd4840b83ede37e7cc32adcf"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/click/docs/options.md",
+            "sha256": "sha256:59b68f20f2c6eb85530c6f45cefd0fb28ae9e6292fe388f96b381f9e87b848a5"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/click/docs/commands-and-groups.md",
+            "sha256": "sha256:4a40e68a392572cf62f2eb677e3c4229d2b3b2577f7b2cb9f065d3f9f6ed5eaa"
+          }
+        ],
+        "externalVerification": {
+          "command": [
+            ".venv/bin/python",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_defaults.py",
+            "tests/test_context.py"
+          ],
+          "exitCode": 0,
+          "elapsedSeconds": 1.434,
+          "outputSha256": "sha256:a8cc192bc27597733063e6dde4e84dfef0c104595118ad7492bac0bfd28690fa"
+        }
+      },
+      "receipt": {
+        "receiptId": "sha256:de83d885109130a2e050fc434639387a3e98c6e24224c9794174d0351a3d210b",
+        "manifestHash": "sha256:996c79e7d199d14c1aa1a2755d32f4e31f9b6f0193603d3772f2bd45090dcfb9",
+        "controllerTurns": 4,
+        "modelCompletions": 25,
+        "completedItemsByType": {
+          "userMessage": 4,
+          "reasoning": 25,
+          "agentMessage": 13,
+          "unknown": 2,
+          "commandExecution": 14,
+          "fileChange": 4
+        },
+        "tokenUsage": {
+          "cachedInputTokens": 882688,
+          "inputTokens": 1017305,
+          "outputTokens": 10269,
+          "reasoningOutputTokens": 3966,
+          "totalTokens": 1027574
+        },
+        "completionStatus": "completed",
+        "checkpoints": [
+          {
+            "phaseId": "review-map",
+            "decision": "accept"
+          }
+        ],
+        "phaseExecutions": [
+          {
+            "phaseId": "map-contract",
+            "kind": "work",
+            "turnIds": [
+              "01a012e8-5488-7b61-ba2c-6cf06c2da1a5"
+            ]
+          },
+          {
+            "phaseId": "review-map",
+            "kind": "checkpoint",
+            "turnIds": [],
+            "decision": "accept"
+          },
+          {
+            "phaseId": "trace-behavior",
+            "kind": "work",
+            "turnIds": [
+              "01a012ee-2c54-7153-ab87-0a92e2fad031"
+            ]
+          },
+          {
+            "phaseId": "challenge-evidence",
+            "kind": "work",
+            "turnIds": [
+              "01a012ee-aea1-7c90-878c-3e7af8543f96"
+            ]
+          },
+          {
+            "phaseId": "verify-artifact",
+            "kind": "verify",
+            "turnIds": [
+              "01a012f0-2603-7462-8a79-d09e46699bf7"
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "phaseId": "verify-artifact",
+            "attempt": 1,
+            "status": "pass",
+            "issues": []
+          }
+        ]
+      }
+    },
+    {
+      "trialId": "requests-proxy-precedence",
+      "repository": "https://github.com/psf/requests",
+      "cwd": "/home/user/weave-lab/repos/requests",
+      "commit": "8f8b212de8c2129d7954c6cd373762880375620a",
+      "manifestHash": "sha256:4cfeb45a0d9f89535e55e4e8ff10084a0f2545bd5472aa2853b6a7ae582fb581",
+      "maximumControllerTurns": 4,
+      "title": "Requests proxy and environment precedence",
+      "question": "How do Session settings, per-request proxies, environment variables, trust_env, and NO_PROXY combine before Requests sends a prepared request?",
+      "runStatus": "completed",
+      "grade": {
+        "passed": true,
+        "checks": [
+          {
+            "name": "identity",
+            "passed": true,
+            "detail": "requests-proxy-precedence"
+          },
+          {
+            "name": "commit",
+            "passed": true,
+            "detail": "8f8b212de8c2129d7954c6cd373762880375620a"
+          },
+          {
+            "name": "finding-count",
+            "passed": true,
+            "detail": "6"
+          },
+          {
+            "name": "tracked-references",
+            "passed": true,
+            "detail": "5/5"
+          },
+          {
+            "name": "source-reference",
+            "passed": true,
+            "detail": "src/requests/sessions.py, src/requests/utils.py, tests/test_utils.py, tests/test_requests.py, src/requests/adapters.py"
+          },
+          {
+            "name": "test-reference",
+            "passed": true,
+            "detail": "src/requests/sessions.py, src/requests/utils.py, tests/test_utils.py, tests/test_requests.py, src/requests/adapters.py"
+          },
+          {
+            "name": "required-concepts",
+            "passed": true,
+            "detail": "all present"
+          },
+          {
+            "name": "source-unchanged",
+            "passed": true,
+            "detail": "only .weave artifact and .weave-codex runtime evidence"
+          }
+        ],
+        "artifactPath": "/home/user/weave-lab/repos/requests/.weave/evidence/requests-proxy-precedence.json",
+        "artifactSha256": "sha256:cd3f2bfd695d827e9f8fcf159b99db69ef66dfb8f4abf75739db7400dd3885e9",
+        "referencedFiles": [
+          {
+            "path": "/home/user/weave-lab/repos/requests/src/requests/sessions.py",
+            "sha256": "sha256:3d2089736ced93b2b405624a943f866d22652b17df06a85eb010f86272fc3e7d"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/requests/src/requests/utils.py",
+            "sha256": "sha256:b879cb3f671cf1c28e8ff9b2b02151bcdb8974b4820a514cfdd1f5a038443cd2"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/requests/tests/test_utils.py",
+            "sha256": "sha256:00d027432443a1aa9539c00a09550de9439cdd696d2e6acf2dc997de3a416946"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/requests/tests/test_requests.py",
+            "sha256": "sha256:5eacf6341d236e225ce6a37a592f3b410f20e69ec17641f0e2c99b03a79b904d"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/requests/src/requests/adapters.py",
+            "sha256": "sha256:cc9b1b02694fee0353481fbad84fe3ddbedec4441dba54df7914c63f2aa85937"
+          }
+        ],
+        "externalVerification": {
+          "command": [
+            ".venv/bin/python",
+            "-m",
+            "pytest",
+            "-q",
+            "tests/test_utils.py",
+            "-k",
+            "proxy or bypass"
+          ],
+          "exitCode": 0,
+          "elapsedSeconds": 2.788,
+          "outputSha256": "sha256:ab5e4dd8b4c02ebbef9f989c6b4f7836b2d439f20a1b0c361f1f6af5641d2e71"
+        }
+      },
+      "receipt": {
+        "receiptId": "sha256:255456f87afc7ecde84ad122f81e6461226f36dffe057c5db23c635c1cc8db6e",
+        "manifestHash": "sha256:4cfeb45a0d9f89535e55e4e8ff10084a0f2545bd5472aa2853b6a7ae582fb581",
+        "controllerTurns": 4,
+        "modelCompletions": 23,
+        "completedItemsByType": {
+          "userMessage": 4,
+          "reasoning": 23,
+          "agentMessage": 10,
+          "commandExecution": 13,
+          "unknown": 3,
+          "fileChange": 2
+        },
+        "tokenUsage": {
+          "cachedInputTokens": 847360,
+          "inputTokens": 989497,
+          "outputTokens": 9473,
+          "reasoningOutputTokens": 2917,
+          "totalTokens": 998970
+        },
+        "completionStatus": "completed",
+        "checkpoints": [
+          {
+            "phaseId": "review-map",
+            "decision": "accept"
+          }
+        ],
+        "phaseExecutions": [
+          {
+            "phaseId": "map-inputs",
+            "kind": "work",
+            "turnIds": [
+              "01a012f0-9c78-7e82-a721-9db4933e4fe0"
+            ]
+          },
+          {
+            "phaseId": "review-map",
+            "kind": "checkpoint",
+            "turnIds": [],
+            "decision": "accept"
+          },
+          {
+            "phaseId": "trace-precedence",
+            "kind": "work",
+            "turnIds": [
+              "01a012f1-d739-7cd0-b3be-848518e9fd5d"
+            ]
+          },
+          {
+            "phaseId": "adversarial-review",
+            "kind": "work",
+            "turnIds": [
+              "01a012f2-3969-7e41-8ea9-c23eee5e9228"
+            ]
+          },
+          {
+            "phaseId": "verify-artifact",
+            "kind": "verify",
+            "turnIds": [
+              "01a012f3-84fb-7672-ab8b-16c0681df0ae"
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "phaseId": "verify-artifact",
+            "attempt": 1,
+            "status": "pass",
+            "issues": []
+          }
+        ]
+      }
+    },
+    {
+      "trialId": "express-async-errors",
+      "repository": "https://github.com/expressjs/express",
+      "cwd": "/home/user/weave-lab/repos/express",
+      "commit": "a3714473feb3d2908add734d340e7755fd85e0a3",
+      "manifestHash": "sha256:cb52ce74c2258f6d4efc237d6f938e1eab6bcebadb5f8db7a92f44ffb88bf71d",
+      "maximumControllerTurns": 4,
+      "title": "Express asynchronous error propagation",
+      "question": "How does Express 5 propagate synchronous throws and rejected promises from a route through error middleware to the final handler?",
+      "runStatus": "completed",
+      "grade": {
+        "passed": true,
+        "checks": [
+          {
+            "name": "identity",
+            "passed": true,
+            "detail": "express-async-errors"
+          },
+          {
+            "name": "commit",
+            "passed": true,
+            "detail": "a3714473feb3d2908add734d340e7755fd85e0a3"
+          },
+          {
+            "name": "finding-count",
+            "passed": true,
+            "detail": "6"
+          },
+          {
+            "name": "tracked-references",
+            "passed": true,
+            "detail": "5/5"
+          },
+          {
+            "name": "source-reference",
+            "passed": true,
+            "detail": "lib/application.js, package.json, test/Router.js, test/app.route.js, test/app.routes.error.js"
+          },
+          {
+            "name": "test-reference",
+            "passed": true,
+            "detail": "lib/application.js, package.json, test/Router.js, test/app.route.js, test/app.routes.error.js"
+          },
+          {
+            "name": "required-concepts",
+            "passed": true,
+            "detail": "all present"
+          },
+          {
+            "name": "source-unchanged",
+            "passed": true,
+            "detail": "only .weave artifact and .weave-codex runtime evidence"
+          }
+        ],
+        "artifactPath": "/home/user/weave-lab/repos/express/.weave/evidence/express-async-errors.json",
+        "artifactSha256": "sha256:cf727d7091280ae6d82d011c2ef415b8c9ea72ec3d44ebecf1211ae67b303bad",
+        "referencedFiles": [
+          {
+            "path": "/home/user/weave-lab/repos/express/lib/application.js",
+            "sha256": "sha256:6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/express/package.json",
+            "sha256": "sha256:c5f0df87dca378ac0e44a59c459f43de780afd654fcdf7e937b62b97e7bae88f"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/express/test/Router.js",
+            "sha256": "sha256:721ffc840d1c4aad931d859a661c98f07eb56389f1c3a1902cb06fae4d4c0c32"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/express/test/app.route.js",
+            "sha256": "sha256:18ddd7005789c9455a09a88c2339223c41fbcbe75d5a6168b61f61bb38814be6"
+          },
+          {
+            "path": "/home/user/weave-lab/repos/express/test/app.routes.error.js",
+            "sha256": "sha256:69379b4852515e5ab9f010390eb2eaa1d18250c1ac1ffb8c1ecc6fbabab2190a"
+          }
+        ],
+        "externalVerification": {
+          "command": [
+            "./node_modules/.bin/mocha",
+            "--require",
+            "test/support/env",
+            "--reporter",
+            "dot",
+            "--check-leaks",
+            "test/app.routes.error.js",
+            "test/acceptance/error.js"
+          ],
+          "exitCode": 0,
+          "elapsedSeconds": 0.368,
+          "outputSha256": "sha256:067df342a3cd524e6db645eac725c4a3db321c58f11b9ecbb6d178846b364bb4"
+        }
+      },
+      "receipt": {
+        "receiptId": "sha256:0651557b7d91ca90a3937602597f04202f12b857d5689215b63fe9c645b609c5",
+        "manifestHash": "sha256:cb52ce74c2258f6d4efc237d6f938e1eab6bcebadb5f8db7a92f44ffb88bf71d",
+        "controllerTurns": 4,
+        "modelCompletions": 28,
+        "completedItemsByType": {
+          "userMessage": 4,
+          "agentMessage": 13,
+          "commandExecution": 17,
+          "reasoning": 26,
+          "unknown": 2,
+          "fileChange": 5
+        },
+        "tokenUsage": {
+          "cachedInputTokens": 1023232,
+          "inputTokens": 1177710,
+          "outputTokens": 11815,
+          "reasoningOutputTokens": 4483,
+          "totalTokens": 1189525
+        },
+        "completionStatus": "completed",
+        "checkpoints": [
+          {
+            "phaseId": "review-map",
+            "decision": "accept"
+          }
+        ],
+        "phaseExecutions": [
+          {
+            "phaseId": "map-lifecycle",
+            "kind": "work",
+            "turnIds": [
+              "01a012f4-13d4-77d1-8904-f4bdfb1d8357"
+            ]
+          },
+          {
+            "phaseId": "review-map",
+            "kind": "checkpoint",
+            "turnIds": [],
+            "decision": "accept"
+          },
+          {
+            "phaseId": "trace-errors",
+            "kind": "work",
+            "turnIds": [
+              "01a012f5-a6b3-7d30-a7c0-ee5989747ccb"
+            ]
+          },
+          {
+            "phaseId": "challenge-failures",
+            "kind": "work",
+            "turnIds": [
+              "01a012f6-75a4-7f13-a7aa-32bf44972830"
+            ]
+          },
+          {
+            "phaseId": "verify-artifact",
+            "kind": "verify",
+            "turnIds": [
+              "01a012f7-8abd-72a2-b1d4-701a625e0e94"
+            ]
+          }
+        ],
+        "verification": [
+          {
+            "phaseId": "verify-artifact",
+            "attempt": 1,
+            "status": "pass",
+            "issues": []
+          }
+        ]
+      }
+    }
+  ],
+  "claimLimits": [
+    "These are three source-analysis product acceptance trials, not a benchmark.",
+    "There is one rollout per repository and no ordinary-Codex comparison arm.",
+    "The checkpoint was accepted by the operating agent after the first map phase.",
+    "Subscription usage events are not invoice-level cost attribution.",
+    "No result implies that the upstream repository has a defect."
+  ],
+  "summarySha256": "sha256:b21fec7d82a43da3d07e8cfab5f57386f4e0040ec2c25f44ff1dab3261f29fa3"
+}

@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "trialId": "requests-proxy-precedence",
+  "repository": {
+    "url": "https://github.com/psf/requests",
+    "commit": "8f8b212de8c2129d7954c6cd373762880375620a"
+  },
+  "question": "How do Session settings, per-request proxies, environment variables, trust_env, and NO_PROXY combine before Requests sends a prepared request?",
+  "findings": [
+    {
+      "claim": "The high-level Session.request path prepares the Request, normalizes a missing or empty per-request proxies argument to {}, then calls merge_environment_settings before Session.send.",
+      "sourcePaths": [
+        "src/requests/sessions.py"
+      ],
+      "symbols": [
+        "Session.request", "Session.prepare_request", "Session.merge_environment_settings"],
+      "evidence": "Session.request calls prepare_request, assigns `proxies = proxies or {}`, and passes that mapping with the prepared URL to merge_environment_settings; proxy selection is therefore separate from PreparedRequest construction."
+    },
+    {
+      "claim": "For Session.request, explicit per-request proxy keys take precedence over environment keys and Session.proxies; environment keys fill only missing request keys, and Session.proxies fill only keys still missing after that. A per-request key set to None is removed from the final merged mapping.",
+      "sourcePaths": [
+        "src/requests/sessions.py"
+      ],
+      "symbols": [
+        "Session.merge_environment_settings", "merge_setting"],
+      "evidence": "With trust_env true, merge_environment_settings obtains environment proxies and applies them with `proxies.setdefault`; it then calls merge_setting(proxies, self.proxies), whose mapping merge starts from the session mapping and updates it with the request mapping, then removes None-valued keys."
+    },
+    {
+      "claim": "trust_env gates environment proxy lookup. A per-request `no_proxy` value is passed to the bypass check; otherwise lowercase no_proxy is preferred over uppercase NO_PROXY, and a bypass makes get_environ_proxies return an empty mapping.",
+      "sourcePaths": [
+        "src/requests/sessions.py", "src/requests/utils.py", "tests/test_utils.py"
+      ],
+      "symbols": [
+        "Session.merge_environment_settings", "get_environ_proxies", "should_bypass_proxies", "TestGetEnvironProxies.test_bypass", "TestGetEnvironProxies.test_bypass_no_proxy_keyword"],
+      "evidence": "merge_environment_settings reads environment proxies only when trust_env is true and supplies `proxies.get(\"no_proxy\")`; should_bypass_proxies uses that argument when present, otherwise checks no_proxy before NO_PROXY, and the tests cover both environment spellings and an explicit no_proxy argument."
+    },
+    {
+      "claim": "Direct Session.send of a PreparedRequest does not call merge_environment_settings: if callers omit the proxies keyword it resolves Session.proxies plus eligible environment proxies, but a supplied proxies keyword is used as-is. On redirects, rebuild_proxies resolves the mapping again for the redirected URL.",
+      "sourcePaths": [
+        "src/requests/sessions.py", "src/requests/utils.py", "tests/test_requests.py"
+      ],
+      "symbols": [
+        "Session.send", "Session.rebuild_proxies", "resolve_proxies", "TestRequests.test_respect_proxy_env_on_send_self_prepared_request", "test_proxy_env_vars_override_default"],
+      "evidence": "Session.send calls resolve_proxies only when `proxies` is absent from kwargs; resolve_proxies conditionally adds the environment scheme/all proxy with setdefault after the bypass check, and rebuild_proxies invokes it for each redirect. The tests exercise prepared-request sends respecting http_proxy and scheme/all environment variables."
+    },
+    {
+      "claim": "The adapter chooses one proxy from the final mapping in host-specific, scheme, all-host, then all order.",
+      "sourcePaths": [
+        "src/requests/utils.py", "src/requests/adapters.py", "tests/test_utils.py"
+      ],
+      "symbols": [
+        "select_proxy", "HTTPAdapter.get_connection_with_tls_context", "test_select_proxies"],
+      "evidence": "select_proxy enumerates `scheme://hostname`, `scheme`, `all://hostname`, and `all`; HTTPAdapter passes the final proxies mapping to it before choosing a proxy manager, and test_select_proxies covers host, scheme, and all fallbacks."
+    },
+    {
+      "claim": "An empty proxies mapping does not disable high-level defaults: Session.request normalizes it to {} and then permits environment and Session proxy merging. trust_env=False skips environment lookup but still merges Session.proxies; an explicit proxies={} keyword on direct Session.send bypasses that default resolution.",
+      "sourcePaths": [
+        "src/requests/sessions.py",
+        "src/requests/utils.py",
+        "tests/test_requests.py"
+      ],
+      "symbols": [
+        "Session.request", "Session.send", "Session.merge_environment_settings", "resolve_proxies", "test_proxy_env_vars_override_default"],
+      "evidence": "Session.request uses `proxies = proxies or {}` before merge_environment_settings. That method guards only the environment step with trust_env, then merges self.proxies; Session.send calls resolve_proxies only when its kwargs lack proxies, so an explicitly supplied empty mapping is forwarded unchanged."
+    }
+  ],
+  "verification": [
+    {
+      "command": "git rev-parse HEAD",
+      "exitCode": 0,
+      "purpose": "Confirmed the checked-out repository commit is 8f8b212de8c2129d7954c6cd373762880375620a."
+    },
+    {
+      "command": ".venv/bin/pytest -q tests/test_utils.py::TestGetEnvironProxies tests/test_utils.py::test_should_bypass_proxies tests/test_utils.py::test_should_bypass_proxies_no_proxy tests/test_utils.py::test_should_bypass_proxies_no_proxy_domain_boundary tests/test_requests.py::test_proxy_env_vars_override_default",
+      "exitCode": 0,
+      "purpose": "Verified 63 selected proxy environment, CIDR and hostname bypass, and environment proxy-resolution tests."
+    }
+  ],
+  "limitations": [
+    "This phase maps proxy inputs and precedence from the checked-out source and selected tests; it does not perform live traffic through a proxy.",
+    "NO_PROXY governs whether environment-derived proxies are added; it does not itself remove explicit per-request or Session proxy entries. For high-level requests, a None-valued proxy key is removed during merging, whereas an empty mapping still allows defaults to be merged."
+  ],
+  "conclusion": "Before a high-level request is sent, per-request proxy entries win, environment proxies fill its missing entries only when trust_env permits and the target is not bypassed, and Session.proxies fill remaining entries. Direct PreparedRequest sends use an explicitly supplied proxies mapping unchanged or otherwise resolve Session.proxies with eligible environment defaults; redirects re-evaluate that resolution. The adapter then selects the most specific applicable key from the resulting mapping."
+}

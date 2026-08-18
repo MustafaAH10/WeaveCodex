@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "trialId": "express-async-errors",
+  "repository": {
+    "url": "https://github.com/expressjs/express",
+    "commit": "a3714473feb3d2908add734d340e7755fd85e0a3"
+  },
+  "question": "How does Express 5 propagate synchronous throws and rejected promises from a route through error middleware to the final handler?",
+  "findings": [
+    {
+      "claim": "The application boundary supplies the terminal callback and hands every request to the router.",
+      "sourcePaths": [
+        "lib/application.js",
+        "package.json"
+      ],
+      "symbols": [
+        "app.handle",
+        "finalhandler",
+        "Router#handle"
+      ],
+      "evidence": "app.handle creates done from a supplied callback or finalhandler(req, res, { env, onerror }), then calls this.router.handle(req, res, done). package.json declares the router and finalhandler dependencies used at that boundary."
+    },
+    {
+      "claim": "A synchronous throw in a matched route enters error mode: ordinary middleware is skipped and a four-argument error middleware receives the thrown error; a throw in an error middleware replaces the error for the next error middleware.",
+      "sourcePaths": [
+        "test/Router.js"
+      ],
+      "symbols": [
+        "Router#handle",
+        "router.get",
+        "router.use"
+      ],
+      "evidence": "The Router error tests throw from a parameterized route and assert that a normal middleware is not called while (err, req, res, next) receives Error('foo'); a separate test throws 'oops' inside an error handler and asserts that the following error handler receives it."
+    },
+    {
+      "claim": "A route handler's rejected promise is forwarded to four-argument route error middleware, including a rejection without a value; a rejected promise returned by error middleware continues to the next error middleware.",
+      "sourcePaths": [
+        "test/app.route.js"
+      ],
+      "symbols": [
+        "app.route",
+        "route.all"
+      ],
+      "evidence": "The promise-support tests expect Promise.reject(new Error('boom!')) to reach an error handler as 'boom!', and an empty rejection to arrive as 'Rejected promise'. Their error-handling cases show a rejection from one error handler being delivered to the following error handler."
+    },
+    {
+      "claim": "The router dependency's normal and error layer paths convert both a thrown exception and a returned-promise rejection into next(error), using Error('Rejected promise') when the rejection has no value.",
+      "sourcePaths": [
+        "package.json",
+        "test/app.route.js",
+        "test/Router.js"
+      ],
+      "symbols": [
+        "Layer#handleRequest",
+        "Layer#handleError",
+        "next"
+      ],
+      "evidence": "package.json declares router, whose installed Layer#handleRequest and Layer#handleError wrap invocation in try/catch and attach a rejection callback that calls next(error || new Error('Rejected promise')); the checked-in route and Router tests cover the corresponding promise and throw behavior."
+    },
+    {
+      "claim": "Error middleware is selected only while an error is being propagated; calling next(err) preserves that mode, while calling next() allows subsequent ordinary route middleware to run.",
+      "sourcePaths": [
+        "test/app.routes.error.js"
+      ],
+      "symbols": [
+        "app.get",
+        "next"
+      ],
+      "evidence": "The multi-callback route test shows the ordinary callback after next(error) is skipped, two error callbacks run while the error is forwarded, and after the second calls next() the final ordinary callback sends 204."
+    },
+    {
+      "claim": "When an error bubbles out without application error middleware handling it, Express's default terminal path responds with an error status.",
+      "sourcePaths": [
+        "lib/application.js",
+        "test/app.routes.error.js"
+      ],
+      "symbols": [
+        "app.handle",
+        "finalhandler"
+      ],
+      "evidence": "app.handle documents and installs finalhandler when no callback is supplied. The app route-error test forwards Error('boom!') without an error handler and expects a 500 response, specifying that terminal path."
+    }
+  ],
+  "verification": [
+    {
+      "command": "./node_modules/.bin/mocha --require test/support/env --reporter spec --check-leaks test/Router.js --grep 'error'",
+      "exitCode": 0,
+      "purpose": "Run the router's synchronous-throw and error-middleware propagation tests."
+    },
+    {
+      "command": "node -e \"const assert=require('node:assert'); const Router=require('router'); const router=new Router(); const seen=[]; router.route('/x').all(()=>Promise.reject(new Error('route'))).all((err,req,res,next)=>{seen.push(err.message); return Promise.reject(new Error('error'))}).all((err,req,res,next)=>{seen.push(err.message); next()}); router.handle({url:'/x',method:'GET'}, {}, err=>{assert.ifError(err); assert.deepStrictEqual(seen,['route','error'])})\"",
+      "exitCode": 0,
+      "purpose": "Directly exercise a route rejection followed by an error-middleware rejection through the installed router."
+    },
+    {
+      "command": "node -e \"const assert=require('node:assert'); const Router=require('router'); const req={url:'/',method:'GET'}; const run=router=>new Promise((resolve,reject)=>router.handle(req,{},err=>err?reject(err):resolve())); (async()=>{let router=new Router(); router.route('/').all(()=>Promise.reject()).all((err,req,res,next)=>{assert.strictEqual(err.message,'Rejected promise'); next()}); await run(router); router=new Router(); router.route('/').all(()=>{throw new Error('route')}).all((err,req,res,next)=>{throw new Error('error middleware')}).all((err,req,res,next)=>{assert.strictEqual(err.message,'error middleware'); next()}); await run(router); router=new Router(); router.route('/').all(()=>Promise.reject(new Error('terminal'))); await new Promise((resolve,reject)=>router.handle(req,{},err=>{try { assert.strictEqual(err.message,'terminal'); resolve() } catch (e) { reject(e) }}))})().catch(err=>{console.error(err);process.exitCode=1})\"",
+      "exitCode": 0,
+      "purpose": "Exercise an empty rejection, an error-middleware throw, and forwarding an unhandled rejection to the router completion callback."
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "purpose": "Confirm tracked-file diffs have no whitespace errors."
+    },
+    {
+      "command": "node -e \"JSON.parse(require('node:fs').readFileSync('.weave/evidence/express-async-errors.json', 'utf8'))\"",
+      "exitCode": 0,
+      "purpose": "Parse the evidence artifact as JSON."
+    }
+  ],
+  "limitations": [
+    "The sandbox prevents TCP server listening with EPERM. Express app.listen forwards that server error to its callback, which left server.address() null in the HTTP-focused test attempt; the promise and default-final-handler conclusions therefore rely on router-level execution and checked-in HTTP test assertions, not a successful local HTTP execution.",
+    "Router implementation details are supplied by the declared external router dependency; this phase maps its behavior from Express's boundary code and the repository's Router tests rather than modifying or treating node_modules as tracked evidence."
+  ],
+  "conclusion": "Express 5 hands the router a finalhandler-backed completion callback. Router dispatch turns synchronous throws and returned promise rejections into the error flow, which skips normal handlers and invokes four-argument error middleware in order; forwarding or replacing the error continues that flow, clearing it with next() resumes normal dispatch, and an unhandled error reaches finalhandler's default 500 response."
+}

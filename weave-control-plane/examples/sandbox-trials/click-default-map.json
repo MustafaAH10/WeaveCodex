@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "trialId": "click-default-map",
+  "repository": {
+    "url": "https://github.com/pallets/click",
+    "commit": "cbd7a4109da16ce58f54c2a618b4c986e3041fcf"
+  },
+  "question": "How does a value in a nested command Context.default_map become the final option value, and where does it sit in Click's value-precedence rules?",
+  "findings": [
+    {
+      "claim": "A child command context receives its nested default map from its parent under the child command's info_name.",
+      "sourcePaths": [
+        "src/click/core.py",
+        "tests/test_defaults.py",
+        "docs/commands.md"
+      ],
+      "symbols": [
+        "Context.__init__",
+        "test_flag_default_map"
+      ],
+      "evidence": "When a child Context is constructed without an explicit default_map, Context.__init__ assigns parent.default_map.get(info_name). The nested foo/name test invokes a group with {\"foo\": {\"name\": true}} and observes True; the documentation describes the same per-subcommand nesting. A focused CliRunner probe also showed that an empty foo map falls through to the parameter default."
+    },
+    {
+      "claim": "Parameter.consume_value turns an active context map entry into the option value and records DEFAULT_MAP as its source.",
+      "sourcePaths": [
+        "src/click/core.py",
+        "tests/test_defaults.py",
+        "tests/test_context.py"
+      ],
+      "symbols": [
+        "Context._default_map_has",
+        "Context.lookup_default",
+        "Parameter.consume_value",
+        "Parameter.handle_parse_result",
+        "Context.set_parameter_source",
+        "Context.get_parameter_source",
+        "test_default_map_source",
+        "test_parameter_source"
+      ],
+      "evidence": "consume_value calls lookup_default after CLI and environment lookup. A present entry, including None or a falsy value, is accepted when _default_map_has is true, assigned to value, and labeled ParameterSource.DEFAULT_MAP; handle_parse_result processes it and stores the winning exposed value in ctx.params. Tests assert both the resolved value and source."
+    },
+    {
+      "claim": "ParameterSource ranks prompt, command line, environment, default map, then the parameter default; within Parameter.consume_value's non-prompt source chain, a default-map value overrides default= but loses to CLI and environment input.",
+      "sourcePaths": [
+        "src/click/core.py",
+        "tests/test_defaults.py",
+        "docs/options.md",
+        "docs/commands-and-groups.md"
+      ],
+      "symbols": [
+        "ParameterSource",
+        "Parameter.consume_value",
+        "Option.consume_value",
+        "test_default_map_source"
+      ],
+      "evidence": "Parameter.consume_value only advances to each later source while its value is UNSET, and ParameterSource orders COMMANDLINE, ENVIRONMENT, DEFAULT_MAP, then DEFAULT; Option.consume_value can then obtain a prompt value. The tests and focused probe cover CLI and environment winning over the map and the map winning over the parameter default; the docs state the full source ordering."
+    },
+    {
+      "claim": "UNSET map entries fall through, callable map values are resolved at value lookup, and string map values for multi-value parameters are split before processing.",
+      "sourcePaths": [
+        "src/click/core.py",
+        "tests/test_defaults.py",
+        "docs/commands.md"
+      ],
+      "symbols": [
+        "Context._default_map_has",
+        "Context.lookup_default",
+        "Parameter.consume_value",
+        "test_lookup_default_callable_in_default_map",
+        "test_default_map_nargs",
+        "test_unset_in_default_map"
+      ],
+      "evidence": "_default_map_has excludes the internal UNSET sentinel, lookup_default calls callable values by default, and consume_value splits mapped strings when nargs is not 1. The corresponding tests cover each behavior and the documentation describes multi-value splitting."
+    }
+  ],
+  "verification": [
+    {
+      "command": ".venv/bin/python -m json.tool .weave/evidence/click-default-map.json > /dev/null",
+      "exitCode": 0,
+      "purpose": "Validate that the evidence artifact is well-formed JSON."
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_defaults.py -k 'flag_default_map or default_map_source or default_map_nargs or unset_in_default_map' && .venv/bin/python -m pytest -q tests/test_context.py -k parameter_source",
+      "exitCode": 0,
+      "purpose": "Run focused existing tests for nested default maps, map precedence and source reporting, multi-value map handling, UNSET fallback, and parameter-source reporting."
+    }
+  ],
+  "limitations": [
+    "The focused runtime probe did not exercise prompting or same-name feature-switch slot arbitration; their effect is based on the inspected implementation and documentation.",
+    "Only the focused existing tests were run, not the complete test suite."
+  ],
+  "conclusion": "For a nested command, Context.__init__ selects the parent map entry named by the subcommand, making that dictionary the active child default_map. If no CLI or environment value is supplied, Parameter.consume_value looks up the option name there and marks it DEFAULT_MAP; Parameter.handle_parse_result processes and stores the winning exposed value in ctx.params. DEFAULT_MAP is below PROMPT, COMMANDLINE, and ENVIRONMENT, but above the parameter's declared DEFAULT."
+}

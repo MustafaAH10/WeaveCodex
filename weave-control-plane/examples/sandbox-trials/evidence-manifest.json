@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "study": "Runloop repository harness acceptance trials",
+  "devboxId": "dbx_3493vOWLKkFvTLNT6UlVM",
+  "weaveHead": "46234882096e82990ee7990361ce4fe752accc6a",
+  "runtime": {
+    "codex": "codex-cli 0.147.0",
+    "uv": "0.12.5",
+    "python": "3.12.12",
+    "node": "22.15.0",
+    "authentication": "Official Codex device flow; status was Logged in using ChatGPT",
+    "credentialHandling": "No local auth.json, token, or API key was copied into the devbox"
+  },
+  "repositories": [
+    {
+      "name": "pallets/click",
+      "commit": "cbd7a4109da16ce58f54c2a618b4c986e3041fcf",
+      "path": "/home/user/weave-lab/repos/click"
+    },
+    {
+      "name": "psf/requests",
+      "commit": "8f8b212de8c2129d7954c6cd373762880375620a",
+      "path": "/home/user/weave-lab/repos/requests"
+    },
+    {
+      "name": "expressjs/express",
+      "commit": "a3714473feb3d2908add734d340e7755fd85e0a3",
+      "path": "/home/user/weave-lab/repos/express"
+    }
+  ],
+  "trackedArtifacts": [
+    {
+      "path": "weave_codex/static/sandbox-trials.json",
+      "sha256": "07edc0d1eb531acf5144eb4e031471913508a12acf97d27756d0f6f1ac120b0a"
+    },
+    {
+      "path": "examples/sandbox-trials/click-default-map.json",
+      "sha256": "c78eccedeef1e9376098fdd73422149fa660223b761c33c3e4654f9a58babc8a"
+    },
+    {
+      "path": "examples/sandbox-trials/requests-proxy-precedence.json",
+      "sha256": "cd3f2bfd695d827e9f8fcf159b99db69ef66dfb8f4abf75739db7400dd3885e9"
+    },
+    {
+      "path": "examples/sandbox-trials/express-async-errors.json",
+      "sha256": "cf727d7091280ae6d82d011c2ef415b8c9ea72ec3d44ebecf1211ae67b303bad"
+    }
+  ],
+  "frozenCode": [
+    {
+      "path": "scripts/run_sandbox_repo_trials.py",
+      "sha256": "ed7cae90c8f092824257417537e755436a0a4fd23ead31e15e8e4132815e7097"
+    },
+    {
+      "path": "weave_codex/repo_trials.py",
+      "sha256": "2f15e81c7347f8eae0b7be04a0ecb843c11b1ccd61a24211287bf4b0d9ec1c5c"
+    }
+  ],
+  "rawReceipts": [
+    {
+      "trialId": "click-default-map",
+      "path": "/home/user/weave-lab/raw/repository-trials-v1/click-default-map.json",
+      "bytes": 710830,
+      "sha256": "4350772a6a611cdfa457f32f908df83531b2325aaa2d4da0d4895550ee5c2c10",
+      "published": false
+    },
+    {
+      "trialId": "requests-proxy-precedence",
+      "path": "/home/user/weave-lab/raw/repository-trials-v1/requests-proxy-precedence.json",
+      "bytes": 757656,
+      "sha256": "3702278dd2dd311d17ac84e4ab8acbe6bee36e72b35b4e3f345a16104a695822",
+      "published": false
+    },
+    {
+      "trialId": "express-async-errors",
+      "path": "/home/user/weave-lab/raw/repository-trials-v1/express-async-errors.json",
+      "bytes": 782235,
+      "sha256": "ddae9fcdfba5af12f1c1f30dfd2f2787c76069dc76883361dd3ab25b15baf39a",
+      "published": false
+    }
+  ],
+  "summaryContentId": "sha256:b21fec7d82a43da3d07e8cfab5f57386f4e0040ec2c25f44ff1dab3261f29fa3",
+  "claimBoundary": "Three one-rollout source-analysis acceptance trials; not a benchmark or quality comparison"
+}
