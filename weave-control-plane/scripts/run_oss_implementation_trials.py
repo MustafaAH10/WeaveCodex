@@ -132,7 +132,6 @@ def verify_plan(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _run_command(command: tuple[str, ...], cwd: Path, *, timeout: int = 600) -> dict[str, Any]:
-    started = time.monotonic()
     completed = subprocess.run(
         list(command), cwd=cwd, capture_output=True, text=True, timeout=timeout
     )
@@ -140,7 +139,6 @@ def _run_command(command: tuple[str, ...], cwd: Path, *, timeout: int = 600) -> 
     return {
         "command": list(command),
         "exitCode": completed.returncode,
-        "elapsedSeconds": round(time.monotonic() - started, 3),
         "outputSha256": _sha256_text(output),
     }
 

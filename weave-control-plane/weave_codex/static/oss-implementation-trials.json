@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "study": "Matched OSS implementation acceptance trials",
+  "planId": "sha256:653bbfd38ee47a73512e2365df5aea2dcfa2b58ff14b6389a07b2fa86f13c2d4",
+  "model": "gpt-5.6-terra",
+  "memory": "off",
+  "environment": "isolated Runloop devbox using the user's official Codex sign-in",
+  "design": {
+    "same": ["seeded starting repository", "task prompt", "model and reasoning effort", "workspace-write sandbox", "memory disabled", "external tests"],
+    "ordinary": "one normal Codex controller turn",
+    "weave": "a task-specific human-authored phase program with visible receipts",
+    "different": ["controller-turn program", "checkpoint placement", "turn ceiling"],
+    "order": "alternated by repository; one rollout per arm"
+  },
+  "aggregate": {
+    "repositories": 3,
+    "runs": 6,
+    "ordinaryAccepted": 3,
+    "weaveAccepted": 3,
+    "ordinaryControllerTurns": 3,
+    "weaveControllerTurns": 11,
+    "ordinaryModelCompletions": 18,
+    "weaveModelCompletions": 32
+  },
+  "results": [
+    {
+      "taskId": "jinja-autoescape-case",
+      "title": "Restore Jinja autoescape case handling",
+      "repository": "https://github.com/pallets/jinja",
+      "commit": "5ef70112a1ff19c05324ff889dd30405b1002044",
+      "seedPatchSha256": "sha256:b366289ab9c438bb79855587144f231b7f8879527a4218fd2c72d094b6c97ff6",
+      "executionOrder": ["ordinary", "weave"],
+      "weaveProgram": [
+        {"id": "diagnose-contract", "kind": "work", "name": "Diagnose the contract"},
+        {"id": "approve-repair", "kind": "checkpoint", "name": "Approve repair scope"},
+        {"id": "repair-and-test", "kind": "work", "name": "Repair and test"},
+        {"id": "verify-contract", "kind": "verify", "name": "Verify the contract"}
+      ],
+      "ordinary": {
+        "arm": "Ordinary Codex", "runStatus": "completed", "artifactAccepted": true,
+        "upstreamTest": {"command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_utils.py", "-k", "autoescape_select"], "exitCode": 0, "outputSha256": "sha256:1910ec3fc2d2eccebee1efcd7527b8c9c2c069187ba242c4afc55eb912690922"},
+        "independentTest": {"command": ["uv", "run", "--frozen", "python", "-c", "from jinja2.utils import select_autoescape; f=select_autoescape(enabled_extensions=('HtMl',), disabled_extensions=('.TxT',), default='fallback'); assert f('INDEX.HTML') is True; assert f('notes.txt') is False; assert f('other.bin') == 'fallback'; assert f(None) is True"], "exitCode": 0, "outputSha256": "sha256:87a6493ff443fe81ace68592fbce542ba9db6b1e5e9dedf99278726b66047e17"},
+        "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:78d7db7af7ba6d4ab056a3f80d17f7908cdf855c2369f3fa177b35b128dcd5c1", "controllerTurns": 1, "modelCompletions": 6,
+        "completedItemsByType": {"agentMessage": 4, "commandExecution": 3, "fileChange": 1, "reasoning": 4, "userMessage": 1},
+        "tokenUsage": {"inputTokens": 108821, "cachedInputTokens": 92672, "outputTokens": 1151, "reasoningOutputTokens": 301}, "completionStatus": "completed", "checkpoints": [], "phaseExecutions": [], "verification": []
+      },
+      "weave": {
+        "arm": "WeaveCodex", "runStatus": "completed", "artifactAccepted": true,
+        "upstreamTest": {"command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_utils.py", "-k", "autoescape_select"], "exitCode": 0, "outputSha256": "sha256:1910ec3fc2d2eccebee1efcd7527b8c9c2c069187ba242c4afc55eb912690922"},
+        "independentTest": {"command": ["uv", "run", "--frozen", "python", "-c", "from jinja2.utils import select_autoescape; f=select_autoescape(enabled_extensions=('HtMl',), disabled_extensions=('.TxT',), default='fallback'); assert f('INDEX.HTML') is True; assert f('notes.txt') is False; assert f('other.bin') == 'fallback'; assert f(None) is True"], "exitCode": 0, "outputSha256": "sha256:87a6493ff443fe81ace68592fbce542ba9db6b1e5e9dedf99278726b66047e17"},
+        "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:4266fa2c7bed31d316d1c155aa76965ab3a2be69c9ab77e4306be5c863761cb5", "controllerTurns": 3, "modelCompletions": 10,
+        "completedItemsByType": {"userMessage": 3, "agentMessage": 8, "commandExecution": 5, "reasoning": 6, "fileChange": 1},
+        "tokenUsage": {"inputTokens": 195242, "cachedInputTokens": 158464, "outputTokens": 1548, "reasoningOutputTokens": 160}, "completionStatus": "completed",
+        "checkpoints": [{"phaseId": "approve-repair", "decision": "accept"}],
+        "phaseExecutions": [
+          {"phaseId": "diagnose-contract", "kind": "work", "turnIds": ["01a0159b-e479-74e1-87dd-c1f3c79ce5f5"]},
+          {"phaseId": "approve-repair", "kind": "checkpoint", "turnIds": [], "decision": "accept"},
+          {"phaseId": "repair-and-test", "kind": "work", "turnIds": ["01a0159c-370e-7a80-a972-254af3c68f27"]},
+          {"phaseId": "verify-contract", "kind": "verify", "turnIds": ["01a015a1-2844-7531-9352-0dbad57a020c"]}
+        ],
+        "verification": [{"phaseId": "verify-contract", "attempt": 1, "status": "pass", "issues": []}]
+      }
+    },
+    {
+      "taskId": "starlette-header-invariants",
+      "title": "Repair Starlette header normalization and order",
+      "repository": "https://github.com/Kludex/starlette",
+      "commit": "398e5a3430eb1ddd33e1d48d766efe41426e231f",
+      "seedPatchSha256": "sha256:a69cec112882e754adbd81bb2e40a51088ea3e31f821e4d2da9a0205dbda781c",
+      "executionOrder": ["weave", "ordinary"],
+      "weaveProgram": [
+        {"id": "map-invariants", "kind": "work", "name": "Map header invariants"},
+        {"id": "design-cases", "kind": "work", "name": "Design adversarial cases"},
+        {"id": "implement-fix", "kind": "work", "name": "Implement the repair"},
+        {"id": "verify-invariants", "kind": "verify", "name": "Verify invariants"}
+      ],
+      "ordinary": {
+        "arm": "Ordinary Codex", "runStatus": "completed", "artifactAccepted": true,
+        "upstreamTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-m", "pytest", "-q", "tests/test_datastructures.py", "-k", "headers"], "exitCode": 0, "outputSha256": "sha256:d55aa7f02e607a98e79c1bd8794ce5ad9155e139f792a1428200dd59e8f62572"},
+        "independentTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-c", "from starlette.datastructures import Headers,MutableHeaders; h=Headers({'X-Custom':'v'}); assert h.raw==[(b'x-custom',b'v')]; m=MutableHeaders(raw=[(b'a',b'1'),(b'x',b'x'),(b'a',b'2')]); m['A']='3'; assert m.raw==[(b'a',b'3'),(b'x',b'x')]"], "exitCode": 0, "outputSha256": "sha256:01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"},
+        "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:fdd89b5072da874a4cd2f232ff0253fe61391d77fe96b8c7e65b28723c64461c", "controllerTurns": 1, "modelCompletions": 7,
+        "completedItemsByType": {"agentMessage": 4, "commandExecution": 5, "fileChange": 1, "reasoning": 4, "userMessage": 1},
+        "tokenUsage": {"inputTokens": 150588, "cachedInputTokens": 138496, "outputTokens": 1274, "reasoningOutputTokens": 192}, "completionStatus": "completed", "checkpoints": [], "phaseExecutions": [], "verification": []
+      },
+      "weave": {
+        "arm": "WeaveCodex", "runStatus": "completed", "artifactAccepted": true,
+        "upstreamTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-m", "pytest", "-q", "tests/test_datastructures.py", "-k", "headers"], "exitCode": 0, "outputSha256": "sha256:d55aa7f02e607a98e79c1bd8794ce5ad9155e139f792a1428200dd59e8f62572"},
+        "independentTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-c", "from starlette.datastructures import Headers,MutableHeaders; h=Headers({'X-Custom':'v'}); assert h.raw==[(b'x-custom',b'v')]; m=MutableHeaders(raw=[(b'a',b'1'),(b'x',b'x'),(b'a',b'2')]); m['A']='3'; assert m.raw==[(b'a',b'3'),(b'x',b'x')]"], "exitCode": 0, "outputSha256": "sha256:01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"},
+        "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:c58e9b3759ba17d8a039fa6219bd7b2e1d497f0af99594b5c3a5de7e12917d68", "controllerTurns": 4, "modelCompletions": 11,
+        "completedItemsByType": {"userMessage": 4, "reasoning": 8, "agentMessage": 9, "unknown": 1, "commandExecution": 5, "fileChange": 1},
+        "tokenUsage": {"inputTokens": 274494, "cachedInputTokens": 211456, "outputTokens": 2841, "reasoningOutputTokens": 592}, "completionStatus": "completed", "checkpoints": [],
+        "phaseExecutions": [
+          {"phaseId": "map-invariants", "kind": "work", "turnIds": ["01a015a1-6642-7793-8bc4-315ee8d64de3"]},
+          {"phaseId": "design-cases", "kind": "work", "turnIds": ["01a015a1-ae14-7de1-bd01-2d7952375fe7"]},
+          {"phaseId": "implement-fix", "kind": "work", "turnIds": ["01a015a1-f197-7b13-8405-3b5c456cd882"]},
+          {"phaseId": "verify-invariants", "kind": "verify", "turnIds": ["01a015a2-5072-71b1-aa9d-00f4a180c84c"]}
+        ],
+        "verification": [{"phaseId": "verify-invariants", "attempt": 1, "status": "pass", "issues": []}]
+      }
+    },
+    {
+      "taskId": "commander-option-identity",
+      "title": "Restore Commander option identity",
+      "repository": "https://github.com/tj/commander.js",
+      "commit": "ba6d13ddb4243e5913367734f8c159089ffe7834",
+      "seedPatchSha256": "sha256:7240612e00d088e4cb798bfc3fd3c891c2a18727a87ba3c9ea2ec93125d0123c",
+      "executionOrder": ["ordinary", "weave"],
+      "weaveProgram": [
+        {"id": "reproduce-identities", "kind": "work", "name": "Reproduce option identities"},
+        {"id": "approve-contract", "kind": "checkpoint", "name": "Approve contract"},
+        {"id": "repair-identities", "kind": "work", "name": "Repair option identity"},
+        {"id": "review-compatibility", "kind": "work", "name": "Review compatibility"},
+        {"id": "verify-options", "kind": "verify", "name": "Verify option behavior"}
+      ],
+      "ordinary": {
+        "arm": "Ordinary Codex", "runStatus": "completed", "artifactAccepted": true,
+        "upstreamTest": {"command": ["node", "--test", "tests/options.camelcase.test.js", "tests/options.dual-options.test.js"], "exitCode": 0, "outputSha256": "sha256:8e9968e91e6821b21ab780bae7662f4d1f2859101f3a1a1e6f090709bfbce35a"},
+        "independentTest": {"command": ["node", "--input-type=module", "-e", "import {Command} from './index.js'; const p=new Command(); p.option('--my-oPTION').option('--feature').option('--no-feature'); p.parse(['node','x','--my-oPTION','--no-feature']); const o=p.opts(); if(o.myOPTION!==true||o.feature!==false||Object.hasOwn(o,'noFeature')) process.exit(1);"], "exitCode": 0, "outputSha256": "sha256:01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"},
+        "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:040826e2624678f6ae1e5e6836f30a4771cd6c0f7151e1cace5ce192654eceee", "controllerTurns": 1, "modelCompletions": 5,
+        "completedItemsByType": {"agentMessage": 3, "commandExecution": 3, "fileChange": 1, "reasoning": 3, "userMessage": 1},
+        "tokenUsage": {"inputTokens": 87739, "cachedInputTokens": 69376, "outputTokens": 874, "reasoningOutputTokens": 157}, "completionStatus": "completed", "checkpoints": [], "phaseExecutions": [], "verification": []
+      },
+      "weave": {
+        "arm": "WeaveCodex", "runStatus": "completed", "artifactAccepted": true,
+        "upstreamTest": {"command": ["node", "--test", "tests/options.camelcase.test.js", "tests/options.dual-options.test.js"], "exitCode": 0, "outputSha256": "sha256:016291d1a9d057f297030c2325959f7ded042b3440d67dd8ba1ddb4792692ae2"},
+        "independentTest": {"command": ["node", "--input-type=module", "-e", "import {Command} from './index.js'; const p=new Command(); p.option('--my-oPTION').option('--feature').option('--no-feature'); p.parse(['node','x','--my-oPTION','--no-feature']); const o=p.opts(); if(o.myOPTION!==true||o.feature!==false||Object.hasOwn(o,'noFeature')) process.exit(1);"], "exitCode": 0, "outputSha256": "sha256:01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"},
+        "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:2f49837e615e1d8b7c1976397b284eb6cd2a123fa83003535cb8c0b72673064b", "controllerTurns": 4, "modelCompletions": 11,
+        "completedItemsByType": {"userMessage": 4, "agentMessage": 8, "commandExecution": 6, "reasoning": 7, "fileChange": 1},
+        "tokenUsage": {"inputTokens": 271990, "cachedInputTokens": 221696, "outputTokens": 1857, "reasoningOutputTokens": 473}, "completionStatus": "completed",
+        "checkpoints": [{"phaseId": "approve-contract", "decision": "accept"}],
+        "phaseExecutions": [
+          {"phaseId": "reproduce-identities", "kind": "work", "turnIds": ["01a015a3-983b-7893-a668-7c15c0e72a4e"]},
+          {"phaseId": "approve-contract", "kind": "checkpoint", "turnIds": [], "decision": "accept"},
+          {"phaseId": "repair-identities", "kind": "work", "turnIds": ["01a015a3-e309-7213-8f18-56c216ac4a1b"]},
+          {"phaseId": "review-compatibility", "kind": "work", "turnIds": ["01a015a4-1791-7791-b4a8-ce9de1d6b2f7"]},
+          {"phaseId": "verify-options", "kind": "verify", "turnIds": ["01a015a4-36b1-7c71-be29-b91b8a7aad40"]}
+        ],
+        "verification": [{"phaseId": "verify-options", "attempt": 1, "status": "pass", "issues": []}]
+      }
+    }
+  ],
+  "claimLimits": [
+    "These are seeded regressions, not defects found in the upstream repositories.",
+    "Three one-rollout product probes are not a benchmark or a quality estimate.",
+    "Weave receives more controller turns, so compute is intentionally not matched.",
+    "A checkpoint was accepted by the operating agent after inspecting the pending phase.",
+    "Memory was disabled in every arm.",
+    "Subscription telemetry is not invoice-level cost attribution."
+  ],
+  "summarySha256": "sha256:8743efa888d998858acdfa8815ec871e4aa5ebb4814f0342e99d4f12622d5262"
+}

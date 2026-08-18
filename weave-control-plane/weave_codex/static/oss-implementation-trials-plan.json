@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "study": "Matched OSS implementation acceptance trials",
+  "model": "gpt-5.6-terra",
+  "codexRuntime": {
+    "binary": "/home/user/.local/npm/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex",
+    "version": "codex-cli 0.147.0"
+  },
+  "reasoningEffort": "low",
+  "memory": "off",
+  "sandbox": "workspace-write",
+  "approvalPolicy": "never",
+  "ordinaryProgram": "one persistent Codex controller turn",
+  "tasks": [
+    {
+      "taskId": "jinja-autoescape-case",
+      "title": "Restore Jinja autoescape case handling",
+      "repository": "https://github.com/pallets/jinja",
+      "commit": "5ef70112a1ff19c05324ff889dd30405b1002044",
+      "seedDefinitionId": "sha256:080cbf83cd8737996cb6b88355d63039418d5477ae2b9cdd43fa2aebd3152df5",
+      "instructionsSha256": "sha256:e296ac35d207df86d884aa96425d4ef3818723706cfe96bae47f74a35059ed79",
+      "contextPaths": ["src/jinja2/utils.py", "tests/test_utils.py"],
+      "targetPaths": ["src/jinja2/utils.py"],
+      "upstreamTest": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_utils.py", "-k", "autoescape_select"],
+      "hiddenTestSha256": "sha256:eff365504b6b54689e93572579ede06992ebab826db113d00a2b10f68ea3dbda",
+      "weaveProgram": [
+        {"id": "diagnose-contract", "kind": "work", "name": "Diagnose the contract", "goal": "Read the implementation, docstring, and focused tests. Explain the two case-normalization boundaries and propose the smallest repair. Do not edit."},
+        {"id": "approve-repair", "kind": "checkpoint", "name": "Approve repair scope", "question": "Is the diagnosis narrow enough to proceed with the implementation?"},
+        {"id": "repair-and-test", "kind": "work", "name": "Repair and test", "goal": "Implement the approved minimal repair and run the focused upstream test. Inspect the diff for unrelated changes."},
+        {"id": "verify-contract", "kind": "verify", "name": "Verify the contract", "criteria": "Configured extensions and filenames match case-insensitively; leading dots, None, and defaults retain their documented behavior; focused tests pass.", "maxRepairs": 1}
+      ],
+      "order": ["ordinary", "weave"]
+    },
+    {
+      "taskId": "starlette-header-invariants",
+      "title": "Repair Starlette header normalization and order",
+      "repository": "https://github.com/Kludex/starlette",
+      "commit": "398e5a3430eb1ddd33e1d48d766efe41426e231f",
+      "seedDefinitionId": "sha256:81cb2cd9d93dd77f30efcf3e54c4b7b297f456ce181ac5b908c33d2781c7dcc8",
+      "instructionsSha256": "sha256:635ff63642714b7cfa032862b35ac077bf0bc6966e3f81af253f5a42fa4aa3b9",
+      "contextPaths": ["starlette/datastructures.py", "tests/test_datastructures.py"],
+      "targetPaths": ["starlette/datastructures.py"],
+      "upstreamTest": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-m", "pytest", "-q", "tests/test_datastructures.py", "-k", "headers"],
+      "hiddenTestSha256": "sha256:27142885ceb4d0eb61a45058f882e93da528bcacb3814b87450189e7f693e1d6",
+      "weaveProgram": [
+        {"id": "map-invariants", "kind": "work", "name": "Map header invariants", "goal": "Inspect construction, lookup, mutation, and existing tests. Map where key normalization and insertion-order preservation are enforced. Do not edit.", "reasoningEffort": "medium"},
+        {"id": "design-cases", "kind": "work", "name": "Design adversarial cases", "goal": "Before editing, reason through mixed-case mapping keys and non-adjacent duplicate raw headers. State the expected raw-list behavior."},
+        {"id": "implement-fix", "kind": "work", "name": "Implement the repair", "goal": "Repair both invariants with a minimal change to datastructures.py and run the focused header tests. Do not modify tests."},
+        {"id": "verify-invariants", "kind": "verify", "name": "Verify invariants", "criteria": "Mixed-case mapping keys normalize to lowercase bytes; duplicate assignment retains the first occurrence position and removes later duplicates; focused tests pass; only datastructures.py changed.", "maxRepairs": 1}
+      ],
+      "order": ["weave", "ordinary"]
+    },
+    {
+      "taskId": "commander-option-identity",
+      "title": "Restore Commander option identity",
+      "repository": "https://github.com/tj/commander.js",
+      "commit": "ba6d13ddb4243e5913367734f8c159089ffe7834",
+      "seedDefinitionId": "sha256:10cfbe1a85bf8479496ee339ad410156f7d66952ffcdef61445dce76f606e4bb",
+      "instructionsSha256": "sha256:cd32c83eb19e7e736cf08a8e22103787ea08f070917301bf6839ae6cc52f4353",
+      "contextPaths": ["lib/option.js", "tests/options.camelcase.test.js", "tests/options.dual-options.test.js"],
+      "targetPaths": ["lib/option.js"],
+      "upstreamTest": ["node", "--test", "tests/options.camelcase.test.js", "tests/options.dual-options.test.js"],
+      "hiddenTestSha256": "sha256:6b44e1447cfb79a8671463285ece3244e5b8e6235a876de20852e890fed1b467",
+      "weaveProgram": [
+        {"id": "reproduce-identities", "kind": "work", "name": "Reproduce option identities", "goal": "Inspect the option-name conversion and dual-option pairing code. Reproduce the failures with focused tests and identify both violated contracts. Do not edit."},
+        {"id": "approve-contract", "kind": "checkpoint", "name": "Approve contract", "question": "Do the identified contracts match the existing test evidence?"},
+        {"id": "repair-identities", "kind": "work", "name": "Repair option identity", "goal": "Implement the smallest repair in lib/option.js and run both focused test files."},
+        {"id": "review-compatibility", "kind": "work", "name": "Review compatibility", "goal": "Review the diff against mixed-case option names and positive/negative duals. Correct any remaining issue and rerun focused tests."},
+        {"id": "verify-options", "kind": "verify", "name": "Verify option behavior", "criteria": "Camelcase preserves existing character case after each dash; --feature and --no-feature share the feature attribute; focused tests pass; only option.js changed.", "maxRepairs": 0}
+      ],
+      "order": ["ordinary", "weave"]
+    }
+  ],
+  "plannedRuns": 6,
+  "ordering": "alternated by task",
+  "frozenAtUtc": "2026-08-18T16:01:05.661001+00:00",
+  "planId": "sha256:653bbfd38ee47a73512e2365df5aea2dcfa2b58ff14b6389a07b2fa86f13c2d4"
+}

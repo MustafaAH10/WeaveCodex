@@ -16,9 +16,23 @@
         <div><p>Choose one existing Codex task and one Weave run. The page compares observable structure and human coordination—not hidden reasoning or answer quality.</p><span>Deterministic projection · no model call</span></div>
       </header>
 
+      <section class="matched-evidence oss-evidence" aria-labelledby="oss-title">
+        <header>
+          <div><p>MATCHED OSS REPAIRS</p><h2 id="oss-title">Three repositories, three different Weave programs</h2></div>
+          <p>Jinja, Starlette, and Commander were cloned at pinned commits. Each arm received the same declared seeded regression, prompt, model, sandbox, memory-off setting, and external tests. Only the controller-level program differed.</p>
+        </header>
+        <div id="oss-summary" class="matched-summary"><span>Loading frozen OSS receipts…</span></div>
+        <div id="oss-trials" class="matched-trials"></div>
+        <div class="matched-reading">
+          <b>The result, without spin</b>
+          <p>Both systems repaired all three regressions. Ordinary Codex used 18 model completions; Weave used 32. These tasks did not need the extra control. Weave's measured contribution was explicit goal phases, two reached human checkpoints, and three first-pass verifier receipts—not a quality gain.</p>
+          <a href="/oss-implementation-trials-plan.json">Inspect the frozen plan</a>
+        </div>
+      </section>
+
       <section class="matched-evidence" aria-labelledby="matched-title">
         <header>
-          <div><p>MATCHED PRODUCT TRIALS</p><h2 id="matched-title">Three tasks, memory off, six real runs</h2></div>
+          <div><p>EARLIER PRODUCT FIXTURES</p><h2 id="matched-title">Three small tasks, memory off, six runs</h2></div>
           <p>Each fixture was run once with ordinary Codex and once with a three-stage Weave harness. The scorer checks files—not prose. This is a small product probe, not a benchmark.</p>
         </header>
         <div id="matched-summary" class="matched-summary"><span>Loading preserved receipts…</span></div>

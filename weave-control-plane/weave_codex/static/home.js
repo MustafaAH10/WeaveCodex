@@ -169,6 +169,12 @@ function evidenceCard(result) {
   return `<article class="evidence-card"><header><span>${grade.passed ? "ARTIFACT ACCEPTED" : "REVIEW"}</span><em>${escapeHtml(String(result.commit || "").slice(0, 12))}</em></header><h3>${escapeHtml(result.title)}</h3><p>${escapeHtml(result.question)}</p><dl><div><dt>Goal phases</dt><dd>${escapeHtml(receipt.controllerTurns)}</dd></div><div><dt>Codex completions</dt><dd>${escapeHtml(receipt.modelCompletions)}</dd></div><div><dt>Commands</dt><dd>${commands}</dd></div></dl></article>`;
 }
 
+function ossEvidenceCard(result) {
+  const ordinary = result.ordinary || {};
+  const weave = result.weave || {};
+  return `<article class="evidence-card"><header><span>${ordinary.artifactAccepted && weave.artifactAccepted ? "BOTH REPAIRS ACCEPTED" : "OUTCOMES DIFFERED"}</span><em>${escapeHtml(String(result.commit || "").slice(0, 12))}</em></header><h3>${escapeHtml(result.title)}</h3><p>${escapeHtml((result.weaveProgram || []).map((phase) => phase.name).join(" → "))}</p><dl><div><dt>Ordinary</dt><dd>${escapeHtml(ordinary.modelCompletions)} completions</dd></div><div><dt>Weave</dt><dd>${escapeHtml(weave.modelCompletions)} completions</dd></div><div><dt>Checkpoint</dt><dd>${escapeHtml((weave.checkpoints || []).length)}</dd></div></dl></article>`;
+}
+
 async function init() {
   try {
     securitySession = await request("/api/session");
@@ -180,10 +186,15 @@ async function init() {
     $("#account-state").textContent = "Local Codex is not connected";
   }
   try {
-    const evidence = await request("/sandbox-trials.json");
-    $("#evidence-cards").innerHTML = (evidence.results || []).map(evidenceCard).join("");
+    const evidence = await request("/oss-implementation-trials.json");
+    $("#evidence-cards").innerHTML = (evidence.results || []).map(ossEvidenceCard).join("");
   } catch (error) {
-    $("#evidence-cards").innerHTML = `<p>Preserved trials are unavailable: ${escapeHtml(errorMessage(error))}</p>`;
+    try {
+      const fallback = await request("/sandbox-trials.json");
+      $("#evidence-cards").innerHTML = (fallback.results || []).map(evidenceCard).join("");
+    } catch (_) {
+      $("#evidence-cards").innerHTML = `<p>Preserved trials are unavailable: ${escapeHtml(errorMessage(error))}</p>`;
+    }
   }
   $$(".mode").forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
   $$("[data-prompt]").forEach((button) => button.addEventListener("click", () => { $("#task-input").value = button.dataset.prompt; $("#task-input").focus(); }));

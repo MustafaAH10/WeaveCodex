@@ -108,6 +108,34 @@ async function loadMatchedTrials() {
   }
 }
 
+function ossTrialHtml(result) {
+  const ordinary = result.ordinary;
+  const weave = result.weave;
+  const phases = (result.weaveProgram || []).map((phase) => `<span class="${escapeHtml(phase.kind)}">${escapeHtml(phase.name)}</span>`).join("");
+  const checkpoints = weave.checkpoints || [];
+  return `<article class="trial-card oss-card">
+    <header><div><span>${escapeHtml(new URL(result.repository).pathname.replace(/^\//, ""))}</span><h3>${escapeHtml(result.title)}</h3></div><em>${ordinary.artifactAccepted && weave.artifactAccepted ? "Both repairs accepted" : "Outcomes differed"}</em></header>
+    <div class="phase-strip" aria-label="Weave program">${phases}</div>
+    <div class="trial-arms">
+      <section><b>Ordinary Codex</b><strong>${ordinary.artifactAccepted ? "Accepted" : "Failed"}</strong><p>${ordinary.controllerTurns} controller turn · ${ordinary.modelCompletions} completions</p><small>${formatNumber(ordinary.tokenUsage.inputTokens)} input tokens · independent test ${ordinary.independentTest.exitCode === 0 ? "passed" : "failed"}</small></section>
+      <section class="weave-arm"><b>WeaveCodex</b><strong>${weave.artifactAccepted ? "Accepted" : "Failed"}</strong><p>${weave.controllerTurns} controller turns · ${weave.modelCompletions} completions</p><small>${formatNumber(weave.tokenUsage.inputTokens)} input tokens · ${checkpoints.length} checkpoint${checkpoints.length === 1 ? "" : "s"}</small></section>
+    </div>
+    <dl><div><dt>Source</dt><dd>${escapeHtml(result.commit.slice(0, 12))} · declared seed ${escapeHtml(result.seedPatchSha256.slice(7, 19))}</dd></div><div><dt>Final diff</dt><dd>${ordinary.changedTrackedPaths.length || weave.changedTrackedPaths.length ? "Target-only changes" : "Both restored the exact upstream bytes"}</dd></div><div><dt>Verifier</dt><dd>${weave.verification?.[0]?.status === "pass" ? "Passed on first attempt" : "No first-pass verifier receipt"}</dd></div></dl>
+  </article>`;
+}
+
+async function loadOssTrials() {
+  const summary = $("#oss-summary");
+  try {
+    const data = await request("/oss-implementation-trials.json");
+    const aggregate = data.aggregate || {};
+    summary.innerHTML = `<div><b>${aggregate.ordinaryAccepted}/${aggregate.repositories}</b><span>ordinary repairs accepted</span></div><div><b>${aggregate.weaveAccepted}/${aggregate.repositories}</b><span>Weave repairs accepted</span></div><div><b>${aggregate.ordinaryModelCompletions}</b><span>ordinary model completions</span></div><div><b>${aggregate.weaveModelCompletions}</b><span>Weave model completions</span></div>`;
+    $("#oss-trials").innerHTML = (data.results || []).map(ossTrialHtml).join("");
+  } catch (error) {
+    summary.innerHTML = `<span>OSS evidence unavailable: ${escapeHtml(error.message)}</span>`;
+  }
+}
+
 function renderMatrix() {
   const codex = codexProjection;
   const weave = weaveReceipt;
@@ -141,7 +169,7 @@ async function selectWeave(runId) {
 
 async function init() {
   try {
-    await loadMatchedTrials();
+    await Promise.all([loadOssTrials(), loadMatchedTrials()]);
     const session = await request("/api/session"); csrfToken = session.csrfToken; cwd = session.workspaceRoot;
     const [runs, threads] = await Promise.all([request("/api/runs"), request(`/api/threads?cwd=${encodeURIComponent(cwd)}`)]);
     $("#weave-select").innerHTML = `<option value="">Choose a Weave run</option>${(runs.runs || []).map((run) => `<option value="${escapeHtml(run.runId)}">${escapeHtml(`${run.phaseCount || 0} phases · ${run.turnCount || 0} turns · ${run.runId.slice(0, 8)}`)}</option>`).join("")}`;

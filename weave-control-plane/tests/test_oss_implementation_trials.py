@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from dataclasses import replace
 from pathlib import Path
@@ -12,6 +13,7 @@ from weave_codex.oss_implementation_trials import (
     materialize_seeded_repository,
     ordinary_prompt,
     seed_digest,
+    sha256_json,
     tracked_changes,
     weave_manifest,
 )
@@ -98,3 +100,31 @@ def test_phase_programs_are_genuinely_different(tmp_path: Path) -> None:
         ("work", "work", "work", "verify"),
         ("work", "checkpoint", "work", "work", "verify"),
     ]
+
+
+def test_preserved_oss_study_ids_and_results_are_self_consistent() -> None:
+    root = Path(__file__).parents[1] / "weave_codex" / "static"
+    plan = json.loads((root / "oss-implementation-trials-plan.json").read_text())
+    plan_id = plan.pop("planId")
+    plan.pop("frozenAtUtc")
+    assert plan_id == sha256_json(plan)
+
+    summary = json.loads((root / "oss-implementation-trials.json").read_text())
+    summary_id = summary.pop("summarySha256")
+    assert summary_id == sha256_json(summary)
+    assert summary["planId"] == plan_id
+    assert summary["aggregate"] == {
+        "repositories": 3,
+        "runs": 6,
+        "ordinaryAccepted": 3,
+        "weaveAccepted": 3,
+        "ordinaryControllerTurns": 3,
+        "weaveControllerTurns": 11,
+        "ordinaryModelCompletions": 18,
+        "weaveModelCompletions": 32,
+    }
+    assert all(
+        result[arm]["artifactAccepted"]
+        for result in summary["results"]
+        for arm in ("ordinary", "weave")
+    )

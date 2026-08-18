@@ -49,6 +49,11 @@ report three real memory-off pairs and their compute/observability tradeoff.
 The [Runloop repository trial report](weave-control-plane/docs/RUNLOOP_REPOSITORY_TRIALS.md)
 documents three more complex goal-phase programs, independent test exits, and verified sandbox
 file references.
+The newer [matched OSS implementation study](weave-control-plane/docs/OSS_IMPLEMENTATION_TRIALS.md)
+compares ordinary Codex and three different hand-authored Weave programs on pinned Jinja,
+Starlette, and Commander regressions. Both arms repaired 3/3; ordinary Codex used 18 model
+completions versus Weave's 32, while Weave added two reached checkpoints and three first-pass
+verifier receipts. The result supports a control/observability claim, not a quality advantage.
 
 The `weave-control-plane/` directory is additive. The pinned Codex source remains available below
 it so the integration can be audited and updated against upstream.
