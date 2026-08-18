@@ -135,12 +135,11 @@ def _run_command(command: tuple[str, ...], cwd: Path, *, timeout: int = 600) -> 
     completed = subprocess.run(
         list(command), cwd=cwd, capture_output=True, text=True, timeout=timeout
     )
-    output = completed.stdout + "\n" + completed.stderr
-    return {
+    value = {
         "command": list(command),
         "exitCode": completed.returncode,
-        "outputSha256": _sha256_text(output),
     }
+    return {**value, "resultId": sha256_json(value)}
 
 
 def _event_counts(events: list[dict[str, Any]]) -> dict[str, Any]:

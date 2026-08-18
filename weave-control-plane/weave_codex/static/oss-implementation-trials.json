@@ -38,16 +38,16 @@
       ],
       "ordinary": {
         "arm": "Ordinary Codex", "runStatus": "completed", "artifactAccepted": true,
-        "upstreamTest": {"command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_utils.py", "-k", "autoescape_select"], "exitCode": 0, "outputSha256": "sha256:1910ec3fc2d2eccebee1efcd7527b8c9c2c069187ba242c4afc55eb912690922"},
-        "independentTest": {"command": ["uv", "run", "--frozen", "python", "-c", "from jinja2.utils import select_autoescape; f=select_autoescape(enabled_extensions=('HtMl',), disabled_extensions=('.TxT',), default='fallback'); assert f('INDEX.HTML') is True; assert f('notes.txt') is False; assert f('other.bin') == 'fallback'; assert f(None) is True"], "exitCode": 0, "outputSha256": "sha256:87a6493ff443fe81ace68592fbce542ba9db6b1e5e9dedf99278726b66047e17"},
+        "upstreamTest": {"command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_utils.py", "-k", "autoescape_select"], "exitCode": 0, "resultId": "sha256:69b3b22358d0de826d4c2a50e4c00e87249a7e0f04b6f7c03358875d111d5685"},
+        "independentTest": {"command": ["uv", "run", "--frozen", "python", "-c", "from jinja2.utils import select_autoescape; f=select_autoescape(enabled_extensions=('HtMl',), disabled_extensions=('.TxT',), default='fallback'); assert f('INDEX.HTML') is True; assert f('notes.txt') is False; assert f('other.bin') == 'fallback'; assert f(None) is True"], "exitCode": 0, "resultId": "sha256:a5cb3861c5d2f578cd718ba185dda62baca0ae042942b1421804595234c0c511"},
         "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:78d7db7af7ba6d4ab056a3f80d17f7908cdf855c2369f3fa177b35b128dcd5c1", "controllerTurns": 1, "modelCompletions": 6,
         "completedItemsByType": {"agentMessage": 4, "commandExecution": 3, "fileChange": 1, "reasoning": 4, "userMessage": 1},
         "tokenUsage": {"inputTokens": 108821, "cachedInputTokens": 92672, "outputTokens": 1151, "reasoningOutputTokens": 301}, "completionStatus": "completed", "checkpoints": [], "phaseExecutions": [], "verification": []
       },
       "weave": {
         "arm": "WeaveCodex", "runStatus": "completed", "artifactAccepted": true,
-        "upstreamTest": {"command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_utils.py", "-k", "autoescape_select"], "exitCode": 0, "outputSha256": "sha256:1910ec3fc2d2eccebee1efcd7527b8c9c2c069187ba242c4afc55eb912690922"},
-        "independentTest": {"command": ["uv", "run", "--frozen", "python", "-c", "from jinja2.utils import select_autoescape; f=select_autoescape(enabled_extensions=('HtMl',), disabled_extensions=('.TxT',), default='fallback'); assert f('INDEX.HTML') is True; assert f('notes.txt') is False; assert f('other.bin') == 'fallback'; assert f(None) is True"], "exitCode": 0, "outputSha256": "sha256:87a6493ff443fe81ace68592fbce542ba9db6b1e5e9dedf99278726b66047e17"},
+        "upstreamTest": {"command": ["uv", "run", "--frozen", "pytest", "-q", "tests/test_utils.py", "-k", "autoescape_select"], "exitCode": 0, "resultId": "sha256:69b3b22358d0de826d4c2a50e4c00e87249a7e0f04b6f7c03358875d111d5685"},
+        "independentTest": {"command": ["uv", "run", "--frozen", "python", "-c", "from jinja2.utils import select_autoescape; f=select_autoescape(enabled_extensions=('HtMl',), disabled_extensions=('.TxT',), default='fallback'); assert f('INDEX.HTML') is True; assert f('notes.txt') is False; assert f('other.bin') == 'fallback'; assert f(None) is True"], "exitCode": 0, "resultId": "sha256:a5cb3861c5d2f578cd718ba185dda62baca0ae042942b1421804595234c0c511"},
         "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:4266fa2c7bed31d316d1c155aa76965ab3a2be69c9ab77e4306be5c863761cb5", "controllerTurns": 3, "modelCompletions": 10,
         "completedItemsByType": {"userMessage": 3, "agentMessage": 8, "commandExecution": 5, "reasoning": 6, "fileChange": 1},
         "tokenUsage": {"inputTokens": 195242, "cachedInputTokens": 158464, "outputTokens": 1548, "reasoningOutputTokens": 160}, "completionStatus": "completed",
@@ -76,16 +76,16 @@
       ],
       "ordinary": {
         "arm": "Ordinary Codex", "runStatus": "completed", "artifactAccepted": true,
-        "upstreamTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-m", "pytest", "-q", "tests/test_datastructures.py", "-k", "headers"], "exitCode": 0, "outputSha256": "sha256:d55aa7f02e607a98e79c1bd8794ce5ad9155e139f792a1428200dd59e8f62572"},
-        "independentTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-c", "from starlette.datastructures import Headers,MutableHeaders; h=Headers({'X-Custom':'v'}); assert h.raw==[(b'x-custom',b'v')]; m=MutableHeaders(raw=[(b'a',b'1'),(b'x',b'x'),(b'a',b'2')]); m['A']='3'; assert m.raw==[(b'a',b'3'),(b'x',b'x')]"], "exitCode": 0, "outputSha256": "sha256:01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"},
+        "upstreamTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-m", "pytest", "-q", "tests/test_datastructures.py", "-k", "headers"], "exitCode": 0, "resultId": "sha256:c6c6825f6e381276d42a2670eefcc1af8f5a74e86e437ae7189b5fe92ac884d6"},
+        "independentTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-c", "from starlette.datastructures import Headers,MutableHeaders; h=Headers({'X-Custom':'v'}); assert h.raw==[(b'x-custom',b'v')]; m=MutableHeaders(raw=[(b'a',b'1'),(b'x',b'x'),(b'a',b'2')]); m['A']='3'; assert m.raw==[(b'a',b'3'),(b'x',b'x')]"], "exitCode": 0, "resultId": "sha256:9a879b5f9f06a84d8ebe1f76b3fab7a0a84c8a3df30536df1afc059f9e54db81"},
         "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:fdd89b5072da874a4cd2f232ff0253fe61391d77fe96b8c7e65b28723c64461c", "controllerTurns": 1, "modelCompletions": 7,
         "completedItemsByType": {"agentMessage": 4, "commandExecution": 5, "fileChange": 1, "reasoning": 4, "userMessage": 1},
         "tokenUsage": {"inputTokens": 150588, "cachedInputTokens": 138496, "outputTokens": 1274, "reasoningOutputTokens": 192}, "completionStatus": "completed", "checkpoints": [], "phaseExecutions": [], "verification": []
       },
       "weave": {
         "arm": "WeaveCodex", "runStatus": "completed", "artifactAccepted": true,
-        "upstreamTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-m", "pytest", "-q", "tests/test_datastructures.py", "-k", "headers"], "exitCode": 0, "outputSha256": "sha256:d55aa7f02e607a98e79c1bd8794ce5ad9155e139f792a1428200dd59e8f62572"},
-        "independentTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-c", "from starlette.datastructures import Headers,MutableHeaders; h=Headers({'X-Custom':'v'}); assert h.raw==[(b'x-custom',b'v')]; m=MutableHeaders(raw=[(b'a',b'1'),(b'x',b'x'),(b'a',b'2')]); m['A']='3'; assert m.raw==[(b'a',b'3'),(b'x',b'x')]"], "exitCode": 0, "outputSha256": "sha256:01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"},
+        "upstreamTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-m", "pytest", "-q", "tests/test_datastructures.py", "-k", "headers"], "exitCode": 0, "resultId": "sha256:c6c6825f6e381276d42a2670eefcc1af8f5a74e86e437ae7189b5fe92ac884d6"},
+        "independentTest": {"command": ["/home/user/weave-lab/matched-oss-v2/venvs/starlette/bin/python", "-c", "from starlette.datastructures import Headers,MutableHeaders; h=Headers({'X-Custom':'v'}); assert h.raw==[(b'x-custom',b'v')]; m=MutableHeaders(raw=[(b'a',b'1'),(b'x',b'x'),(b'a',b'2')]); m['A']='3'; assert m.raw==[(b'a',b'3'),(b'x',b'x')]"], "exitCode": 0, "resultId": "sha256:9a879b5f9f06a84d8ebe1f76b3fab7a0a84c8a3df30536df1afc059f9e54db81"},
         "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:c58e9b3759ba17d8a039fa6219bd7b2e1d497f0af99594b5c3a5de7e12917d68", "controllerTurns": 4, "modelCompletions": 11,
         "completedItemsByType": {"userMessage": 4, "reasoning": 8, "agentMessage": 9, "unknown": 1, "commandExecution": 5, "fileChange": 1},
         "tokenUsage": {"inputTokens": 274494, "cachedInputTokens": 211456, "outputTokens": 2841, "reasoningOutputTokens": 592}, "completionStatus": "completed", "checkpoints": [],
@@ -114,16 +114,16 @@
       ],
       "ordinary": {
         "arm": "Ordinary Codex", "runStatus": "completed", "artifactAccepted": true,
-        "upstreamTest": {"command": ["node", "--test", "tests/options.camelcase.test.js", "tests/options.dual-options.test.js"], "exitCode": 0, "outputSha256": "sha256:8e9968e91e6821b21ab780bae7662f4d1f2859101f3a1a1e6f090709bfbce35a"},
-        "independentTest": {"command": ["node", "--input-type=module", "-e", "import {Command} from './index.js'; const p=new Command(); p.option('--my-oPTION').option('--feature').option('--no-feature'); p.parse(['node','x','--my-oPTION','--no-feature']); const o=p.opts(); if(o.myOPTION!==true||o.feature!==false||Object.hasOwn(o,'noFeature')) process.exit(1);"], "exitCode": 0, "outputSha256": "sha256:01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"},
+        "upstreamTest": {"command": ["node", "--test", "tests/options.camelcase.test.js", "tests/options.dual-options.test.js"], "exitCode": 0, "resultId": "sha256:db983d8ed3697a105f729b879a0c954f656f150f9bee20e3f533d21546a7fe2e"},
+        "independentTest": {"command": ["node", "--input-type=module", "-e", "import {Command} from './index.js'; const p=new Command(); p.option('--my-oPTION').option('--feature').option('--no-feature'); p.parse(['node','x','--my-oPTION','--no-feature']); const o=p.opts(); if(o.myOPTION!==true||o.feature!==false||Object.hasOwn(o,'noFeature')) process.exit(1);"], "exitCode": 0, "resultId": "sha256:3bbaabee0452a01893f0a05d325f6ce70a4033ddb9edd553d7e6fabfb18b89a8"},
         "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:040826e2624678f6ae1e5e6836f30a4771cd6c0f7151e1cace5ce192654eceee", "controllerTurns": 1, "modelCompletions": 5,
         "completedItemsByType": {"agentMessage": 3, "commandExecution": 3, "fileChange": 1, "reasoning": 3, "userMessage": 1},
         "tokenUsage": {"inputTokens": 87739, "cachedInputTokens": 69376, "outputTokens": 874, "reasoningOutputTokens": 157}, "completionStatus": "completed", "checkpoints": [], "phaseExecutions": [], "verification": []
       },
       "weave": {
         "arm": "WeaveCodex", "runStatus": "completed", "artifactAccepted": true,
-        "upstreamTest": {"command": ["node", "--test", "tests/options.camelcase.test.js", "tests/options.dual-options.test.js"], "exitCode": 0, "outputSha256": "sha256:016291d1a9d057f297030c2325959f7ded042b3440d67dd8ba1ddb4792692ae2"},
-        "independentTest": {"command": ["node", "--input-type=module", "-e", "import {Command} from './index.js'; const p=new Command(); p.option('--my-oPTION').option('--feature').option('--no-feature'); p.parse(['node','x','--my-oPTION','--no-feature']); const o=p.opts(); if(o.myOPTION!==true||o.feature!==false||Object.hasOwn(o,'noFeature')) process.exit(1);"], "exitCode": 0, "outputSha256": "sha256:01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"},
+        "upstreamTest": {"command": ["node", "--test", "tests/options.camelcase.test.js", "tests/options.dual-options.test.js"], "exitCode": 0, "resultId": "sha256:db983d8ed3697a105f729b879a0c954f656f150f9bee20e3f533d21546a7fe2e"},
+        "independentTest": {"command": ["node", "--input-type=module", "-e", "import {Command} from './index.js'; const p=new Command(); p.option('--my-oPTION').option('--feature').option('--no-feature'); p.parse(['node','x','--my-oPTION','--no-feature']); const o=p.opts(); if(o.myOPTION!==true||o.feature!==false||Object.hasOwn(o,'noFeature')) process.exit(1);"], "exitCode": 0, "resultId": "sha256:3bbaabee0452a01893f0a05d325f6ce70a4033ddb9edd553d7e6fabfb18b89a8"},
         "changedTrackedPaths": [], "targetOnly": true, "finalDiffSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "receiptId": "sha256:2f49837e615e1d8b7c1976397b284eb6cd2a123fa83003535cb8c0b72673064b", "controllerTurns": 4, "modelCompletions": 11,
         "completedItemsByType": {"userMessage": 4, "agentMessage": 8, "commandExecution": 6, "reasoning": 7, "fileChange": 1},
         "tokenUsage": {"inputTokens": 271990, "cachedInputTokens": 221696, "outputTokens": 1857, "reasoningOutputTokens": 473}, "completionStatus": "completed",
@@ -147,5 +147,5 @@
     "Memory was disabled in every arm.",
     "Subscription telemetry is not invoice-level cost attribution."
   ],
-  "summarySha256": "sha256:8743efa888d998858acdfa8815ec871e4aa5ebb4814f0342e99d4f12622d5262"
+  "summarySha256": "sha256:a71c318bba5e3b7ee2ccd01760204b596282698cdeb3ec23bf7d2abba665d66c"
 }
