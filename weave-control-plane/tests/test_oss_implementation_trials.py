@@ -80,6 +80,9 @@ def test_command_placeholder_is_resolved() -> None:
     command = format_command(task.upstream_test, starlette_python="/tmp/python")
     assert command[0] == "/tmp/python"
     assert all("{" not in part for part in command)
+    hidden = format_command(task.hidden_test, starlette_python="/tmp/python")
+    assert hidden[0] == "/tmp/python"
+    assert "{'X-Custom':'v'}" in hidden[-1]
 
 
 def test_phase_programs_are_genuinely_different(tmp_path: Path) -> None:

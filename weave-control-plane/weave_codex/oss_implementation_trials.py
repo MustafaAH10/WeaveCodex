@@ -403,7 +403,7 @@ def materialize_seeded_repository(
 
 
 def format_command(command: tuple[str, ...], *, starlette_python: str) -> tuple[str, ...]:
-    return tuple(part.format(starlette_python=starlette_python) for part in command)
+    return tuple(part.replace("{starlette_python}", starlette_python) for part in command)
 
 
 def ordinary_prompt(task: OssImplementationTask, test_command: tuple[str, ...]) -> str:
