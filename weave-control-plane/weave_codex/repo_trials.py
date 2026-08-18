@@ -328,8 +328,16 @@ def grade_evidence(trial: RepositoryTrial, repo: Path) -> dict[str, Any]:
         ).splitlines()
         if line
     ]
-    outside = [path for path in status_paths if not path.startswith(".weave/")]
-    check("source-unchanged", not outside, ", ".join(outside) or "only .weave artifacts")
+    runtime_prefixes = (".weave/", ".weave-codex/")
+    outside = [path for path in status_paths if not path.startswith(runtime_prefixes)]
+    outside_detail = ", ".join(outside[:10])
+    if len(outside) > 10:
+        outside_detail += f" (+{len(outside) - 10} more)"
+    check(
+        "source-unchanged",
+        not outside,
+        outside_detail or "only .weave artifact and .weave-codex runtime evidence",
+    )
     return {
         "passed": all(item["passed"] for item in checks),
         "checks": checks,

@@ -25,6 +25,11 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--codex-bin", default=shutil.which("codex") or "codex")
     value.add_argument("--model", default="gpt-5.6-terra")
     value.add_argument("--execute", action="store_true")
+    value.add_argument(
+        "--regrade-existing",
+        action="store_true",
+        help="Rebuild the public summary from preserved raw receipts without calling Codex.",
+    )
     value.add_argument("--confirm-three-subscription-harnesses", action="store_true")
     return value
 
@@ -109,9 +114,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 "maximumControllerTurns": 4,
             }
         )
-    if not args.execute:
+    if not args.execute and not args.regrade_existing:
         return {"state": "dry-run", "memory": "off", "model": args.model, "plans": plans}
-    if not args.confirm_three_subscription_harnesses:
+    if args.execute and not args.confirm_three_subscription_harnesses:
         raise SystemExit("--execute requires --confirm-three-subscription-harnesses")
 
     args.raw_root.mkdir(parents=True, exist_ok=True)
@@ -119,11 +124,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     for trial, plan in zip(TRIALS, plans, strict=True):
         repo = args.repos_root / trial.directory
         manifest = build_trial_manifest(trial, repo, model=args.model)
-        session = _run_with_checkpoint(manifest, args.codex_bin, f"sandbox-{trial.id}")
-        raw = session.snapshot()
-        (args.raw_root / f"{trial.id}.json").write_text(
-            json.dumps(raw, indent=2, default=str) + "\n", encoding="utf-8"
-        )
+        raw_path = args.raw_root / f"{trial.id}.json"
+        if args.regrade_existing:
+            raw = json.loads(raw_path.read_text(encoding="utf-8"))
+            run_status = str(raw.get("status"))
+            receipt = raw.get("result") if isinstance(raw.get("result"), dict) else None
+        else:
+            session = _run_with_checkpoint(manifest, args.codex_bin, f"sandbox-{trial.id}")
+            raw = session.snapshot()
+            raw_path.write_text(json.dumps(raw, indent=2, default=str) + "\n", encoding="utf-8")
+            run_status = session.status
+            receipt = session.result
         grade = grade_evidence(trial, repo)
         external = _external_test(trial, repo)
         grade["externalVerification"] = external
@@ -133,12 +144,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 **plan,
                 "title": trial.title,
                 "question": trial.question,
-                "runStatus": session.status,
+                "runStatus": run_status,
                 "grade": grade,
-                "receipt": _public_receipt(session.result),
+                "receipt": _public_receipt(receipt),
             }
         )
-        if session.status != "completed":
+        if run_status != "completed":
             break
 
     summary = {

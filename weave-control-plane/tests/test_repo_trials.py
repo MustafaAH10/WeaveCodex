@@ -78,6 +78,9 @@ def test_grade_requires_grounded_tracked_references(tmp_path: Path) -> None:
         ),
         encoding="utf-8",
     )
+    runtime_trace = repo / ".weave-codex" / "traces" / "trace.jsonl"
+    runtime_trace.parent.mkdir(parents=True)
+    runtime_trace.write_text("runtime evidence\n", encoding="utf-8")
     grade = grade_evidence(trial, repo)
     assert grade["passed"] is True
     assert len(grade["referencedFiles"]) >= 4
