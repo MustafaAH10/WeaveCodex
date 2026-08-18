@@ -372,7 +372,7 @@ def test_manual_approval_blocks_until_human_decision() -> None:
 
 
 def test_ui_contains_phase_canvas_thread_projection_and_receipt_surfaces() -> None:
-    html = (Path(__file__).parents[1] / "weave_codex/static/index.html").read_text()
+    html = (Path(__file__).parents[1] / "weave_codex/static/studio.html").read_text()
     for element_id in (
         "manifest-json",
         "phase-canvas",
@@ -405,12 +405,12 @@ def test_ui_edits_phase_programs_without_expanding_codex_tool_calls() -> None:
     assert "Codex owns the internal tool loop" in javascript
     assert ".phase-card.fixed-phase" in stylesheet
     assert ".phase-card.drop-before" in stylesheet
-    assert "A canvas block is not a tool call." in (static / "index.html").read_text()
+    assert "A canvas block is not a tool call." in (static / "studio.html").read_text()
 
 
 def test_ui_offers_three_additional_complex_programs_and_workspace_references() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
-    html = (static / "index.html").read_text()
+    html = (static / "studio.html").read_text()
     javascript = (static / "app.js").read_text()
 
     for key in ("migration", "monorepo", "incident"):
@@ -424,7 +424,7 @@ def test_ui_offers_three_additional_complex_programs_and_workspace_references() 
 
 def test_run_explorer_comparison_integrations_and_technical_diagrams_are_explicit() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
-    html = (static / "index.html").read_text()
+    html = (static / "studio.html").read_text()
     javascript = (static / "app.js").read_text()
     comparison = (static / "compare.html").read_text()
     comparison_js = (static / "compare.js").read_text()
@@ -442,6 +442,21 @@ def test_run_explorer_comparison_integrations_and_technical_diagrams_are_explici
     assert 'id="integrations"' in deep_dive
     assert 'id="integration-title"' in deep_dive
     assert "AGENTS.md chain" in deep_dive
+
+
+def test_home_is_task_first_and_defers_advanced_controls_to_studio() -> None:
+    static = Path(__file__).parents[1] / "weave_codex/static"
+    html = (static / "index.html").read_text()
+    javascript = (static / "home.js").read_text()
+
+    assert 'id="task-composer"' in html
+    assert 'data-mode="ordinary"' in html
+    assert 'data-mode="weave"' in html
+    assert 'href="/studio.html#design"' in html
+    assert "phaseProgram(kind)" in javascript
+    assert 'request("/api/compile"' in javascript
+    assert 'request("/api/runs"' in javascript
+    assert "one or one hundred native Codex tool calls" in html
 
 
 def test_product_examples_api_source_includes_all_five_examples(tmp_path: Path) -> None:

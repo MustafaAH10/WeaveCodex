@@ -31,9 +31,11 @@ uv run python -m weave_codex.server \
   --port 8790
 ```
 
-Then open <http://127.0.0.1:8790/>. The app separates **Why Weave**, **Examples**, **Design**,
-**Runs**, **Integrations**, and **Setup** so a first-time user can understand the control model
-before editing it.
+Then open <http://127.0.0.1:8790/>. The home page starts with the task: choose a direct Codex run or
+a small visible Weave program, select the repository and safety boundary, and run. Setup and the
+full editor stay out of the first-run path. Open <http://127.0.0.1:8790/studio.html#design> for the
+advanced Studio: exact phase editing, memory selection, integrations, raw manifest JSON, and
+detailed run receipts. One Work phase can contain any number of native Codex model/tool iterations.
 The interactive [Codex internals deep dive](http://127.0.0.1:8790/deep-dive.html) begins with Codex
 alone and reveals Weave as an optional track-changes layer.
 The [sandbox repository trial dashboard](http://127.0.0.1:8790/sandbox-trials.html) shows three
