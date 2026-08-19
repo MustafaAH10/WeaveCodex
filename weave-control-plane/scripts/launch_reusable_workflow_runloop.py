@@ -99,10 +99,10 @@ def _setup_command(trial_id: str, repository: str, commit: str, sandbox_id: str)
         f"git checkout --detach {shlex.quote(commit)}",
         (
             "if [ -f package.json ]; then npm install; "
-            "elif [ -f pyproject.toml ]; then uv sync; fi"
+            "elif [ -f pyproject.toml ]; then UV_PYTHON=\"$(command -v python3)\" uv sync; fi"
         ),
         "cd /home/user/weave-reuse/WeaveCodex/weave-control-plane",
-        "uv sync",
+        "UV_PYTHON=\"$(command -v python3)\" uv sync",
         (
             "PYTHONPATH=. uv run python scripts/run_reusable_workflow_trial.py "
             f"--trial-id {shlex.quote(trial_id)} "
