@@ -144,6 +144,14 @@ async def _execute(args: argparse.Namespace, plan: dict[str, Any]) -> dict[str, 
             )
             execution = await box.cmd.exec(command, timeout=3_600)
             args.raw_root.mkdir(parents=True, exist_ok=True)
+            stdout = await execution.stdout()
+            stderr = await execution.stderr()
+            (args.raw_root / f"{trial.trial_id}.stdout.log").write_text(
+                stdout, encoding="utf-8"
+            )
+            (args.raw_root / f"{trial.trial_id}.stderr.log").write_text(
+                stderr, encoding="utf-8"
+            )
             (args.raw_root / f"{trial.trial_id}.setup.json").write_text(
                 json.dumps(
                     {
@@ -151,9 +159,9 @@ async def _execute(args: argparse.Namespace, plan: dict[str, Any]) -> dict[str, 
                         "executionId": execution.execution_id,
                         "exitCode": execution.exit_code,
                         "stdoutSha256": "sha256:"
-                        + hashlib.sha256((await execution.stdout()).encode()).hexdigest(),
+                        + hashlib.sha256(stdout.encode()).hexdigest(),
                         "stderrSha256": "sha256:"
-                        + hashlib.sha256((await execution.stderr()).encode()).hexdigest(),
+                        + hashlib.sha256(stderr.encode()).hexdigest(),
                     },
                     indent=2,
                 )
