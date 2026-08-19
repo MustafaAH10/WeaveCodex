@@ -9,6 +9,13 @@ let pollTimer = null;
 let activeSavedWorkflow = null;
 let savedWorkflows = [];
 let loginPollTimer = null;
+let designProgram = null;
+let adaptationMethod = null;
+let integrationInventory = null;
+let selectedIntegrations = [];
+let selectedRunId = null;
+
+const clone = (value) => JSON.parse(JSON.stringify(value));
 
 async function request(path, options = {}) {
   const method = String(options.method || "GET").toUpperCase();
@@ -48,9 +55,11 @@ function phaseProgram(kind) {
 }
 
 function selectedProgram() {
-  if (activeSavedWorkflow) return activeSavedWorkflow.phaseProgram;
   const workflow = runMode === "ordinary" ? "ordinary" : $("#workflow-select").value;
-  return { projectionVersion: 1, phases: phaseProgram(workflow) };
+  if (workflow === "ordinary") return { projectionVersion: 1, phases: phaseProgram("ordinary") };
+  if (designProgram) return clone(designProgram);
+  if (activeSavedWorkflow) return clone(activeSavedWorkflow.phaseProgram);
+  return { projectionVersion: 1, phases: clone(phaseProgram(workflow)) };
 }
 
 function manifest() {
@@ -60,7 +69,7 @@ function manifest() {
     cwd: $("#workspace-input").value.trim(),
     task: { instructions: $("#task-input").value.trim(), contextPaths: [] },
     memory: { mode: "off", selectedThreadIds: [] },
-    integrations: { inventoryId: null, requested: [] },
+    integrations: { inventoryId: integrationInventory?.inventoryId || null, requested: clone(selectedIntegrations) },
     agent: { model: null, reasoningEffort: "medium", sandbox: $("#sandbox-select").value, approvalGate: $("#approval-select").value },
     verification: { enabled: false, criteria: "Phase program owns verification.", maxRetries: 0 },
     output: { format: "text" },
@@ -70,7 +79,7 @@ function manifest() {
 }
 
 function setView(view, { updateHash = true } = {}) {
-  const allowed = new Set(["run", "workflows", "architecture", "setup"]);
+  const allowed = new Set(["run", "design", "workflows", "runs", "integrations", "field-trials", "architecture", "setup"]);
   const active = allowed.has(view) ? view : "run";
   $$(".product-view").forEach((panel) => {
     const selected = panel.id === `${active}-view`;
@@ -88,6 +97,12 @@ function setView(view, { updateHash = true } = {}) {
     if (runMode === "ordinary") setMode("weave");
     void loadWorkflows();
   }
+  if (active === "design") renderPhaseEditor();
+  if (active === "runs") void loadRuns();
+  if (active === "integrations") {
+    $("#integrations-cwd").value ||= $("#workspace-input").value;
+  }
+  if (active === "field-trials") void loadFieldTrials();
   if (active === "setup") void checkAccount();
 }
 
@@ -99,6 +114,9 @@ function setMode(mode) {
     button.setAttribute("aria-checked", String(active));
   });
   $("#workflow-choice").classList.toggle("hidden", mode !== "weave");
+  if (mode === "weave" && !designProgram) {
+    designProgram = { projectionVersion: 1, phases: clone(phaseProgram($("#workflow-select").value)) };
+  }
   renderWorkflowPreview();
 }
 
@@ -119,35 +137,49 @@ function renderWorkflowPreview() {
 
 function updateWorkflowExplanation() {
   activeSavedWorkflow = null;
+  adaptationMethod = null;
   const copy = {
     review: "Pause after inspection so you can approve the direction before files change.",
     audit: "Require an architectural risk map before implementation, then challenge the result.",
     direct: "Keep the workflow short while retaining a separate verification and repair bound.",
   };
   $("#workflow-explanation").textContent = copy[$("#workflow-select").value];
+  designProgram = { projectionVersion: 1, phases: clone(phaseProgram($("#workflow-select").value)) };
   renderWorkflowPreview();
 }
 
-function applyWorkflow(workflow) {
+function applyWorkflow(workflow, { customize = false } = {}) {
   activeSavedWorkflow = workflow;
+  designProgram = clone(workflow.phaseProgram);
+  adaptationMethod = null;
   $("#workflow-select").value = "saved";
   $("#workflow-select").selectedOptions[0].textContent = workflow.name;
   $("#workflow-explanation").textContent = "Loaded from your local library. The new task and repository are not inherited.";
   setMode("weave");
   $("#task-input").value = "";
-  setView("run");
-  $("#task-input").focus();
+  if (customize) {
+    $("#design-task").value = $("#task-input").value;
+    setView("design");
+  } else {
+    setView("run");
+    $("#task-input").focus();
+  }
 }
 
 function workflowCard(workflow) {
   const created = new Date(workflow.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
-  return `<article class="saved-workflow"><header><div><small>IMMUTABLE · ${escapeHtml(created)}</small><h3>${escapeHtml(workflow.name)}</h3></div><code>${escapeHtml(workflow.programHash.slice(7, 19))}</code></header><p>${escapeHtml(workflow.description || "No description.")}</p><div class="mini-program">${programNodes(workflow.phaseProgram, { compact: true })}</div><footer><span>${workflow.phaseProgram.phases.length} phases · task excluded</span><button type="button" data-use-workflow="${escapeHtml(workflow.workflowId)}">Use on a new task →</button></footer></article>`;
+  const lineage = workflow.parentWorkflowId ? `Derived from ${workflow.parentWorkflowId}` : "Original workflow";
+  return `<article class="saved-workflow"><header><div><small>IMMUTABLE · ${escapeHtml(created)}</small><h3>${escapeHtml(workflow.name)}</h3></div><code>${escapeHtml(workflow.programHash.slice(7, 19))}</code></header><p>${escapeHtml(workflow.description || "No description.")}</p><div class="mini-program">${programNodes(workflow.phaseProgram, { compact: true })}</div><footer><span>${workflow.phaseProgram.phases.length} phases · ${escapeHtml(lineage)}</span><div><button type="button" data-use-workflow="${escapeHtml(workflow.workflowId)}">Run unchanged</button><button type="button" data-customize-workflow="${escapeHtml(workflow.workflowId)}">Edit for another task →</button></div></footer></article>`;
 }
 
 function bindWorkflowUseButtons() {
   $$('[data-use-workflow]').forEach((button) => button.addEventListener("click", () => {
     const workflow = savedWorkflows.find((item) => item.workflowId === button.dataset.useWorkflow);
     if (workflow) applyWorkflow(workflow);
+  }));
+  $$('[data-customize-workflow]').forEach((button) => button.addEventListener("click", () => {
+    const workflow = savedWorkflows.find((item) => item.workflowId === button.dataset.customizeWorkflow);
+    if (workflow) applyWorkflow(workflow, { customize: true });
   }));
 }
 
@@ -170,6 +202,9 @@ async function saveWorkflow() {
     name: $("#workflow-name").value.trim(),
     description: $("#workflow-description").value.trim(),
     phaseProgram: selectedProgram(),
+    parentWorkflowId: activeSavedWorkflow && adaptationMethod ? activeSavedWorkflow.workflowId : null,
+    adaptationMethod: activeSavedWorkflow && adaptationMethod ? adaptationMethod : null,
+    adaptationSummary: activeSavedWorkflow && adaptationMethod ? "Human-reviewed goal wording changed; phase structure remains explicit." : "",
   };
   button.disabled = true;
   status.textContent = "Saving locally…";
@@ -301,6 +336,204 @@ async function startLogin() {
   } finally { button.disabled = false; }
 }
 
+function ensureDesignProgram() {
+  if (!designProgram) {
+    const key = $("#workflow-select").value === "saved" ? "review" : $("#workflow-select").value;
+    designProgram = { projectionVersion: 1, phases: clone(phaseProgram(key)) };
+  }
+  return designProgram;
+}
+
+function phaseCopyKey(phase) {
+  return phase.kind === "work" ? "goal" : phase.kind === "checkpoint" ? "question" : "criteria";
+}
+
+function phaseCopyLabel(phase) {
+  return phase.kind === "work" ? "Complete goal for this Codex turn" : phase.kind === "checkpoint" ? "Question shown to the human" : "Pass criteria";
+}
+
+function renderPhaseEditor() {
+  const program = ensureDesignProgram();
+  $("#design-cwd").value ||= $("#workspace-input").value;
+  $("#phase-editor").innerHTML = program.phases.map((phase, index) => {
+    const key = phaseCopyKey(phase);
+    return `<article class="phase-card" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}"><span class="phase-number">${String(index + 1).padStart(2, "0")}</span><div class="phase-fields"><label class="phase-field">Type<select data-phase-field="kind" disabled><option>${escapeHtml(phase.kind)}</option></select></label><label class="phase-field">Name<input data-phase-field="name" value="${escapeHtml(phase.name)}" maxlength="80"></label><label class="phase-field copy">${phaseCopyLabel(phase)}<textarea data-phase-field="${key}" maxlength="${phase.kind === "work" ? 4000 : 2000}">${escapeHtml(phase[key])}</textarea></label>${phase.kind === "verify" ? `<label class="phase-field">Repair turns<select data-phase-field="maxRepairs"><option value="0" ${phase.maxRepairs === 0 ? "selected" : ""}>0</option><option value="1" ${phase.maxRepairs === 1 ? "selected" : ""}>1</option><option value="2" ${phase.maxRepairs === 2 ? "selected" : ""}>2</option></select></label>` : ""}</div><div class="phase-card-actions"><button type="button" data-phase-move="up" aria-label="Move up">↑</button><button type="button" data-phase-move="down" aria-label="Move down">↓</button><button class="danger" type="button" data-phase-delete aria-label="Delete phase">Delete</button></div></article>`;
+  }).join("");
+  $$("[data-phase-field]", $("#phase-editor")).forEach((field) => field.addEventListener("input", () => {
+    const card = field.closest("[data-phase-index]");
+    const phase = program.phases[Number(card.dataset.phaseIndex)];
+    const key = field.dataset.phaseField;
+    phase[key] = key === "maxRepairs" ? Number(field.value) : field.value;
+    adaptationMethod ||= "manual";
+    renderWorkflowPreview();
+  }));
+  $$("[data-phase-move]", $("#phase-editor")).forEach((button) => button.addEventListener("click", () => {
+    const index = Number(button.closest("[data-phase-index]").dataset.phaseIndex);
+    const next = button.dataset.phaseMove === "up" ? index - 1 : index + 1;
+    if (next < 0 || next >= program.phases.length) return;
+    [program.phases[index], program.phases[next]] = [program.phases[next], program.phases[index]];
+    adaptationMethod ||= "manual";
+    renderPhaseEditor();
+  }));
+  $$("[data-phase-delete]", $("#phase-editor")).forEach((button) => button.addEventListener("click", () => {
+    const index = Number(button.closest("[data-phase-index]").dataset.phaseIndex);
+    if (program.phases.length === 1 || (program.phases[index].kind === "work" && program.phases.filter((item) => item.kind === "work").length === 1)) {
+      $("#design-status").textContent = "A workflow needs at least one Work phase.";
+      return;
+    }
+    program.phases.splice(index, 1);
+    adaptationMethod ||= "manual";
+    renderPhaseEditor();
+  }));
+  const origin = activeSavedWorkflow
+    ? adaptationMethod
+      ? `Unsaved edits derived from ${activeSavedWorkflow.workflowId} · parent remains immutable`
+      : `Saved ${activeSavedWorkflow.workflowId}${activeSavedWorkflow.parentWorkflowId ? ` · parent ${activeSavedWorkflow.parentWorkflowId}` : " · original workflow"}`
+    : "Built-in starting design · not saved";
+  $("#design-origin").textContent = origin;
+}
+
+function addPhase(kind) {
+  const program = ensureDesignProgram();
+  if (program.phases.length >= 8) {
+    $("#design-status").textContent = "A workflow can contain at most eight executable phases.";
+    return;
+  }
+  const stem = kind === "work" ? "work" : kind === "checkpoint" ? "checkpoint" : "verify";
+  let id = stem;
+  let counter = 2;
+  const ids = new Set(program.phases.map((phase) => phase.id));
+  while (ids.has(id)) id = `${stem}-${counter++}`;
+  if (kind === "work") program.phases.push({ id, kind, name: "New work goal", goal: "Describe the complete outcome Codex should achieve in this turn.", reasoningEffort: "inherit" });
+  if (kind === "checkpoint") program.phases.push({ id, kind, name: "Human checkpoint", question: "Continue to the next phase?" });
+  if (kind === "verify") program.phases.push({ id, kind, name: "Verify result", criteria: "The requested outcome is complete and supported by relevant checks.", maxRepairs: 1 });
+  adaptationMethod ||= "manual";
+  renderPhaseEditor();
+}
+
+async function adaptWithCodex() {
+  const task = $("#design-task").value.trim();
+  const cwd = $("#design-cwd").value.trim();
+  if (task.length < 8) { $("#design-task").focus(); return; }
+  if (!cwd.startsWith("/")) { $("#design-cwd").focus(); return; }
+  const button = $("#adapt-with-codex");
+  button.disabled = true;
+  $("#design-status").textContent = "Codex is proposing goal-only wording in read-only mode…";
+  try {
+    const result = await request("/api/workflows/adapt", { method: "POST", body: JSON.stringify({ phaseProgram: ensureDesignProgram(), task, cwd, reasoningEffort: "low" }) });
+    designProgram = clone(result.phaseProgram);
+    adaptationMethod = "codex";
+    $("#design-status").textContent = `Proposal ready. Review ${result.changedPhaseIds.length} changed phase(s); nothing has been saved or run.`;
+    renderPhaseEditor();
+  } catch (error) {
+    $("#design-status").textContent = `Could not adapt goals: ${error.message}`;
+  } finally { button.disabled = false; }
+}
+
+async function saveDesign() {
+  const button = $("#save-design");
+  const name = $("#design-save-name").value.trim();
+  if (name.length < 2) { $("#design-save-name").focus(); return; }
+  button.disabled = true;
+  try {
+    const payload = {
+      name,
+      description: activeSavedWorkflow ? "A reviewed adaptation of a saved workflow for a similar task family." : "A human-authored reusable Codex workflow.",
+      phaseProgram: ensureDesignProgram(),
+      parentWorkflowId: activeSavedWorkflow && adaptationMethod ? activeSavedWorkflow.workflowId : null,
+      adaptationMethod: activeSavedWorkflow && adaptationMethod ? adaptationMethod : null,
+      adaptationSummary: activeSavedWorkflow && adaptationMethod ? "Human-reviewed wording changed; structure remains visible." : "",
+    };
+    const saved = await request("/api/workflows", { method: "POST", body: JSON.stringify(payload) });
+    activeSavedWorkflow = saved;
+    designProgram = clone(saved.phaseProgram);
+    adaptationMethod = null;
+    $("#design-status").textContent = `Saved ${saved.workflowId}. The task and repository were excluded.`;
+    await loadWorkflows();
+    renderPhaseEditor();
+  } catch (error) {
+    $("#design-status").textContent = `Could not save: ${error.message}`;
+  } finally { button.disabled = false; }
+}
+
+function useDesignInRun() {
+  setMode("weave");
+  $("#task-input").value = $("#design-task").value;
+  $("#workspace-input").value = $("#design-cwd").value;
+  renderWorkflowPreview();
+  setView("run");
+}
+
+async function loadRuns() {
+  const list = $("#runs-list");
+  try {
+    const result = await request("/api/runs");
+    const runs = result.runs || [];
+    list.innerHTML = runs.length ? runs.map((run) => `<button class="run-list-item ${run.runId === selectedRunId ? "active" : ""}" type="button" data-run-id="${escapeHtml(run.runId)}"><b>${escapeHtml(run.completionStatus || run.status)}</b><small>${run.phaseCount || 0} authored phases · ${run.turnCount || 0} controller turns</small><small>${escapeHtml(run.runId.slice(0, 13))}…</small></button>`).join("") : "<p>No recorded runs yet.</p>";
+    $$("[data-run-id]", list).forEach((button) => button.addEventListener("click", () => void showRun(button.dataset.runId)));
+  } catch (error) { list.innerHTML = `<p>Runs unavailable: ${escapeHtml(error.message)}</p>`; }
+}
+
+async function showRun(runId) {
+  selectedRunId = runId;
+  await loadRuns();
+  const detail = $("#run-detail");
+  detail.innerHTML = "<p>Loading receipt…</p>";
+  try {
+    const state = await request(`/api/runs/${encodeURIComponent(runId)}`);
+    const result = state.result || {};
+    const executions = result.phaseProgram?.executions || [];
+    const timeline = result.timeline || state.timeline || [];
+    const phaseCards = executions.map((execution, index) => {
+      const activity = timeline.filter((item) => item.phase === execution.phaseId);
+      const counts = activity.reduce((acc, item) => { acc[item.kind] = (acc[item.kind] || 0) + 1; return acc; }, {});
+      const chips = Object.entries(counts).map(([kind, count]) => `<span>${escapeHtml(kind)} · ${count}</span>`).join("") || "<span>No projected activity</span>";
+      return `<article class="receipt-phase"><header><div><small>${String(index + 1).padStart(2, "0")} · ${escapeHtml(execution.kind || "phase")}</small><b>${escapeHtml(execution.name || execution.phaseId)}</b></div><small>${escapeHtml(execution.status || "observed")}</small></header><div class="activity-chips">${chips}</div></article>`;
+    }).join("");
+    detail.innerHTML = `<header class="receipt-head"><div><p class="kicker">LOCAL RECEIPT</p><h2>${escapeHtml(result.completionStatus || state.status)}</h2><code>${escapeHtml(result.manifestHash || runId)}</code></div><div><b>${result.observed?.modelCompletions ?? "—"}</b><small> observed model completions</small></div></header>${phaseCards || "<p>This older run has no authored phase executions.</p>"}<pre class="receipt-output">${escapeHtml(result.finalResponse || state.error || "No final response.")}</pre>`;
+  } catch (error) { detail.innerHTML = `<p>Could not load receipt: ${escapeHtml(error.message)}</p>`; }
+}
+
+function integrationItems(kind, values) {
+  return values.map((item) => {
+    const id = kind === "skill" ? item.name : kind === "mcp" ? item.name : item.id;
+    const label = item.name || item.id;
+    const selected = selectedIntegrations.some((value) => value.kind === kind && value.id === id);
+    const detail = kind === "skill" ? `${item.enabled ? "Enabled" : "Disabled"} · ${item.scope}` : kind === "mcp" ? `${item.authStatus} · ${item.tools.length} tools` : `${item.enabled ? "Enabled" : "Available"}${item.accessible ? "" : " · inaccessible"}`;
+    return `<label class="integration-item"><input type="checkbox" data-integration-kind="${kind}" data-integration-id="${escapeHtml(id)}" data-integration-label="${escapeHtml(label)}" ${selected ? "checked" : ""}><span><b>${escapeHtml(label)}</b><small>${escapeHtml(detail)}</small></span></label>`;
+  }).join("") || "<p>No items reported.</p>";
+}
+
+async function loadIntegrations() {
+  const cwd = $("#integrations-cwd").value.trim();
+  $("#integrations-status").textContent = "Reading a redacted inventory from Codex…";
+  try {
+    integrationInventory = await request(`/api/integrations?cwd=${encodeURIComponent(cwd)}`);
+    $("#integration-groups").innerHTML = `<section class="integration-group"><h2>Skills</h2><p>Workspace instructions and specialized procedures.</p>${integrationItems("skill", integrationInventory.skills || [])}</section><section class="integration-group"><h2>MCP servers</h2><p>Tool and resource servers already configured in Codex.</p>${integrationItems("mcp", integrationInventory.mcpServers || [])}</section><section class="integration-group"><h2>Connector apps</h2><p>Codex apps available to this account.</p>${integrationItems("app", integrationInventory.apps || [])}</section>`;
+    $("#integrations-status").textContent = `${(integrationInventory.skills || []).length} skills · ${(integrationInventory.mcpServers || []).length} MCP servers · ${(integrationInventory.apps || []).length} apps. No secrets or config paths returned.`;
+    $$("[data-integration-id]", $("#integration-groups")).forEach((input) => input.addEventListener("change", () => {
+      const key = `${input.dataset.integrationKind}:${input.dataset.integrationId}`;
+      selectedIntegrations = selectedIntegrations.filter((item) => `${item.kind}:${item.id}` !== key);
+      if (input.checked) selectedIntegrations.push({ kind: input.dataset.integrationKind, id: input.dataset.integrationId, label: input.dataset.integrationLabel, phaseIds: [] });
+      $("#integrations-status").textContent = `${selectedIntegrations.length} explicit request(s) will be bound to the next Weave run.`;
+    }));
+  } catch (error) { $("#integrations-status").textContent = `Could not load integrations: ${error.message}`; }
+}
+
+async function loadFieldTrials() {
+  const grid = $("#field-trials-grid");
+  try {
+    const evidence = await request("/reusable-workflow-trials.json");
+    const trials = evidence.trials || [];
+    $("#field-trials-summary").innerHTML = `<article><b>${trials.length}</b><small>source → target reuses</small></article><article><b>${trials.filter((item) => item.status === "accepted").length}</b><small>artifacts accepted</small></article><article><b>${trials.filter((item) => item.upstreamChecks === "passed").length}</b><small>upstream checks passed</small></article><article><b>${evidence.sandboxCount || 0}</b><small>isolated sandboxes</small></article>`;
+    grid.innerHTML = trials.map((trial) => `<article class="trial-card"><header><div><p class="kicker">${escapeHtml(trial.workflowLabel)}</p><h2>${escapeHtml(trial.taskFamily)}</h2></div><span class="verdict">${escapeHtml(trial.status)}</span></header><div class="repo-route"><div><small>SOURCE</small><b>${escapeHtml(trial.sourceRepo)}</b></div><span>→</span><div><small>REUSED IN</small><b>${escapeHtml(trial.targetRepo)}</b></div></div><div class="trial-program">${(trial.phaseKinds || []).map((kind) => `<span>${escapeHtml(kind)}</span>`).join(" → ")}</div><dl><dt>source program</dt><dd><code>${escapeHtml((trial.sourceProgramHash || "").slice(0, 20))}…</code></dd><dt>derived program</dt><dd><code>${escapeHtml((trial.derivedProgramHash || "").slice(0, 20))}…</code></dd><dt>goal edits</dt><dd>${trial.changedGoals || 0}; structure ${trial.structurePreserved ? "preserved" : "changed"}</dd><dt>target commit</dt><dd><code>${escapeHtml((trial.targetCommit || "").slice(0, 12))}</code></dd><dt>changed files</dt><dd>${escapeHtml((trial.changedFiles || []).join(", ") || "none")}</dd><dt>verification</dt><dd>${escapeHtml(trial.verification || "not recorded")}</dd><dt>sandbox</dt><dd><code>${escapeHtml(trial.sandboxId || "pending")}</code></dd></dl></article>`).join("");
+    $("#field-trials-limits").innerHTML = `<b>Claim boundary</b><p>${escapeHtml(evidence.claimBoundary || "These are bounded product trials, not benchmark scores.")}</p>`;
+  } catch (error) {
+    grid.innerHTML = `<p>Trial evidence is not available yet: ${escapeHtml(error.message)}</p>`;
+    $("#field-trials-summary").innerHTML = "<article><b>Pending</b><small>frozen evidence</small></article>";
+  }
+}
+
 function setArchitectureLayer(enabled) {
   const card = $(".architecture-card");
   card.dataset.weave = enabled ? "on" : "off";
@@ -321,13 +554,16 @@ async function init() {
     securitySession = await request("/api/session");
     $("#workspace-input").value = securitySession.workspaceRoot || "";
   } catch (_) { securitySession = null; }
+  designProgram = { projectionVersion: 1, phases: clone(phaseProgram("review")) };
+  $("#design-cwd").value = $("#workspace-input").value;
+  $("#integrations-cwd").value = $("#workspace-input").value;
   await checkAccount();
   renderWorkflowPreview();
   await loadWorkflows();
 
   $$("[data-view]").forEach((link) => link.addEventListener("click", (event) => { event.preventDefault(); setView(link.dataset.view); }));
   $$(".mode").forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
-  $$("[data-prompt]").forEach((button) => button.addEventListener("click", () => { $("#task-input").value = button.dataset.prompt; $("#task-input").focus(); }));
+  $$("[data-prompt]").forEach((button) => button.addEventListener("click", () => { $("#task-input").value = button.dataset.prompt; $("#design-task").value = button.dataset.prompt; $("#task-input").focus(); }));
   $("#workflow-select").addEventListener("change", updateWorkflowExplanation);
   $("#sandbox-select").addEventListener("change", updateSettingsSummary);
   $("#approval-select").addEventListener("change", updateSettingsSummary);
@@ -340,6 +576,12 @@ async function init() {
     setView("workflows");
   });
   $("#refresh-workflows").addEventListener("click", loadWorkflows);
+  $$("[data-add-phase]").forEach((button) => button.addEventListener("click", () => addPhase(button.dataset.addPhase)));
+  $("#adapt-with-codex").addEventListener("click", adaptWithCodex);
+  $("#use-design").addEventListener("click", useDesignInRun);
+  $("#save-design").addEventListener("click", saveDesign);
+  $("#refresh-runs").addEventListener("click", loadRuns);
+  $("#load-integrations").addEventListener("click", loadIntegrations);
   $("#architecture-codex").addEventListener("click", () => setArchitectureLayer(false));
   $("#architecture-weave").addEventListener("click", () => setArchitectureLayer(true));
   $("#check-account").addEventListener("click", checkAccount);

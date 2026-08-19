@@ -23,6 +23,7 @@ from .manifest import HarnessManifest, compile_manifest
 from .phase_program import PhaseProgram, compile_phase_program, phase_templates
 from .runtime import HarnessRunner, RunSession
 from .trace_projection import project_thread
+from .workflow_adaptation import WorkflowAdaptationService, WorkflowAdaptRequest
 from .workflow_store import WorkflowCreate, WorkflowStore
 
 _IGNORED_WORKSPACE_NAMES = {
@@ -125,6 +126,7 @@ class ControlPlane:
         self.auth = NativeAuthService(codex_bin)
         self.data_root = data_root
         self.workflows = WorkflowStore(data_root / "workflows")
+        self.workflow_adapter = WorkflowAdaptationService(codex_bin)
         current = Path.cwd().resolve()
         self.workspace_root = (
             workspace_root or (current.parent if current.name == "weave-control-plane" else current)
@@ -370,6 +372,12 @@ class Handler(BaseHTTPRequestHandler):
                     item.model_dump(by_alias=True, mode="json"),
                 )
                 return
+            if self.path == "/api/workflows/adapt":
+                result = self.server.app.workflow_adapter.adapt(
+                    WorkflowAdaptRequest.model_validate(payload)
+                )
+                self._json(HTTPStatus.OK, result.model_dump(by_alias=True, mode="json"))
+                return
             if self.path == "/api/thread-projection":
                 cwd = str(payload.get("cwd", ""))
                 thread_id = str(payload.get("threadId", ""))
@@ -442,7 +450,9 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _static(self, request_path: str) -> None:
-        name = {"/": "index.html"}.get(request_path, request_path.lstrip("/"))
+        name = {"/": "index.html", "/studio.html": "index.html"}.get(
+            request_path, request_path.lstrip("/")
+        )
         root = Path(__file__).with_name("static").resolve()
         path = (root / name).resolve()
         if root not in path.parents or not path.is_file():

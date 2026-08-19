@@ -30,16 +30,33 @@ class WorkflowCreate(_StrictModel):
     name: str = Field(min_length=2, max_length=100)
     description: str = Field(default="", max_length=500)
     phase_program: PhaseProgram = Field(alias="phaseProgram")
+    parent_workflow_id: str | None = Field(
+        default=None, alias="parentWorkflowId", pattern=r"^wf_[0-9a-f]{16}$"
+    )
+    adaptation_method: Literal["manual", "codex"] | None = Field(
+        default=None, alias="adaptationMethod"
+    )
+    adaptation_summary: str = Field(default="", alias="adaptationSummary", max_length=500)
 
 
 class SavedWorkflow(_StrictModel):
-    schema_version: Literal[1] = Field(default=1, alias="schemaVersion")
+    schema_version: Literal[1, 2] = Field(default=2, alias="schemaVersion")
     workflow_id: str = Field(alias="workflowId", pattern=r"^wf_[0-9a-f]{16}$")
     name: str = Field(min_length=2, max_length=100)
     description: str = Field(default="", max_length=500)
     phase_program: PhaseProgram = Field(alias="phaseProgram")
     program_hash: str = Field(alias="programHash", pattern=r"^sha256:[0-9a-f]{64}$")
     created_at: str = Field(alias="createdAt")
+    parent_workflow_id: str | None = Field(
+        default=None, alias="parentWorkflowId", pattern=r"^wf_[0-9a-f]{16}$"
+    )
+    parent_program_hash: str | None = Field(
+        default=None, alias="parentProgramHash", pattern=r"^sha256:[0-9a-f]{64}$"
+    )
+    adaptation_method: Literal["manual", "codex"] | None = Field(
+        default=None, alias="adaptationMethod"
+    )
+    adaptation_summary: str = Field(default="", alias="adaptationSummary", max_length=500)
 
 
 def program_hash(program: PhaseProgram) -> str:
@@ -59,13 +76,21 @@ class WorkflowStore:
         self._lock = threading.Lock()
 
     def save(self, request: WorkflowCreate) -> SavedWorkflow:
+        parent = self.get(request.parent_workflow_id) if request.parent_workflow_id else None
+        if request.parent_workflow_id and parent is None:
+            raise ValueError("parent workflow does not exist")
         value = SavedWorkflow(
+            schemaVersion=2,
             workflowId=f"wf_{uuid4().hex[:16]}",
             name=request.name,
             description=request.description,
             phaseProgram=request.phase_program,
             programHash=program_hash(request.phase_program),
             createdAt=datetime.now(UTC).isoformat(),
+            parentWorkflowId=parent.workflow_id if parent else None,
+            parentProgramHash=parent.program_hash if parent else None,
+            adaptationMethod=request.adaptation_method,
+            adaptationSummary=request.adaptation_summary,
         )
         payload = value.model_dump_json(by_alias=True, indent=2)
         with self._lock:

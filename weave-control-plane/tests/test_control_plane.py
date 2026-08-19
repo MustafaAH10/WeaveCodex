@@ -480,7 +480,7 @@ def test_comparison_prioritizes_human_control_over_compute_totals() -> None:
     assert "tokenUsage" not in javascript
 
 
-def test_home_is_task_first_and_defers_advanced_controls_to_studio() -> None:
+def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
     html = (static / "index.html").read_text()
     javascript = (static / "home.js").read_text()
@@ -488,7 +488,11 @@ def test_home_is_task_first_and_defers_advanced_controls_to_studio() -> None:
     assert 'id="task-composer"' in html
     assert 'data-mode="ordinary"' in html
     assert 'data-mode="weave"' in html
-    assert 'href="/studio.html#design"' in html
+    assert 'id="design-view"' in html
+    assert 'id="runs-view"' in html
+    assert 'id="integrations-view"' in html
+    assert 'id="field-trials-view"' in html
+    assert 'href="/studio.html#design"' not in html
     assert "phaseProgram(kind)" in javascript
     assert 'request("/api/compile"' in javascript
     assert 'request("/api/runs"' in javascript
@@ -498,6 +502,9 @@ def test_home_is_task_first_and_defers_advanced_controls_to_studio() -> None:
     assert 'data-view="setup"' in html
     assert 'id="workflow-library"' in html
     assert 'request("/api/workflows"' in javascript
+    assert 'request("/api/workflows/adapt"' in javascript
+    assert "request(`/api/integrations?cwd=" in javascript
+    assert 'request("/reusable-workflow-trials.json"' in javascript
     assert "Task and repository will be excluded" in html
 
 

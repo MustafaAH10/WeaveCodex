@@ -114,3 +114,32 @@ def test_same_saved_program_compiles_for_two_distinct_tasks_without_mutation(
     assert program_hash(frontend.phase_program) == saved.program_hash
     assert program_hash(migration.phase_program) == saved.program_hash
     assert (store.root / f"{saved.workflow_id}.json").read_bytes() == before
+
+
+def test_derived_workflow_binds_parent_without_mutating_it(tmp_path: Path) -> None:
+    store = WorkflowStore(tmp_path / "workflows")
+    parent = store.save(
+        WorkflowCreate.model_validate(
+            {"name": "Reusable review", "phaseProgram": reusable_program()}
+        )
+    )
+    parent_bytes = (store.root / f"{parent.workflow_id}.json").read_bytes()
+    adapted = reusable_program()
+    adapted["phases"][0]["goal"] = "Inspect HTTP proxy invariants before proposing a repair."
+    child = store.save(
+        WorkflowCreate.model_validate(
+            {
+                "name": "Proxy contract review",
+                "description": "Adapted for network-client contract work.",
+                "phaseProgram": adapted,
+                "parentWorkflowId": parent.workflow_id,
+                "adaptationMethod": "codex",
+                "adaptationSummary": "Reworded goals; structure preserved.",
+            }
+        )
+    )
+
+    assert child.parent_workflow_id == parent.workflow_id
+    assert child.parent_program_hash == parent.program_hash
+    assert child.program_hash != parent.program_hash
+    assert (store.root / f"{parent.workflow_id}.json").read_bytes() == parent_bytes
