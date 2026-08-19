@@ -40,3 +40,4 @@ def test_runner_is_explicitly_gated() -> None:
     assert "--confirm-three-sandboxes" in launch_source
     assert "await box.shutdown()" in launch_source
     assert "await sdk.secret.delete(secret)" in launch_source
+    assert "PYTHONPATH=. uv run python scripts/run_reusable_workflow_trial.py" in launch_source

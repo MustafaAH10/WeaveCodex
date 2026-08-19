@@ -104,7 +104,7 @@ def _setup_command(trial_id: str, repository: str, commit: str, sandbox_id: str)
         "cd /home/user/weave-reuse/WeaveCodex/weave-control-plane",
         "uv sync",
         (
-            "uv run python scripts/run_reusable_workflow_trial.py "
+            "PYTHONPATH=. uv run python scripts/run_reusable_workflow_trial.py "
             f"--trial-id {shlex.quote(trial_id)} "
             "--repo /home/user/weave-reuse/target "
             f"--raw-out /home/user/weave-reuse/raw/{shlex.quote(trial_id)}.json "
