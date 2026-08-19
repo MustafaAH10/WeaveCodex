@@ -110,9 +110,7 @@ class WorkflowAdaptationService:
                     "sandbox": "read-only",
                     "serviceName": "weave_codex_workflow_adapter",
                     "experimentalRawEvents": False,
-                    "config": {
-                        "memories": {"use_memories": False, "generate_memories": False}
-                    },
+                    "config": {"memories": {"use_memories": False, "generate_memories": False}},
                 }
             )
             gateway.set_memory_mode(thread_id, "disabled")

@@ -242,9 +242,7 @@ def phase_program_for(trial: RepositoryTrial, commit: str) -> PhaseProgram:
 def programs_for(trial: ReusableWorkflowTrial) -> tuple[PhaseProgram, PhaseProgram]:
     source_trial = _source_trial(trial.source_trial_id)
     source = phase_program_for(source_trial, trial.source_commit)
-    target_definition = RepositoryTrial(
-        **{**trial.target.__dict__, "phases": trial.target_phases}
-    )
+    target_definition = RepositoryTrial(**{**trial.target.__dict__, "phases": trial.target_phases})
     derived = phase_program_for(target_definition, trial.target_commit)
     validate_goal_only_adaptation(source, derived)
     return source, derived
@@ -264,8 +262,7 @@ def build_manifest(trial: ReusableWorkflowTrial, repo: Path, model: str) -> Harn
             "cwd": str(repo.resolve()),
             "task": {
                 "instructions": (
-                    f"{trial.target.question}\n\n"
-                    f"{_artifact_contract(trial.target, actual_commit)}"
+                    f"{trial.target.question}\n\n{_artifact_contract(trial.target, actual_commit)}"
                 ),
                 "contextPaths": list(trial.target.context_paths),
             },

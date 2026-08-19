@@ -1,0 +1,648 @@
+{
+  "schemaVersion": 2,
+  "study": "Reusable workflow source-to-target product trials",
+  "planId": "sha256:74736d7e8d946f25a176ec1b9d14b42744a9613eadb7443ed6b7dface3cfd34f",
+  "authentication": {
+    "method": "chatgpt-device-code",
+    "loginStatus": "Logged in using ChatGPT",
+    "loginStatusSha256": "sha256:16118df3eb3595e44a4721878cef0f79910e6564e10ff0e78e451e7c4e478947",
+    "apiKeyInjected": false,
+    "codexVersion": "0.148.0"
+  },
+  "sandboxCount": 1,
+  "sandboxId": "dbx_349hS7uPzMvMLS8Cq5c3B",
+  "intendedRuns": 3,
+  "cleanAcceptedRuns": 3,
+  "invalidInfrastructureAttempts": 2,
+  "rawEvidenceAvailability": "local-private; content hashes are published",
+  "trials": [
+    {
+      "trialId": "click-to-typer-parameter-resolution",
+      "manifestHash": "sha256:d27f03c6caeb66f221e185eda1b9b37c5aba0b4bfb02420c4233deb0ce911fc6",
+      "model": "gpt-5.6-terra",
+      "memory": "off",
+      "maximumControllerTurns": 4,
+      "sourceRepo": "Click",
+      "sourceCommit": "cbd7a4109da16ce58f54c2a618b4c986e3041fcf",
+      "sourceProgramHash": "sha256:912a20f1b010b905c9c3bb764dd79982e21b4b7d2e867000d585201f5a1c88b0",
+      "targetRepo": "Typer",
+      "targetCommit": "9a7b2e83f6b62c750d6026b0de9ebf2026a8b8fa",
+      "derivedProgramHash": "sha256:3da60655387c81ea64af1b480bf00df2b6176d02ba0c808dbea229412a5468bc",
+      "phaseIds": [
+        "map-contract",
+        "review-map",
+        "trace-behavior",
+        "challenge-evidence",
+        "verify-artifact"
+      ],
+      "phaseKinds": [
+        "work",
+        "checkpoint",
+        "work",
+        "work",
+        "verify"
+      ],
+      "changedGoals": 4,
+      "structurePreserved": true,
+      "workflowLabel": "Parameter contract investigation",
+      "taskFamily": "CLI value resolution",
+      "sandboxId": "dbx_349hS7uPzMvMLS8Cq5c3B",
+      "status": "accepted",
+      "runStatus": "completed",
+      "artifactAccepted": true,
+      "grade": {
+        "passed": true,
+        "checks": [
+          {
+            "name": "identity",
+            "passed": true,
+            "detail": "typer-envvar-resolution"
+          },
+          {
+            "name": "commit",
+            "passed": true,
+            "detail": "9a7b2e83f6b62c750d6026b0de9ebf2026a8b8fa"
+          },
+          {
+            "name": "finding-count",
+            "passed": true,
+            "detail": "4"
+          },
+          {
+            "name": "tracked-references",
+            "passed": true,
+            "detail": "6/6"
+          },
+          {
+            "name": "source-reference",
+            "passed": true,
+            "detail": "typer/main.py, typer/core.py, typer/_click/core.py, tests/test_core.py, tests/test_others.py, tests/test_termui.py"
+          },
+          {
+            "name": "test-reference",
+            "passed": true,
+            "detail": "typer/main.py, typer/core.py, typer/_click/core.py, tests/test_core.py, tests/test_others.py, tests/test_termui.py"
+          },
+          {
+            "name": "required-concepts",
+            "passed": true,
+            "detail": "all present"
+          },
+          {
+            "name": "source-unchanged",
+            "passed": true,
+            "detail": "only .weave artifact and .weave-codex runtime evidence"
+          }
+        ],
+        "artifactPath": "/home/user/weave-reuse/repos/typer/.weave/evidence/typer-envvar-resolution.json",
+        "artifactSha256": "sha256:b0809c2bb95422838c0c7db907a8fb65ccb4ab0f71cde195b59dd504a4b70075",
+        "referencedFiles": [
+          {
+            "path": "/home/user/weave-reuse/repos/typer/typer/main.py",
+            "sha256": "sha256:29a201974ed555378b352b40b220dd57ee7c25161a03ce9ba8f4eaaa8e2205ab"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/typer/typer/core.py",
+            "sha256": "sha256:fdca7d3fbbaecfa1df879096d66ad6245b7850259354571ff1a4a804196fa8c7"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/typer/typer/_click/core.py",
+            "sha256": "sha256:ff5025c9ae0129de30fc628c1fd3af32a9762faa85ae9146117873dffae9dc29"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/typer/tests/test_core.py",
+            "sha256": "sha256:6ff94a913d29a67836f0626e965613ef8a9ba240a16a27cf4de986f23ef057d9"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/typer/tests/test_others.py",
+            "sha256": "sha256:a8b51236d3f569916626c8caaa972e2c7b6fa148cfb4a0bbbefd7242fadf965a"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/typer/tests/test_termui.py",
+            "sha256": "sha256:3f8d0d391370f56d4ba3e02445098faa68b7cc55f162f69c7ac3811199af65aa"
+          }
+        ],
+        "externalVerification": {
+          "command": [
+            "uv",
+            "run",
+            "pytest",
+            "-q",
+            "tests/test_others.py",
+            "-k",
+            "envvar"
+          ],
+          "exitCode": 0,
+          "elapsedSeconds": 2.535,
+          "outputSha256": "sha256:d0fe511327bb9449ec22095144236de085b60d202b8149c1bcee1ddb165b6880"
+        }
+      },
+      "receiptId": "sha256:27dafbd67d25aca72fde4f534a95b0fb35e358345c9ed209259baf7112c4cf90",
+      "controllerTurns": 4,
+      "modelCompletions": 25,
+      "checkpoints": [
+        {
+          "phaseId": "review-map",
+          "decision": "accept"
+        }
+      ],
+      "phaseExecutions": [
+        {
+          "phaseId": "map-contract",
+          "kind": "work",
+          "turnIds": [
+            "01a018aa-29b4-7a12-8d2c-2e993acd4fac"
+          ]
+        },
+        {
+          "phaseId": "review-map",
+          "kind": "checkpoint",
+          "turnIds": [],
+          "decision": "accept"
+        },
+        {
+          "phaseId": "trace-behavior",
+          "kind": "work",
+          "turnIds": [
+            "01a018ab-c208-7c23-9b69-82ae54ac4851"
+          ]
+        },
+        {
+          "phaseId": "challenge-evidence",
+          "kind": "work",
+          "turnIds": [
+            "01a018ad-0e2a-7b33-ba69-5743da4bb820"
+          ]
+        },
+        {
+          "phaseId": "verify-artifact",
+          "kind": "verify",
+          "turnIds": [
+            "01a018ae-3764-7e70-ac39-5bca1dbd658e"
+          ]
+        }
+      ],
+      "verification": "evidence contract and focused upstream checks passed",
+      "sourceRepository": "https://github.com/pallets/click",
+      "targetRepository": "https://github.com/fastapi/typer",
+      "sourcePhaseNames": [
+        "Map the contract",
+        "Review the map",
+        "Trace and test",
+        "Challenge the evidence",
+        "Verify the evidence"
+      ],
+      "phaseNames": [
+        "Map Typer's value contract",
+        "Review the map",
+        "Trace environment resolution",
+        "Challenge value precedence",
+        "Verify the evidence"
+      ],
+      "changedFiles": [
+        ".weave/evidence/typer-envvar-resolution.json"
+      ],
+      "upstreamChecks": "passed",
+      "externalCommand": [
+        "uv",
+        "run",
+        "pytest",
+        "-q",
+        "tests/test_others.py",
+        "-k",
+        "envvar"
+      ],
+      "externalElapsedSeconds": 2.535,
+      "publicReceiptSha256": "sha256:17c505cf43912042f558b3fffdd10726e91476b69582826b0fc59babe9040f0d",
+      "rawReceiptSha256": "sha256:dbc57478d3f8d55d3da63c59f4ab2482dc19a1a9aec6b5f2988f6044d9bd5606"
+    },
+    {
+      "trialId": "requests-to-httpx-proxy-precedence",
+      "manifestHash": "sha256:19c9c3604b4e5de4a7f836933489b36898a0bd03c40537ca5fe6a3a3441931ce",
+      "model": "gpt-5.6-terra",
+      "memory": "off",
+      "maximumControllerTurns": 4,
+      "sourceRepo": "Requests",
+      "sourceCommit": "8f8b212de8c2129d7954c6cd373762880375620a",
+      "sourceProgramHash": "sha256:1f4acee1b1ab4e0b8652810b4394a636cfc57b7d3e363c5fbee508526248950e",
+      "targetRepo": "HTTPX",
+      "targetCommit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "derivedProgramHash": "sha256:5b240b6ecdd20da207030e93657b22299a916f8cc6f357423588a4004306aefd",
+      "phaseIds": [
+        "map-inputs",
+        "review-map",
+        "trace-precedence",
+        "adversarial-review",
+        "verify-artifact"
+      ],
+      "phaseKinds": [
+        "work",
+        "checkpoint",
+        "work",
+        "work",
+        "verify"
+      ],
+      "changedGoals": 4,
+      "structurePreserved": true,
+      "workflowLabel": "Proxy precedence investigation",
+      "taskFamily": "HTTP environment policy",
+      "sandboxId": "dbx_349hS7uPzMvMLS8Cq5c3B",
+      "status": "accepted",
+      "runStatus": "completed",
+      "artifactAccepted": true,
+      "grade": {
+        "passed": true,
+        "checks": [
+          {
+            "name": "identity",
+            "passed": true,
+            "detail": "httpx-proxy-precedence"
+          },
+          {
+            "name": "commit",
+            "passed": true,
+            "detail": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254"
+          },
+          {
+            "name": "finding-count",
+            "passed": true,
+            "detail": "5"
+          },
+          {
+            "name": "tracked-references",
+            "passed": true,
+            "detail": "4/4"
+          },
+          {
+            "name": "source-reference",
+            "passed": true,
+            "detail": "httpx/_utils.py, tests/test_utils.py, tests/client/test_proxies.py, httpx/_client.py"
+          },
+          {
+            "name": "test-reference",
+            "passed": true,
+            "detail": "httpx/_utils.py, tests/test_utils.py, tests/client/test_proxies.py, httpx/_client.py"
+          },
+          {
+            "name": "required-concepts",
+            "passed": true,
+            "detail": "all present"
+          },
+          {
+            "name": "source-unchanged",
+            "passed": true,
+            "detail": "only .weave artifact and .weave-codex runtime evidence"
+          }
+        ],
+        "artifactPath": "/home/user/weave-reuse/repos/httpx/.weave/evidence/httpx-proxy-precedence.json",
+        "artifactSha256": "sha256:035651b222697ea21fe5fedbe9cda8654c16fcfc5bcb173d7fe8ac797b158f24",
+        "referencedFiles": [
+          {
+            "path": "/home/user/weave-reuse/repos/httpx/httpx/_utils.py",
+            "sha256": "sha256:fd355ea802afc4990a1ddcfb74579be2cd0b66a41781e1645d281f88704aff5a"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/httpx/tests/test_utils.py",
+            "sha256": "sha256:dbcf6830777b2ade0cce820cdfac2c881ea9e07303891845c830548df4c63521"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/httpx/tests/client/test_proxies.py",
+            "sha256": "sha256:b08d5d510a985f2393fe858ccd111ec75e1d23c32d9e684fca859fe1fa78d567"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/httpx/httpx/_client.py",
+            "sha256": "sha256:ed717b3ac00debb48d089daeb4dd7fbaf47cb5642ebc4a6e76f3a2fc6cfc0f70"
+          }
+        ],
+        "externalVerification": {
+          "command": [
+            "uv",
+            "run",
+            "pytest",
+            "-q",
+            "tests/test_utils.py",
+            "tests/client/test_proxies.py"
+          ],
+          "exitCode": 0,
+          "elapsedSeconds": 7.541,
+          "outputSha256": "sha256:26fc711f465a53e25e287b27f42892fab27581a1fb375f931dede5d89e9b8ffd"
+        }
+      },
+      "receiptId": "sha256:73ee8421a8c08d9d368dc8ce72cef9530a5eb20c36162e6d1c3388b27943f121",
+      "controllerTurns": 4,
+      "modelCompletions": 22,
+      "checkpoints": [
+        {
+          "phaseId": "review-map",
+          "decision": "accept"
+        }
+      ],
+      "phaseExecutions": [
+        {
+          "phaseId": "map-inputs",
+          "kind": "work",
+          "turnIds": [
+            "01a018b5-2a12-7cc2-b2be-58d257d52e34"
+          ]
+        },
+        {
+          "phaseId": "review-map",
+          "kind": "checkpoint",
+          "turnIds": [],
+          "decision": "accept"
+        },
+        {
+          "phaseId": "trace-precedence",
+          "kind": "work",
+          "turnIds": [
+            "01a018b6-8402-7311-80bb-4432368abc87"
+          ]
+        },
+        {
+          "phaseId": "adversarial-review",
+          "kind": "work",
+          "turnIds": [
+            "01a018b7-0935-7991-8819-753006750c48"
+          ]
+        },
+        {
+          "phaseId": "verify-artifact",
+          "kind": "verify",
+          "turnIds": [
+            "01a018b8-bbad-7f80-b17d-c2966926ddfb"
+          ]
+        }
+      ],
+      "verification": "evidence contract and focused upstream checks passed",
+      "sourceRepository": "https://github.com/psf/requests",
+      "targetRepository": "https://github.com/encode/httpx",
+      "sourcePhaseNames": [
+        "Map proxy inputs",
+        "Review the map",
+        "Trace precedence",
+        "Review edge cases",
+        "Verify the evidence"
+      ],
+      "phaseNames": [
+        "Map HTTPX proxy inputs",
+        "Review the map",
+        "Trace mount precedence",
+        "Review bypass edge cases",
+        "Verify the evidence"
+      ],
+      "changedFiles": [
+        ".weave/evidence/httpx-proxy-precedence.json"
+      ],
+      "upstreamChecks": "passed",
+      "externalCommand": [
+        "uv",
+        "run",
+        "pytest",
+        "-q",
+        "tests/test_utils.py",
+        "tests/client/test_proxies.py"
+      ],
+      "externalElapsedSeconds": 7.541,
+      "publicReceiptSha256": "sha256:baa8c9a09ac1ddd90881b0b4cd910d3a07060c2b0f9d5693867bd62552e120b2",
+      "rawReceiptSha256": "sha256:43a4937a9e353db5cb972d70135a498dff96c731d2b3195edf1fd8f270d0ccf1"
+    },
+    {
+      "trialId": "express-to-fastify-async-errors",
+      "manifestHash": "sha256:e06719065988b16d5d96e158e4789cbbf8e35e08ed1862997c62eefb5ea88f70",
+      "model": "gpt-5.6-terra",
+      "memory": "off",
+      "maximumControllerTurns": 4,
+      "sourceRepo": "Express",
+      "sourceCommit": "a3714473feb3d2908add734d340e7755fd85e0a3",
+      "sourceProgramHash": "sha256:83576ccfc84b4a75c2d7ae76065f8fe18b3aec5af44c39176dc384bb9cf4d11d",
+      "targetRepo": "Fastify",
+      "targetCommit": "9334d07129589f7340adfa4729ebe6c55e34bbfd",
+      "derivedProgramHash": "sha256:a1097d3c20c46c950723ba76100cb5b2e0b4f56d1bc94a57dca360667fbc12cf",
+      "phaseIds": [
+        "map-lifecycle",
+        "review-map",
+        "trace-errors",
+        "challenge-failures",
+        "verify-artifact"
+      ],
+      "phaseKinds": [
+        "work",
+        "checkpoint",
+        "work",
+        "work",
+        "verify"
+      ],
+      "changedGoals": 4,
+      "structurePreserved": true,
+      "workflowLabel": "Async error-path investigation",
+      "taskFamily": "Web framework error lifecycle",
+      "sandboxId": "dbx_349hS7uPzMvMLS8Cq5c3B",
+      "status": "accepted",
+      "runStatus": "completed",
+      "artifactAccepted": true,
+      "grade": {
+        "passed": true,
+        "checks": [
+          {
+            "name": "identity",
+            "passed": true,
+            "detail": "fastify-async-errors"
+          },
+          {
+            "name": "commit",
+            "passed": true,
+            "detail": "9334d07129589f7340adfa4729ebe6c55e34bbfd"
+          },
+          {
+            "name": "finding-count",
+            "passed": true,
+            "detail": "4"
+          },
+          {
+            "name": "tracked-references",
+            "passed": true,
+            "detail": "11/11"
+          },
+          {
+            "name": "source-reference",
+            "passed": true,
+            "detail": "lib/handle-request.js, lib/wrap-thenable.js, lib/reply.js, lib/hooks.js, test/route-hooks.test.js, test/hooks.test.js, lib/error-handler.js, fastify.js, test/encapsulated-error-handler.test.js, lib/context.js, test/schema-serialization.test.js"
+          },
+          {
+            "name": "test-reference",
+            "passed": true,
+            "detail": "lib/handle-request.js, lib/wrap-thenable.js, lib/reply.js, lib/hooks.js, test/route-hooks.test.js, test/hooks.test.js, lib/error-handler.js, fastify.js, test/encapsulated-error-handler.test.js, lib/context.js, test/schema-serialization.test.js"
+          },
+          {
+            "name": "required-concepts",
+            "passed": true,
+            "detail": "all present"
+          },
+          {
+            "name": "source-unchanged",
+            "passed": true,
+            "detail": "only .weave artifact and .weave-codex runtime evidence"
+          }
+        ],
+        "artifactPath": "/home/user/weave-reuse/repos/fastify/.weave/evidence/fastify-async-errors.json",
+        "artifactSha256": "sha256:0d05afff45dc7338b5e41c51c8ca57608f0fa38c5b654c5e6634e59be0f67b04",
+        "referencedFiles": [
+          {
+            "path": "/home/user/weave-reuse/repos/fastify/lib/handle-request.js",
+            "sha256": "sha256:e98cbe20b027674622456e4af53aa08fa064c8dd76a1cfe7b41fe60711d1ed71"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/fastify/lib/wrap-thenable.js",
+            "sha256": "sha256:23e41424f4a19f947c0fe58cb21ee3fa97d15917d7d6dc668f375d71d8bf786b"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/fastify/lib/reply.js",
+            "sha256": "sha256:5da6d9b8bee462bec8ee0b92bc1e8b2a560bfce18db989b439921a659ddcaf7d"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/fastify/lib/hooks.js",
+            "sha256": "sha256:02b428780d90101e5329e693121ebaf8bfe4a88f506ed1ae0d63687a774d5d67"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/fastify/test/route-hooks.test.js",
+            "sha256": "sha256:dadb1cfe1c7a5f2a3b37b4f82d3c2316568ed3f7e242f27e585fd38b13b952f4"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/fastify/test/hooks.test.js",
+            "sha256": "sha256:09fd8c6092e2c7e982ffd0d56c06498770a70473230613d5be307d70cd03cfd9"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/fastify/lib/error-handler.js",
+            "sha256": "sha256:495e1da7cfa5215a7f17e54a846be5f5cf55e5fc1b828edf4adfd32734d5b3f7"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/fastify/fastify.js",
+            "sha256": "sha256:9e696e45c8f19ea4f68b477890785282dc8ee9fe69edfef2c12f191aa0a83841"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/fastify/test/encapsulated-error-handler.test.js",
+            "sha256": "sha256:cb53d5adbad3298ea6629e7362fc227cef203a7096a0c0d99a40b3753d6602ed"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/fastify/lib/context.js",
+            "sha256": "sha256:4423cb19341514978364a3496d8b9a4da370d7680fca7f0f07607a40e4a1d62a"
+          },
+          {
+            "path": "/home/user/weave-reuse/repos/fastify/test/schema-serialization.test.js",
+            "sha256": "sha256:54773878d2771df44df73f15d07648a5e900a5b611e791a73d791b6ae789888e"
+          }
+        ],
+        "externalVerification": {
+          "command": [
+            "npx",
+            "borp",
+            "test/encapsulated-error-handler.test.js",
+            "test/reply-error.test.js"
+          ],
+          "exitCode": 0,
+          "elapsedSeconds": 126.224,
+          "outputSha256": "sha256:f5f54d3cd40b70c92022a3009f27f8775df2df04504c12befb033a55fd1f35b3"
+        }
+      },
+      "receiptId": "sha256:b67d58ade91db484e1e0c9fe2799dbeff4116b035521f85962424487e3c5a25d",
+      "controllerTurns": 4,
+      "modelCompletions": 22,
+      "checkpoints": [
+        {
+          "phaseId": "review-map",
+          "decision": "accept"
+        }
+      ],
+      "phaseExecutions": [
+        {
+          "phaseId": "map-lifecycle",
+          "kind": "work",
+          "turnIds": [
+            "01a018bb-e4b6-71a3-bce8-e8b6b2a5fc6d"
+          ]
+        },
+        {
+          "phaseId": "review-map",
+          "kind": "checkpoint",
+          "turnIds": [],
+          "decision": "accept"
+        },
+        {
+          "phaseId": "trace-errors",
+          "kind": "work",
+          "turnIds": [
+            "01a018be-69c2-7930-8ce8-cd76c97bd12b"
+          ]
+        },
+        {
+          "phaseId": "challenge-failures",
+          "kind": "work",
+          "turnIds": [
+            "01a018be-a2a9-7701-8553-f1ff84c47604"
+          ]
+        },
+        {
+          "phaseId": "verify-artifact",
+          "kind": "verify",
+          "turnIds": [
+            "01a018bf-62f2-72d1-9e70-0b7a2071b93d"
+          ]
+        }
+      ],
+      "verification": "evidence contract and the repository-configured Fastify borp suite passed",
+      "sourceRepository": "https://github.com/expressjs/express",
+      "targetRepository": "https://github.com/fastify/fastify",
+      "sourcePhaseNames": [
+        "Map the lifecycle",
+        "Review the map",
+        "Trace error paths",
+        "Challenge failure paths",
+        "Verify the evidence"
+      ],
+      "phaseNames": [
+        "Map Fastify's error lifecycle",
+        "Review the map",
+        "Trace thrown and rejected errors",
+        "Challenge nested failure paths",
+        "Verify the evidence"
+      ],
+      "changedFiles": [
+        ".weave/evidence/fastify-async-errors.json"
+      ],
+      "upstreamChecks": "passed",
+      "externalCommand": [
+        "npx",
+        "borp",
+        "test/encapsulated-error-handler.test.js",
+        "test/reply-error.test.js"
+      ],
+      "externalElapsedSeconds": 126.224,
+      "publicReceiptSha256": "sha256:8f8a26e208c5c71648726cd93126ed7233fa22e582ef077268863342914d197b",
+      "rawReceiptSha256": "sha256:e4b0315a375d55ef4f851334fabbf31dac2181f658679a28c3aa5b7782bb409b"
+    }
+  ],
+  "incidents": [
+    {
+      "incidentId": "httpx-missing-test-deps-v1",
+      "trialId": "requests-to-httpx-proxy-precedence",
+      "status": "invalid-infrastructure-attempt",
+      "runStatus": "completed",
+      "artifactAccepted": false,
+      "externalExitCode": 1,
+      "publicReceiptSha256": "sha256:60eb33e440f78aaf44b603440cfe535177bb13e57bc7122d39708f2f3d792c69",
+      "rawReceiptSha256": "sha256:753552dbfbad21fab8ca260b463ee26ad04003ce2314378d7afd949afef8bef4"
+    },
+    {
+      "incidentId": "typer-setup-lock-v1",
+      "trialId": "click-to-typer-parameter-resolution",
+      "status": "invalid-infrastructure-attempt",
+      "runStatus": "completed",
+      "artifactAccepted": false,
+      "externalExitCode": 0,
+      "publicReceiptSha256": "sha256:4bd6454dc8a882a966d5abf9d73108c01c038b6341df2fdbd436c89e99202331",
+      "rawReceiptSha256": "sha256:b53c8248085e0fc416c7528e952c3767c410a1ba46ad6a4306fd87b92eaaf968"
+    }
+  ],
+  "claimBoundary": "Three one-rollout product acceptance trials in one ChatGPT-authenticated Runloop sandbox. Source runs are historical and target runs have no ordinary-Codex comparison arm. Two additional attempts are disclosed as invalid setup incidents. The result tests immutable lineage, human-reviewed goal adaptation, execution, and external verification\u2014not general model quality or compute efficiency.",
+  "summarySha256": "sha256:50b749345d9c693382490e7720c39f66dd716241ba859d5bda464876e9a92a94"
+}

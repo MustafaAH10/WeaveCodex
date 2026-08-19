@@ -505,6 +505,9 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert 'request("/api/workflows/adapt"' in javascript
     assert "request(`/api/integrations?cwd=" in javascript
     assert 'request("/reusable-workflow-trials.json"' in javascript
+    assert "Actual external-user login" in javascript
+    assert "rawEvidenceAvailability" in javascript
+    assert "Three pinned OSS trials" in html
     assert "Task and repository will be excluded" in html
 
 

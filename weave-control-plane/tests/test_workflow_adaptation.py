@@ -46,15 +46,25 @@ class FakeGateway:
         self.output_schema: dict[str, Any] | None = None
         self.closed = False
 
-    def start(self) -> None: pass
-    def close(self) -> None: self.closed = True
-    def read_thread(self, thread_id: str) -> dict[str, Any]: return {}
-    def list_threads(self, cwd: str) -> list[dict[str, Any]]: return []
+    def start(self) -> None:
+        pass
+
+    def close(self) -> None:
+        self.closed = True
+
+    def read_thread(self, thread_id: str) -> dict[str, Any]:
+        return {}
+
+    def list_threads(self, cwd: str) -> list[dict[str, Any]]:
+        return []
+
     def set_memory_mode(self, thread_id: str, mode: str) -> None:
         assert mode == "disabled"
+
     def start_thread(self, params: dict[str, Any]) -> str:
         self.params = params
         return "thread-adapt"
+
     def run_turn(self, thread_id: str, prompt: str, **kwargs: Any) -> TurnOutcome:
         assert "Do not solve the task" in prompt
         self.output_schema = kwargs["output_schema"]

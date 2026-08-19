@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "planId": "sha256:74736d7e8d946f25a176ec1b9d14b42744a9613eadb7443ed6b7dface3cfd34f",
+  "summarySha256": "sha256:50b749345d9c693382490e7720c39f66dd716241ba859d5bda464876e9a92a94",
+  "rawEvidenceAvailability": "local-private; content hashes are published",
+  "entries": [
+    {
+      "role": "frozen-plan",
+      "path": "weave_codex/static/reusable-workflow-trials-plan-v2.json",
+      "sha256": "sha256:d8efc8dd0222e75ab77d7ec09d613046d358e7c389e112920067c2936d1c9fb9"
+    },
+    {
+      "role": "sanitized-run",
+      "trialId": "click-to-typer-parameter-resolution",
+      "path": "../reports/reusable-workflow-trials-v2/clean/click-to-typer-parameter-resolution.public.json",
+      "sha256": "sha256:17c505cf43912042f558b3fffdd10726e91476b69582826b0fc59babe9040f0d"
+    },
+    {
+      "role": "local-private-trace",
+      "trialId": "click-to-typer-parameter-resolution",
+      "path": "../reports/reusable-workflow-trials-v2/clean/click-to-typer-parameter-resolution.raw.json",
+      "sha256": "sha256:dbc57478d3f8d55d3da63c59f4ab2482dc19a1a9aec6b5f2988f6044d9bd5606"
+    },
+    {
+      "role": "sanitized-run",
+      "trialId": "requests-to-httpx-proxy-precedence",
+      "path": "../reports/reusable-workflow-trials-v2/clean/requests-to-httpx-proxy-precedence.public.json",
+      "sha256": "sha256:baa8c9a09ac1ddd90881b0b4cd910d3a07060c2b0f9d5693867bd62552e120b2"
+    },
+    {
+      "role": "local-private-trace",
+      "trialId": "requests-to-httpx-proxy-precedence",
+      "path": "../reports/reusable-workflow-trials-v2/clean/requests-to-httpx-proxy-precedence.raw.json",
+      "sha256": "sha256:43a4937a9e353db5cb972d70135a498dff96c731d2b3195edf1fd8f270d0ccf1"
+    },
+    {
+      "role": "sanitized-run",
+      "trialId": "express-to-fastify-async-errors",
+      "path": "../reports/reusable-workflow-trials-v2/clean/express-to-fastify-async-errors.public.json",
+      "sha256": "sha256:8f8a26e208c5c71648726cd93126ed7233fa22e582ef077268863342914d197b"
+    },
+    {
+      "role": "local-private-trace",
+      "trialId": "express-to-fastify-async-errors",
+      "path": "../reports/reusable-workflow-trials-v2/clean/express-to-fastify-async-errors.raw.json",
+      "sha256": "sha256:e4b0315a375d55ef4f851334fabbf31dac2181f658679a28c3aa5b7782bb409b"
+    },
+    {
+      "role": "incident-summary",
+      "incidentId": "httpx-missing-test-deps-v1",
+      "path": "../reports/reusable-workflow-trials-v2/incidents/httpx-missing-test-deps-v1/public.json",
+      "sha256": "sha256:60eb33e440f78aaf44b603440cfe535177bb13e57bc7122d39708f2f3d792c69"
+    },
+    {
+      "role": "incident-private-trace",
+      "incidentId": "httpx-missing-test-deps-v1",
+      "path": "../reports/reusable-workflow-trials-v2/incidents/httpx-missing-test-deps-v1/raw.json",
+      "sha256": "sha256:753552dbfbad21fab8ca260b463ee26ad04003ce2314378d7afd949afef8bef4"
+    },
+    {
+      "role": "incident-summary",
+      "incidentId": "typer-setup-lock-v1",
+      "path": "../reports/reusable-workflow-trials-v2/incidents/typer-setup-lock-v1/public.json",
+      "sha256": "sha256:4bd6454dc8a882a966d5abf9d73108c01c038b6341df2fdbd436c89e99202331"
+    },
+    {
+      "role": "incident-private-trace",
+      "incidentId": "typer-setup-lock-v1",
+      "path": "../reports/reusable-workflow-trials-v2/incidents/typer-setup-lock-v1/raw.json",
+      "sha256": "sha256:b53c8248085e0fc416c7528e952c3767c410a1ba46ad6a4306fd87b92eaaf968"
+    }
+  ],
+  "manifestId": "sha256:ea3ede6e81be34a7c2d0c313db6888dabb8755fa309202180a1e5e52d2534fd3"
+}

@@ -95,9 +95,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "taskFamily": trial.task_family,
         "sandboxId": args.sandbox_id,
         "status": (
-            "accepted"
-            if session.status == "completed" and evidence_grade["passed"]
-            else "failed"
+            "accepted" if session.status == "completed" and evidence_grade["passed"] else "failed"
         ),
         "runStatus": session.status,
         "artifactAccepted": evidence_grade["passed"],

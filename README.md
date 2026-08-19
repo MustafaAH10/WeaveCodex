@@ -31,15 +31,25 @@ uv run python -m weave_codex.server \
   --port 8790
 ```
 
-Then open <http://127.0.0.1:8790/>. The home page starts with the task: choose a direct Codex run or
-a small visible Weave program, select the repository and safety boundary, and run. Setup and the
-full editor stay out of the first-run path. Open <http://127.0.0.1:8790/studio.html#design> for the
-advanced Studio: exact phase editing, memory selection, integrations, raw manifest JSON, and
-detailed run receipts. One Work phase can contain any number of native Codex model/tool iterations.
+Then open <http://127.0.0.1:8790/>. It is one application, with top-level tabs for Run, Design,
+saved Workflows, Runs, Integrations, Field trials, Architecture, and Setup. Start with a task and
+repository, choose direct Codex or a visible Weave program, then run within the selected safety
+boundary. The same site contains exact phase editing, memory selection, Codex integrations,
+manifest preview, saved parent/child workflow lineage, and detailed run receipts. A saved workflow
+can be loaded for another repository and its human-readable goals can be edited manually or sent
+to Codex for a read-only rewrite proposal. One Work phase can contain any number of native Codex
+model/tool iterations.
+
 The interactive [Codex internals deep dive](http://127.0.0.1:8790/deep-dive.html) begins with Codex
 alone and reveals Weave as an optional track-changes layer.
 The [sandbox repository trial dashboard](http://127.0.0.1:8790/sandbox-trials.html) shows three
 real, source-linked runs against pinned Click, Requests, and Express clones.
+The main app's [Field trials tab](http://127.0.0.1:8790/#field-trials) records the newer reuse
+study: one saved workflow family was adapted from Click to Typer, Requests to HTTPX, and Express
+to Fastify. All three accepted target runs executed sequentially inside one Runloop sandbox after
+the user completed the official ChatGPT device-login flow; no API key was injected. The page also
+retains two invalid setup attempts and keeps artifact acceptance separate from broad model-quality
+claims.
 
 Read the [control-plane guide](weave-control-plane/README.md), the complete source-level article
 [Codex is not a flowchart](weave-control-plane/docs/CODEX_HARNESS_INTERNALS.md), and the
