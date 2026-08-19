@@ -21,16 +21,19 @@
       <section id="architecture-view" class="page-view active" aria-labelledby="architecture-title">
         <header class="hero shell">
           <p class="eyebrow">SYSTEM MAP · PINNED CODEX SOURCE 9DED177</p>
-          <h1 id="architecture-title">Codex is the agent loop.<br />Weave makes its outer workflow editable.</h1>
-          <p>Codex still decides how to inspect, reason, edit, run tools, and recover. Weave sits one level above it: people author complete goals, place decision points between them, and retain evidence about what actually ran.</p>
+          <h1 id="architecture-title">Codex runs the task.<br />Weave makes the workflow editable.</h1>
+          <p>Author goals and checkpoints around Codex’s native agent loop. Keep a receipt of what actually ran.</p>
         </header>
 
         <section class="architecture-shell shell" aria-labelledby="diagram-title">
           <header class="diagram-header">
-            <div><p class="eyebrow">ONE CURATED SYSTEM ARCHITECTURE</p><h2 id="diagram-title">Follow a task from the client to the result</h2></div>
-            <div class="layer-switch" role="group" aria-label="Architecture layer">
-              <button id="codex-layer" class="active" type="button" aria-pressed="true">Codex only</button>
-              <button id="weave-layer" type="button" aria-pressed="false">Reveal Weave layer</button>
+            <div><p class="eyebrow">ONE CURATED SYSTEM ARCHITECTURE</p><h2 id="diagram-title">Codex inside. Weave outside.</h2></div>
+            <div class="diagram-actions">
+              <div class="layer-switch" role="group" aria-label="Architecture layer">
+                <button id="codex-layer" class="active" type="button" aria-pressed="true">Codex only</button>
+                <button id="weave-layer" type="button" aria-pressed="false">Reveal Weave layer</button>
+              </div>
+              <small class="pan-hint">Scroll diagram sideways →</small>
             </div>
           </header>
 
@@ -71,11 +74,11 @@
 
               <text class="lane-label" x="55" y="244">CLIENT</text>
               <rect class="base-node client" x="55" y="263" width="210" height="112" rx="14" />
-              <text class="node-kicker" x="78" y="292">USER SURFACE</text><text class="node-title" x="78" y="323">CLI · IDE · Weave</text><text class="node-copy" x="78" y="347">task, steering, approvals</text>
+              <text class="node-kicker" x="78" y="292">USER SURFACE</text><text class="node-title base-title" x="78" y="323">CLI · IDE · Weave</text><text class="node-copy" x="78" y="347">task, steering, approvals</text>
 
               <text class="lane-label" x="311" y="244">PUBLIC BOUNDARY</text>
               <rect class="base-node server" x="311" y="263" width="218" height="112" rx="14" />
-              <text class="node-kicker" x="334" y="292">APP-SERVER</text><text class="node-title" x="334" y="323">Threads · turns · items</text><text class="node-copy" x="334" y="347">auth, history, events</text>
+              <text class="node-kicker" x="334" y="292">APP-SERVER</text><text class="node-title base-title" x="334" y="323">Threads · turns · items</text><text class="node-copy" x="334" y="347">auth, history, events</text>
 
               <path class="base-arrow" d="M265 319H303" /><path class="base-arrow" d="M529 319H567" />
 
@@ -103,34 +106,33 @@
               </g>
             </svg>
           </div>
-          <p id="diagram-caption" class="diagram-caption"><b>Codex only.</b> A client sends a task through app-server; Codex owns the adaptive context → model → tools loop.</p>
+          <p id="diagram-caption" class="diagram-caption"><b>Codex only.</b> The client supplies a goal; Codex chooses the path.</p>
         </section>
 
         <section id="control-diff" class="diff-section shell" aria-labelledby="diff-title">
-          <header><p class="eyebrow">THE PRODUCT BOUNDARY</p><h2 id="diff-title">We change four things—and leave the agent alone</h2></header>
+          <header><p class="eyebrow">THE PRODUCT BOUNDARY</p><h2 id="diff-title">What Weave adds</h2></header>
           <div class="diff-grid">
-            <article><span>01</span><h3>Workflow</h3><p>Turn one large prompt into named, reusable goals such as inspect, approve, implement, and verify.</p></article>
-            <article><span>02</span><h3>Human control</h3><p>Pause between complete Codex turns. Native approvals still govern risky actions inside a turn.</p></article>
-            <article><span>03</span><h3>Experience</h3><p>Choose no prior work, all eligible work, or exact prior threads—with the selection recorded.</p></article>
-            <article><span>04</span><h3>Evidence</h3><p>Bind the authored goals and human decisions to observed Codex turns in a local run receipt.</p></article>
+            <article><span>01</span><h3>Workflow</h3><p>Reusable goal phases.</p></article>
+            <article><span>02</span><h3>Human control</h3><p>Pause between goals.</p></article>
+            <article><span>03</span><h3>Experience</h3><p>Choose prior threads.</p></article>
+            <article><span>04</span><h3>Evidence</h3><p>Link intent to results.</p></article>
           </div>
           <div class="responsibility">
-            <div><b>Codex still owns</b><p>Reasoning, context construction, tool choice, retries, shell and file operations, MCP/Skills/AGENTS.md, sandboxing, and action approvals.</p></div>
-            <div><b>Weave owns</b><p>The outer phase program, between-phase checkpoints, selected-memory declaration, verification contract, and intent-to-trace receipt.</p></div>
+            <div><b>Codex owns</b><p>Reason, use tools, edit, test, and recover.</p></div>
+            <div><b>Weave owns</b><p>Sequence goals, pause, verify, and record.</p></div>
           </div>
         </section>
 
         <section id="integrations" class="technical shell" aria-labelledby="integration-title">
-          <div><p class="eyebrow">TECHNICAL NOTES</p><h2 id="integration-title">Where Codex integrations enter</h2></div>
+          <div><p class="eyebrow">ONE IMPLEMENTATION RULE</p><h2 id="integration-title">A phase is a goal—not a tool call</h2></div>
           <div class="technical-list">
-            <details open><summary>Why a phase is not a tool call</summary><p>A Work phase compiles to one Codex turn. Inside that turn, Codex can read, edit, test, call MCP tools, recover, and resample as often as needed. The canvas describes the goal boundary, not guessed tactics.</p></details>
-            <details><summary>AGENTS.md chain, Skills, MCP, and Apps</summary><p>AGENTS.md and Skills shape instructions and procedures. MCP and Apps expand the callable tool surface. Weave inventories and selects these Codex-owned integrations; it does not copy their credentials.</p></details>
-            <details><summary>What the visualization can prove</summary><p>Exact Weave phases come from the manifest and receipt. Native Codex activity groups are a deterministic projection of persisted items—not hidden reasoning or a reconstructed private plan.</p></details>
+            <p>Each Work or Verify phase starts one Codex turn. Codex can perform any number of native actions inside it.</p>
+            <details><summary>AGENTS.md chain, Skills, MCP, and Apps</summary><p>These stay native to Codex. Weave can inventory and select them without copying credentials.</p></details>
           </div>
         </section>
 
         <section class="sources shell" aria-labelledby="sources-title">
-          <div><p class="eyebrow">PRIMARY SOURCES</p><h2 id="sources-title">Read the contracts</h2></div>
+          <div><p class="eyebrow">PRIMARY SOURCES</p><h2 id="sources-title">Source contracts</h2></div>
           <div>
             <a href="https://learn.chatgpt.com/docs/app-server">App-server guide ↗</a>
             <a href="https://learn.chatgpt.com/docs/auth">Codex authentication ↗</a>

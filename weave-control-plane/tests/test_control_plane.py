@@ -448,10 +448,16 @@ def test_deep_dive_is_diagram_led_and_setup_is_self_contained() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
     html = (static / "deep-dive.html").read_text()
     javascript = (static / "deep-dive.js").read_text()
+    stylesheet = (static / "deep-dive.css").read_text()
 
     assert html.count('id="system-architecture"') == 1
     assert 'id="weave-layer"' in html
     assert 'class="weave-overlay"' in html
+    assert "Codex runs the task." in html
+    assert "Scroll diagram sideways" in html
+    assert "We change four things" not in html
+    assert ".node-copy{font-size:13px}" in stylesheet
+    assert ".diff-grid p,.responsibility p{font-size:15px}" in stylesheet
     assert 'id="setup-view"' in html
     assert "npm install -g @openai/codex" in html
     assert "uv run python -m weave_codex.server" in html
