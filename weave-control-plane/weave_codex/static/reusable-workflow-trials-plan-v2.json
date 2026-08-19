@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 2,
+  "study": "Reusable workflow source-to-target product trials",
+  "model": "gpt-5.6-terra",
+  "reasoningEffort": "medium",
+  "memory": "off",
+  "sandbox": "workspace-write",
+  "sandboxProvider": "runloop",
+  "sandboxCount": 1,
+  "plannedRuns": 3,
+  "authentication": {
+    "method": "chatgpt-device-code",
+    "accountMode": "chatgpt",
+    "apiKeyInjected": false
+  },
+  "execution": "three sequential derived Weave workflows in one authenticated persistent Runloop devbox",
+  "trials": [
+    {
+      "trialId": "click-to-typer-parameter-resolution",
+      "workflowLabel": "Parameter contract investigation",
+      "taskFamily": "CLI value resolution",
+      "sourceRepo": "https://github.com/pallets/click",
+      "sourceCommit": "cbd7a4109da16ce58f54c2a618b4c986e3041fcf",
+      "sourceProgramHash": "sha256:912a20f1b010b905c9c3bb764dd79982e21b4b7d2e867000d585201f5a1c88b0",
+      "targetRepo": "https://github.com/fastapi/typer",
+      "targetCommit": "9a7b2e83f6b62c750d6026b0de9ebf2026a8b8fa",
+      "derivedProgramHash": "sha256:3da60655387c81ea64af1b480bf00df2b6176d02ba0c808dbea229412a5468bc",
+      "phaseIds": [
+        "map-contract",
+        "review-map",
+        "trace-behavior",
+        "challenge-evidence",
+        "verify-artifact"
+      ],
+      "phaseKinds": [
+        "work",
+        "checkpoint",
+        "work",
+        "work",
+        "verify"
+      ],
+      "changedGoals": 4,
+      "structurePreserved": true
+    },
+    {
+      "trialId": "requests-to-httpx-proxy-precedence",
+      "workflowLabel": "Proxy precedence investigation",
+      "taskFamily": "HTTP environment policy",
+      "sourceRepo": "https://github.com/psf/requests",
+      "sourceCommit": "8f8b212de8c2129d7954c6cd373762880375620a",
+      "sourceProgramHash": "sha256:1f4acee1b1ab4e0b8652810b4394a636cfc57b7d3e363c5fbee508526248950e",
+      "targetRepo": "https://github.com/encode/httpx",
+      "targetCommit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "derivedProgramHash": "sha256:5b240b6ecdd20da207030e93657b22299a916f8cc6f357423588a4004306aefd",
+      "phaseIds": [
+        "map-inputs",
+        "review-map",
+        "trace-precedence",
+        "adversarial-review",
+        "verify-artifact"
+      ],
+      "phaseKinds": [
+        "work",
+        "checkpoint",
+        "work",
+        "work",
+        "verify"
+      ],
+      "changedGoals": 4,
+      "structurePreserved": true
+    },
+    {
+      "trialId": "express-to-fastify-async-errors",
+      "workflowLabel": "Async error-path investigation",
+      "taskFamily": "Web framework error lifecycle",
+      "sourceRepo": "https://github.com/expressjs/express",
+      "sourceCommit": "a3714473feb3d2908add734d340e7755fd85e0a3",
+      "sourceProgramHash": "sha256:83576ccfc84b4a75c2d7ae76065f8fe18b3aec5af44c39176dc384bb9cf4d11d",
+      "targetRepo": "https://github.com/fastify/fastify",
+      "targetCommit": "9334d07129589f7340adfa4729ebe6c55e34bbfd",
+      "derivedProgramHash": "sha256:a1097d3c20c46c950723ba76100cb5b2e0b4f56d1bc94a57dca360667fbc12cf",
+      "phaseIds": [
+        "map-lifecycle",
+        "review-map",
+        "trace-errors",
+        "challenge-failures",
+        "verify-artifact"
+      ],
+      "phaseKinds": [
+        "work",
+        "checkpoint",
+        "work",
+        "work",
+        "verify"
+      ],
+      "changedGoals": 4,
+      "structurePreserved": true
+    }
+  ],
+  "frozenAtUtc": "2026-08-19T06:08:14.279800Z",
+  "planId": "sha256:74736d7e8d946f25a176ec1b9d14b42744a9613eadb7443ed6b7dface3cfd34f"
+}
