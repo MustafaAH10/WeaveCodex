@@ -444,7 +444,7 @@ def test_run_explorer_comparison_integrations_and_technical_diagrams_are_explici
     assert "AGENTS.md chain" in deep_dive
 
 
-def test_deep_dive_is_diagram_led_and_setup_is_self_contained() -> None:
+def test_deep_dive_is_diagram_led_and_product_owns_setup_navigation() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
     html = (static / "deep-dive.html").read_text()
     javascript = (static / "deep-dive.js").read_text()
@@ -458,12 +458,11 @@ def test_deep_dive_is_diagram_led_and_setup_is_self_contained() -> None:
     assert "We change four things" not in html
     assert ".node-copy{font-size:13px}" in stylesheet
     assert ".diff-grid p,.responsibility p{font-size:15px}" in stylesheet
-    assert 'id="setup-view"' in html
-    assert "npm install -g @openai/codex" in html
-    assert "uv run python -m weave_codex.server" in html
-    assert 'request("/api/account")' in javascript
-    assert 'request("/api/account/login/chatgpt"' in javascript
-    assert "auth.json" in html
+    assert 'id="setup-view"' not in html
+    assert 'href="/#architecture"' in html
+    assert 'href="/#setup"' in html
+    assert 'data-view="setup"' not in html
+    assert 'request("/api/account")' not in javascript
 
 
 def test_comparison_prioritizes_human_control_over_compute_totals() -> None:
@@ -494,6 +493,12 @@ def test_home_is_task_first_and_defers_advanced_controls_to_studio() -> None:
     assert 'request("/api/compile"' in javascript
     assert 'request("/api/runs"' in javascript
     assert "one or one hundred native Codex tool calls" in html
+    assert 'data-view="workflows"' in html
+    assert 'data-view="architecture"' in html
+    assert 'data-view="setup"' in html
+    assert 'id="workflow-library"' in html
+    assert 'request("/api/workflows"' in javascript
+    assert "Task and repository will be excluded" in html
 
 
 def test_product_examples_api_source_includes_all_five_examples(tmp_path: Path) -> None:

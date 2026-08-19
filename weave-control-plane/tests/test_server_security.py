@@ -144,6 +144,40 @@ def test_local_session_token_guards_side_effects_and_auth_flow(tmp_path: Path) -
         assert paths["entries"] == [{"path": "src/main.py", "kind": "file"}]
         assert "SECRET_FILE_CONTENT" not in json.dumps(paths)
 
+        status, workflow = _request(
+            port,
+            "POST",
+            "/api/workflows",
+            body={
+                "name": "Inspect then build",
+                "description": "Reusable process only.",
+                "phaseProgram": {
+                    "projectionVersion": 1,
+                    "phases": [
+                        {
+                            "id": "inspect",
+                            "kind": "work",
+                            "name": "Inspect",
+                            "goal": "Inspect the repository and propose a direction.",
+                        },
+                        {
+                            "id": "build",
+                            "kind": "work",
+                            "name": "Build",
+                            "goal": "Implement the approved direction and verify it.",
+                        },
+                    ],
+                },
+            },
+            headers=common,
+        )
+        assert status == 201
+        assert workflow["programHash"].startswith("sha256:")
+        assert "task" not in workflow
+        status, workflows = _request(port, "GET", "/api/workflows")
+        assert status == 200
+        assert workflows["workflows"][0]["workflowId"] == workflow["workflowId"]
+
         status, completed = _request(port, "GET", "/api/account/login/login-1")
         assert status == 200
         assert completed["state"] == "succeeded"

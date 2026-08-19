@@ -10,15 +10,15 @@
   <body>
     <header class="site-header">
       <a class="brand" href="/" aria-label="Weave for Codex home"><span>W</span><b>Weave</b><small>for Codex</small></a>
-      <nav aria-label="Page navigation">
-        <button class="page-tab active" type="button" data-view="architecture" aria-selected="true">Architecture</button>
-        <button class="page-tab" type="button" data-view="setup" aria-selected="false">Setup</button>
+      <nav aria-label="Product navigation">
+        <a class="page-tab" href="/#architecture">Architecture</a>
+        <a class="page-tab" href="/#setup">Setup</a>
       </nav>
-      <a class="app-link" href="/studio.html#design">Open Studio <span>→</span></a>
+      <a class="app-link" href="/#run">Back to the app <span>→</span></a>
     </header>
 
     <main>
-      <section id="architecture-view" class="page-view active" aria-labelledby="architecture-title">
+      <section id="architecture-view" aria-labelledby="architecture-title">
         <header class="hero shell">
           <p class="eyebrow">SYSTEM MAP · PINNED CODEX SOURCE 9DED177</p>
           <h1 id="architecture-title">Codex runs the task.<br />Weave makes the workflow editable.</h1>
@@ -144,41 +144,9 @@
         </section>
       </section>
 
-      <section id="setup-view" class="page-view" aria-labelledby="setup-title" hidden>
-        <header class="setup-hero shell">
-          <p class="eyebrow">LOCAL SETUP</p>
-          <h1 id="setup-title">Connect the Codex installation you already use.</h1>
-          <p>Weave starts the official Codex app-server and inherits your normal Codex home directory. It does not ask you to paste a token or copy <code>auth.json</code>.</p>
-        </header>
-
-        <section class="account-card shell" aria-labelledby="account-title">
-          <div><p class="eyebrow">CURRENT MACHINE</p><h2 id="account-title">Codex connection</h2><p id="account-message">Checking the local Codex account…</p><small id="account-privacy">Only redacted account type and readiness are shown here.</small></div>
-          <div class="account-actions"><button id="check-account" type="button">Check again</button><button id="chatgpt-login" class="primary" type="button">Sign in with ChatGPT</button></div>
-        </section>
-
-        <section class="steps shell" aria-labelledby="steps-title">
-          <header><p class="eyebrow">THREE STEPS</p><h2 id="steps-title">Start from a fresh computer</h2></header>
-          <ol>
-            <li><span>1</span><div><h3>Install Codex and sign in</h3><p>ChatGPT sign-in is the recommended route when you want usage to follow an eligible ChatGPT plan.</p><pre><code>npm install -g @openai/codex
-codex login</code></pre><button class="copy-command" type="button" data-copy="npm install -g @openai/codex&#10;codex login">Copy commands</button></div></li>
-            <li><span>2</span><div><h3>Clone and start WeaveCodex</h3><p>The server binds to your own machine and delegates agent execution and authentication to Codex.</p><pre><code>git clone https://github.com/MustafaAH10/WeaveCodex.git
-cd WeaveCodex/weave-control-plane
-uv run python -m weave_codex.server \
-  --codex-bin "$(command -v codex)" \
-  --host 127.0.0.1 --port 8790</code></pre><button class="copy-command" type="button" data-copy="git clone https://github.com/MustafaAH10/WeaveCodex.git&#10;cd WeaveCodex/weave-control-plane&#10;uv run python -m weave_codex.server --codex-bin &quot;$(command -v codex)&quot; --host 127.0.0.1 --port 8790">Copy start command</button></div></li>
-            <li><span>3</span><div><h3>Open the local app</h3><p>Keep the terminal open while you use the site. Your repository path, sandbox, approvals, integrations, and account remain controlled by the local Codex runtime.</p><a class="local-link" href="http://127.0.0.1:8790/">Open WeaveCodex →</a></div></li>
-          </ol>
-        </section>
-
-        <section class="security-note shell">
-          <b>Authentication boundary</b>
-          <p>The page calls <code>account/read</code> through the local app-server. If you choose “Sign in with ChatGPT,” Codex owns the browser flow and credential storage. Weave receives a short-lived login URL and redacted completion state, never your credential file or tokens.</p>
-          <a href="https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan">Official OpenAI setup guidance ↗</a>
-        </section>
-      </section>
     </main>
 
-    <footer><span>Weave for Codex · local-first control plane</span><div><a href="/compare.html">Compare runs</a><a href="/studio.html#design">Design a harness</a></div></footer>
+    <footer><span>Weave for Codex · technical note</span><div><a href="/#architecture">Product architecture</a><a href="/#setup">Setup</a><a href="/studio.html#design">Advanced Studio</a></div></footer>
     <script src="/deep-dive.js"></script>
   </body>
 </html>

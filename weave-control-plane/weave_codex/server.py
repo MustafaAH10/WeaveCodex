@@ -23,6 +23,7 @@ from .manifest import HarnessManifest, compile_manifest
 from .phase_program import PhaseProgram, compile_phase_program, phase_templates
 from .runtime import HarnessRunner, RunSession
 from .trace_projection import project_thread
+from .workflow_store import WorkflowCreate, WorkflowStore
 
 _IGNORED_WORKSPACE_NAMES = {
     ".cache",
@@ -123,6 +124,7 @@ class ControlPlane:
         self.runner = HarnessRunner(codex_bin)
         self.auth = NativeAuthService(codex_bin)
         self.data_root = data_root
+        self.workflows = WorkflowStore(data_root / "workflows")
         current = Path.cwd().resolve()
         self.workspace_root = (
             workspace_root or (current.parent if current.name == "weave-control-plane" else current)
@@ -281,6 +283,27 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if parsed.path == "/api/workflows":
+            self._json(
+                HTTPStatus.OK,
+                {
+                    "workflows": [
+                        item.model_dump(by_alias=True, mode="json")
+                        for item in self.server.app.workflows.list()
+                    ]
+                },
+            )
+            return
+        if parsed.path.startswith("/api/workflows/"):
+            workflow_id = parsed.path.removeprefix("/api/workflows/")
+            item = self.server.app.workflows.get(workflow_id)
+            self._json(
+                HTTPStatus.OK if item else HTTPStatus.NOT_FOUND,
+                item.model_dump(by_alias=True, mode="json")
+                if item
+                else {"error": "workflow not found"},
+            )
+            return
         if parsed.path == "/api/threads":
             cwd = parse_qs(parsed.query).get("cwd", [""])[0]
             try:
@@ -339,6 +362,13 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/phase-compile":
                 program = PhaseProgram.model_validate(payload)
                 self._json(HTTPStatus.OK, compile_phase_program(program))
+                return
+            if self.path == "/api/workflows":
+                item = self.server.app.workflows.save(WorkflowCreate.model_validate(payload))
+                self._json(
+                    HTTPStatus.CREATED,
+                    item.model_dump(by_alias=True, mode="json"),
+                )
                 return
             if self.path == "/api/thread-projection":
                 cwd = str(payload.get("cwd", ""))
@@ -425,6 +455,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", f"{content_type}; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
