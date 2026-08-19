@@ -29,98 +29,67 @@ function projectionGroups(projection) {
   return definitions.map(([title, kinds]) => ({ title, count: nodes.filter((node) => kinds.includes(node.kind)).reduce((total, node) => total + Number(node.counts?.items || node.itemIds?.length || 1), 0) })).filter((item) => item.count > 0);
 }
 
-function renderCodex() {
-  if (!codexProjection) return;
-  const groups = projectionGroups(codexProjection);
-  $("#codex-map").classList.remove("empty");
-  $("#codex-map").innerHTML = [
-    nodeHtml({ kind: "INPUT", title: "User task", detail: "A native Codex thread receives the goal." }),
-    nodeHtml({ kind: "ADAPTIVE LOOP", title: "Codex decides the path", detail: "Observed items are nested here—not promoted into a fake authored plan.", nested: groups.map((group) => `${group.title} · ${group.count}`) }, "adaptive"),
-    nodeHtml({ kind: "OUTPUT", title: "Final task state", detail: "Conversation, files, and persisted thread items." }),
-  ].join("");
-  const counts = codexProjection.counts || {};
-  $("#codex-metrics").innerHTML = metrics([["Turns", counts.turns ?? "—"], ["Tools", counts.toolCalls ?? "—"], ["Items", counts.items ?? counts.events ?? "—"]]);
-  $("#codex-human").innerHTML = `<span class="active">Conversation steering</span><span>${Number(counts.approvals || 0)} observed approval${Number(counts.approvals || 0) === 1 ? "" : "s"}</span><span>No precompiled phase gates</span>`;
-}
-
 function weavePhases(receipt) {
   const executions = receipt?.phaseProgram?.executions || [];
   return executions.map((phase) => {
     const timeline = (receipt.timeline || []).filter((event) => event.phase === phase.phaseId);
-    const tools = timeline.filter((event) => event.kind === "tool_call").length;
     const stageTitle = timeline.find((event) => event.kind === "stage" && event.title)?.title?.replace(/ started$| finished$|: verification$/gi, "");
-    return { kind: String(phase.kind || "work").toUpperCase(), title: phase.name || stageTitle || (phase.kind === "verify" ? "Verify the result" : "Codex work goal"), detail: phase.kind === "checkpoint" ? "Human continue/stop decision." : `${tools} observed tool request${tools === 1 ? "" : "s"} inside this goal.`, type: phase.kind === "checkpoint" ? "human" : "weave" };
+    const detail = phase.kind === "checkpoint"
+      ? "A recorded human continue/stop decision."
+      : "One native Codex turn; its internal tools remain adaptive.";
+    return { kind: String(phase.kind || "work").toUpperCase(), title: phase.name || stageTitle || (phase.kind === "verify" ? "Verify the result" : "Codex work goal"), detail, type: phase.kind === "checkpoint" ? "human" : phase.kind === "verify" ? "verify" : "weave" };
   });
+}
+
+function metrics(items) {
+  return items.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");
+}
+
+function renderCodex() {
+  if (!codexProjection) return;
+  const groups = projectionGroups(codexProjection);
+  const approvals = Number(codexProjection.counts?.approvals || 0);
+  $("#codex-map").classList.remove("empty");
+  $("#codex-map").innerHTML = [
+    nodeHtml({ kind: "INPUT", title: "User task", detail: "One native Codex task receives the outcome." }),
+    nodeHtml({ kind: "ADAPTIVE LOOP", title: "Codex chooses the tactics", detail: "Persisted items are grouped below—not promoted into an authored plan.", nested: groups.map((group) => `${group.title} · ${group.count}`) }, "adaptive"),
+    nodeHtml({ kind: "OUTPUT", title: "Files + answer", detail: "The task and durable items form the evidence boundary." }),
+  ].join("");
+  $("#codex-metrics").innerHTML = metrics([["Workflow", "Implicit"], ["Between-goal gates", "None"], ["Evidence map", "Derived"]]);
+  $("#codex-human").innerHTML = `<span class="active">Conversation steering</span><span>${approvals} observed native approval${approvals === 1 ? "" : "s"}</span>`;
 }
 
 function renderWeave() {
   if (!weaveReceipt) return;
   const phases = weavePhases(weaveReceipt);
-  $("#weave-map").classList.remove("empty");
-  $("#weave-map").innerHTML = [nodeHtml({ kind: "INPUT", title: "Compiled task contract", detail: `Memory ${weaveReceipt.memory?.mode || "off"} · ${weaveReceipt.controls?.sandbox || "sandbox unknown"}` }, "weave"), ...phases.map((phase) => nodeHtml(phase, phase.type)), nodeHtml({ kind: "OUTPUT", title: "Answer + evidence receipt", detail: "Authored phases and observed Codex activity stay correlated." }, "weave")].join("");
-  const tools = (weaveReceipt.timeline || []).filter((event) => event.kind === "tool_call").length;
-  $("#weave-metrics").innerHTML = metrics([["Phases", phases.length], ["Tools", tools], ["Turns", weaveReceipt.turnIds?.length ?? "—"]]);
   const checkpoints = phases.filter((phase) => phase.type === "human");
-  $("#weave-human").innerHTML = `<span class="active">${checkpoints.length} authored checkpoint${checkpoints.length === 1 ? "" : "s"}</span><span>Native action approvals</span><span>Receipt-bound decisions</span>`;
+  const verifiers = phases.filter((phase) => phase.type === "verify");
+  $("#weave-map").classList.remove("empty");
+  $("#weave-map").innerHTML = [
+    nodeHtml({ kind: "INPUT", title: "Compiled task contract", detail: `Memory ${weaveReceipt.memory?.mode || "off"} · ${weaveReceipt.controls?.sandbox || "sandbox unknown"}` }, "weave"),
+    ...phases.map((phase) => nodeHtml(phase, phase.type)),
+    nodeHtml({ kind: "OUTPUT", title: "Answer + receipt", detail: "Authored intent and observed Codex activity stay correlated." }, "weave"),
+  ].join("");
+  $("#weave-metrics").innerHTML = metrics([["Authored goals", phases.length], ["Human gates", checkpoints.length], ["Verify stages", verifiers.length]]);
+  $("#weave-human").innerHTML = `<span class="active">${checkpoints.length} authored checkpoint${checkpoints.length === 1 ? "" : "s"}</span><span>Native action approvals remain</span><span>Decisions in receipt</span>`;
 }
 
-function metrics(items) { return items.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join(""); }
-
-function formatNumber(value) { return new Intl.NumberFormat("en-US").format(Number(value || 0)); }
-
-function integrationEvidence(result) {
-  const treatment = result.integrationTreatment;
-  const observed = result.weave.observedIntegrationToolItems || [];
-  if (observed.length) {
-    const first = observed[0];
-    return `Observed ${first.server || first.itemType} · ${first.tool || "tool completed"}`;
-  }
-  return treatment.kind === "skill"
-    ? "Requested; Codex does not expose a skill-loaded event"
-    : "Requested; no matching integration tool item observed";
+function humanDecision(result) {
+  const checkpoints = result.weave?.checkpoints || [];
+  if (!checkpoints.length) return "No between-goal checkpoint was authored for this program.";
+  return checkpoints.map((checkpoint) => `${checkpoint.phaseId}: ${checkpoint.decision}`).join(" · ");
 }
 
-function matchedTrialHtml(result) {
+function ossTrialHtml(result, index) {
   const ordinary = result.ordinary;
   const weave = result.weave;
-  const computeRatio = ordinary.modelCompletions
-    ? (weave.modelCompletions / ordinary.modelCompletions).toFixed(1)
-    : "—";
+  const phases = (result.weaveProgram || []).map((phase) => `<div class="${escapeHtml(phase.kind)}"><small>${escapeHtml(phase.kind === "checkpoint" ? "HUMAN" : phase.kind.toUpperCase())}</small><b>${escapeHtml(phase.name)}</b></div>`).join("<i>→</i>");
+  const proof = weave.verification?.[0]?.status === "pass" ? "Phase verifier passed on its first attempt." : "No passing phase-verifier receipt was preserved.";
+  const finalState = ordinary.independentTest?.exitCode === 0 && weave.independentTest?.exitCode === 0 ? "Both external tests passed" : "Outcomes differed";
   return `<article class="trial-card">
-    <header><div><span>${escapeHtml(result.domain)}</span><h3>${escapeHtml(result.title)}</h3></div><em>${ordinary.artifact.passed && weave.artifact.passed ? "Both artifacts accepted" : "Outcomes differed"}</em></header>
-    <div class="trial-arms">
-      <section><b>Ordinary Codex</b><strong>${ordinary.artifact.checksPassed}/${ordinary.artifact.checksTotal}</strong><p>1 adaptive controller turn</p><small>${ordinary.modelCompletions} model completions · ${formatNumber(ordinary.tokenUsage.inputTokens)} input tokens</small></section>
-      <section class="weave-arm"><b>WeaveCodex</b><strong>${weave.artifact.checksPassed}/${weave.artifact.checksTotal}</strong><p>Inspect → produce → verify</p><small>${weave.modelCompletions} model completions · ${formatNumber(weave.tokenUsage.inputTokens)} input tokens</small></section>
-    </div>
-    <dl><div><dt>Integration request</dt><dd>${escapeHtml(result.integrationTreatment.label)} · ${escapeHtml(result.integrationTreatment.phaseIds.join(" + "))}</dd></div><div><dt>Observed evidence</dt><dd>${escapeHtml(integrationEvidence(result))}</dd></div><div><dt>Compute ratio</dt><dd>${escapeHtml(computeRatio)}× model completions for Weave</dd></div></dl>
-  </article>`;
-}
-
-async function loadMatchedTrials() {
-  const summary = $("#matched-summary");
-  try {
-    const data = await request("/matched-trials.json");
-    const aggregate = data.aggregate || {};
-    summary.innerHTML = `<div><b>${aggregate.ordinaryArtifactsPassed}/${aggregate.tasks}</b><span>ordinary artifacts accepted</span></div><div><b>${aggregate.weaveArtifactsPassed}/${aggregate.tasks}</b><span>Weave artifacts accepted</span></div><div><b>${aggregate.ordinaryModelCompletions}</b><span>ordinary model completions</span></div><div><b>${aggregate.weaveModelCompletions}</b><span>Weave model completions</span></div>`;
-    $("#matched-trials").innerHTML = (data.results || []).map(matchedTrialHtml).join("");
-  } catch (error) {
-    summary.innerHTML = `<span>Matched evidence unavailable: ${escapeHtml(error.message)}</span>`;
-  }
-}
-
-function ossTrialHtml(result) {
-  const ordinary = result.ordinary;
-  const weave = result.weave;
-  const phases = (result.weaveProgram || []).map((phase) => `<span class="${escapeHtml(phase.kind)}">${escapeHtml(phase.name)}</span>`).join("");
-  const checkpoints = weave.checkpoints || [];
-  return `<article class="trial-card oss-card">
-    <header><div><span>${escapeHtml(new URL(result.repository).pathname.replace(/^\//, ""))}</span><h3>${escapeHtml(result.title)}</h3></div><em>${ordinary.artifactAccepted && weave.artifactAccepted ? "Both repairs accepted" : "Outcomes differed"}</em></header>
-    <div class="phase-strip" aria-label="Weave program">${phases}</div>
-    <div class="trial-arms">
-      <section><b>Ordinary Codex</b><strong>${ordinary.artifactAccepted ? "Accepted" : "Failed"}</strong><p>${ordinary.controllerTurns} controller turn · ${ordinary.modelCompletions} completions</p><small>${formatNumber(ordinary.tokenUsage.inputTokens)} input tokens · independent test ${ordinary.independentTest.exitCode === 0 ? "passed" : "failed"}</small></section>
-      <section class="weave-arm"><b>WeaveCodex</b><strong>${weave.artifactAccepted ? "Accepted" : "Failed"}</strong><p>${weave.controllerTurns} controller turns · ${weave.modelCompletions} completions</p><small>${formatNumber(weave.tokenUsage.inputTokens)} input tokens · ${checkpoints.length} checkpoint${checkpoints.length === 1 ? "" : "s"}</small></section>
-    </div>
-    <dl><div><dt>Source</dt><dd>${escapeHtml(result.commit.slice(0, 12))} · declared seed ${escapeHtml(result.seedPatchSha256.slice(7, 19))}</dd></div><div><dt>Final diff</dt><dd>${ordinary.changedTrackedPaths.length || weave.changedTrackedPaths.length ? "Target-only changes" : "Both restored the exact upstream bytes"}</dd></div><div><dt>Verifier</dt><dd>${weave.verification?.[0]?.status === "pass" ? "Passed on first attempt" : "No first-pass verifier receipt"}</dd></div></dl>
+    <header><div><span>0${index + 1} · ${escapeHtml(new URL(result.repository).pathname.replace(/^\//, ""))}</span><h3>${escapeHtml(result.title)}</h3></div><em>${escapeHtml(finalState)}</em></header>
+    <div class="arm-row"><div><small>ORDINARY CODEX</small><b>One adaptive task</b><p>Codex chose the investigation, edit, and test sequence.</p></div><i>versus</i><div class="program"><small>WEAVE + CODEX</small><b>Human-authored outer workflow</b><div class="program-line">${phases}</div></div></div>
+    <dl><div><dt>Human coordination</dt><dd>${escapeHtml(humanDecision(result))}</dd></div><div><dt>Evidence retained</dt><dd>${escapeHtml(proof)} Final source matched the accepted repair state.</dd></div><div><dt>What this proves</dt><dd>The declared workflow executed around native Codex and remained auditable; it does not prove a better repair.</dd></div></dl>
   </article>`;
 }
 
@@ -128,35 +97,36 @@ async function loadOssTrials() {
   const summary = $("#oss-summary");
   try {
     const data = await request("/oss-implementation-trials.json");
-    const aggregate = data.aggregate || {};
-    summary.innerHTML = `<div><b>${aggregate.ordinaryAccepted}/${aggregate.repositories}</b><span>ordinary repairs accepted</span></div><div><b>${aggregate.weaveAccepted}/${aggregate.repositories}</b><span>Weave repairs accepted</span></div><div><b>${aggregate.ordinaryModelCompletions}</b><span>ordinary model completions</span></div><div><b>${aggregate.weaveModelCompletions}</b><span>Weave model completions</span></div>`;
-    $("#oss-trials").innerHTML = (data.results || []).map(ossTrialHtml).join("");
+    const results = data.results || [];
+    const checkpoints = results.reduce((total, result) => total + (result.weave?.checkpoints || []).length, 0);
+    const verifiers = results.filter((result) => result.weave?.verification?.[0]?.status === "pass").length;
+    const bothAccepted = results.filter((result) => result.ordinary?.artifactAccepted && result.weave?.artifactAccepted).length;
+    summary.innerHTML = `<div><b>${bothAccepted}/${results.length}</b><span>matched artifacts accepted on both sides</span></div><div><b>${checkpoints}</b><span>human checkpoints actually reached</span></div><div><b>${verifiers}/${results.length}</b><span>phase-verifier receipts passed</span></div>`;
+    $("#oss-trials").innerHTML = results.map(ossTrialHtml).join("");
   } catch (error) {
-    summary.innerHTML = `<span>OSS evidence unavailable: ${escapeHtml(error.message)}</span>`;
+    summary.innerHTML = `<span>Frozen evidence unavailable: ${escapeHtml(error.message)}</span>`;
   }
 }
 
 function renderMatrix() {
-  const codex = codexProjection;
-  const weave = weaveReceipt;
-  const checkpointCount = weavePhases(weave).filter((phase) => phase.type === "human").length;
+  const checkpointCount = weavePhases(weaveReceipt).filter((phase) => phase.type === "human").length;
   const rows = [
-    ["Workflow shape", "Adaptive inside the Codex task", `${weave?.phaseProgram?.executions?.length || 0} authored execution steps`],
-    ["Human coordination", "Conversation + observed native approvals", `${checkpointCount} explicit between-phase checkpoint${checkpointCount === 1 ? "" : "s"} + native approvals`],
-    ["Memory", "Codex thread configuration", weave ? `Receipt says ${weave.memory?.mode || "off"}` : "—"],
-    ["Visualization basis", codex ? "Deterministic projection of persisted items" : "—", weave ? "Exact phase receipt + observed events" : "—"],
-    ["Answer quality", "Not scored here", "Not scored here"],
+    ["Workflow definition", "Adaptive task; no separate phase program", weaveReceipt ? `${weaveReceipt.phaseProgram?.executions?.length || 0} authored execution steps` : "—"],
+    ["Human coordination", "Conversation steering + native action approvals", weaveReceipt ? `${checkpointCount} explicit between-goal checkpoint${checkpointCount === 1 ? "" : "s"}` : "—"],
+    ["Memory declaration", "Codex thread configuration", weaveReceipt ? `Receipt says ${weaveReceipt.memory?.mode || "off"}` : "—"],
+    ["Visualization basis", codexProjection ? "Deterministic projection of persisted items" : "—", weaveReceipt ? "Exact phase receipt + observed items" : "—"],
+    ["Quality claim", "Not scored by this picker", "Not scored by this picker"],
   ];
   $("#comparison-matrix").innerHTML = `<div class="matrix-row header"><b>Dimension</b><b>Codex only</b><b>Weave + Codex</b></div>${rows.map((row) => `<div class="matrix-row"><b>${escapeHtml(row[0])}</b><span>${escapeHtml(row[1])}</span><span>${escapeHtml(row[2])}</span></div>`).join("")}`;
 }
 
 async function selectCodex(threadId) {
   if (!threadId) return;
-  $("#comparison-status").textContent = "Projecting the selected Codex task without a model call…";
+  $("#comparison-status").textContent = "Projecting the selected task locally…";
   codexProjection = await request("/api/thread-projection", { method: "POST", body: JSON.stringify({ cwd, threadId }) });
   $("#codex-title").textContent = $("#codex-select").selectedOptions[0]?.textContent || "Codex task";
   renderCodex(); renderMatrix();
-  $("#comparison-status").textContent = "Both maps are local evidence views. Codex groups are derived; Weave phases are exact when a receipt is selected.";
+  $("#comparison-status").textContent = "Codex groups are derived; Weave phases are exact when a receipt is selected.";
 }
 
 async function selectWeave(runId) {
@@ -169,19 +139,21 @@ async function selectWeave(runId) {
 
 async function init() {
   try {
-    await Promise.all([loadOssTrials(), loadMatchedTrials()]);
+    await loadOssTrials();
     const session = await request("/api/session"); csrfToken = session.csrfToken; cwd = session.workspaceRoot;
     const [runs, threads] = await Promise.all([request("/api/runs"), request(`/api/threads?cwd=${encodeURIComponent(cwd)}`)]);
-    $("#weave-select").innerHTML = `<option value="">Choose a Weave run</option>${(runs.runs || []).map((run) => `<option value="${escapeHtml(run.runId)}">${escapeHtml(`${run.phaseCount || 0} phases · ${run.turnCount || 0} turns · ${run.runId.slice(0, 8)}`)}</option>`).join("")}`;
+    $("#weave-select").innerHTML = `<option value="">Choose a Weave receipt</option>${(runs.runs || []).map((run) => `<option value="${escapeHtml(run.runId)}">${escapeHtml(`${run.phaseCount || 0} authored phases · ${run.runId.slice(0, 8)}`)}</option>`).join("")}`;
     $("#codex-select").innerHTML = `<option value="">Choose a Codex task</option>${(threads.threads || []).map((thread, index) => `<option value="${escapeHtml(thread.id)}">${escapeHtml(threadLabel(thread, index))}</option>`).join("")}`;
     const params = new URLSearchParams(location.search);
     const left = params.get("leftThread"); const right = params.get("rightRun");
     if (left && [...$("#codex-select").options].some((option) => option.value === left)) { $("#codex-select").value = left; await selectCodex(left); }
     if (right && [...$("#weave-select").options].some((option) => option.value === right)) { $("#weave-select").value = right; await selectWeave(right); }
-    $("#comparison-status").textContent = "Choose one source on each side. Loading and visualization do not call a model.";
-  } catch (error) { $("#comparison-status").textContent = `Comparison unavailable: ${error.message}`; }
-  $("#codex-select").addEventListener("change", (event) => selectCodex(event.target.value).catch((error) => $("#comparison-status").textContent = error.message));
-  $("#weave-select").addEventListener("change", (event) => selectWeave(event.target.value).catch((error) => $("#comparison-status").textContent = error.message));
+    $("#comparison-status").textContent = "Choose one source on each side. Visualization does not call a model.";
+  } catch (error) {
+    $("#comparison-status").textContent = `Comparison unavailable: ${error.message}`;
+  }
+  $("#codex-select").addEventListener("change", (event) => selectCodex(event.target.value).catch((error) => { $("#comparison-status").textContent = error.message; }));
+  $("#weave-select").addEventListener("change", (event) => selectWeave(event.target.value).catch((error) => { $("#comparison-status").textContent = error.message; }));
 }
 
 init();

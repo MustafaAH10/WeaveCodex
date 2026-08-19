@@ -3,658 +3,180 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      name="description"
-      content="A source-level, interactive anatomy of Codex—and the exact control plane Weave adds around it."
-    />
-    <title>Inside Codex · Weave Research</title>
+    <meta name="description" content="A concise, source-grounded map of Codex and the optional Weave control plane." />
+    <title>How Codex works · Weave for Codex</title>
     <link rel="stylesheet" href="/deep-dive.css" />
   </head>
   <body>
-    <div class="reading-progress" aria-hidden="true"><i id="reading-progress"></i></div>
-
     <header class="site-header">
-      <a class="wordmark" href="/" aria-label="Back to Weave">
-        <span class="wordmark-mark">W</span>
-        <span>Weave</span>
-        <small>Research note 01</small>
-      </a>
-      <nav aria-label="Article actions">
-        <a href="#sources">Sources</a>
-        <a class="app-link" href="/">Open the app <span aria-hidden="true">↗</span></a>
+      <a class="brand" href="/" aria-label="Weave for Codex home"><span>W</span><b>Weave</b><small>for Codex</small></a>
+      <nav aria-label="Page navigation">
+        <button class="page-tab active" type="button" data-view="architecture" aria-selected="true">Architecture</button>
+        <button class="page-tab" type="button" data-view="setup" aria-selected="false">Setup</button>
       </nav>
+      <a class="app-link" href="/studio.html#design">Open Studio <span>→</span></a>
     </header>
 
-    <div class="mode-dock" aria-label="Article comparison mode">
-      <div class="mode-copy">
-        <span class="mode-kicker">COMPARISON LAYER</span>
-        <b id="mode-title">Codex only</b>
-        <small id="mode-description">Read the system before we change it.</small>
-      </div>
-      <button id="weave-toggle" class="weave-toggle" type="button" role="switch" aria-checked="false">
-        <span class="toggle-track"><i></i></span>
-        <span>Reveal Weave layer</span>
-      </button>
-      <p class="keyboard-hint"><kbd>W</kbd> toggles the diff</p>
-    </div>
-
     <main>
-      <aside class="section-rail" aria-label="Article sections">
-        <p>ANATOMY</p>
-        <ol>
-          <li><a href="#premise" data-section="premise"><i></i><span>Premise</span></a></li>
-          <li><a href="#architecture" data-section="architecture"><i></i><span>Architecture</span></a></li>
-          <li><a href="#loop" data-section="loop"><i></i><span>Agent loop</span></a></li>
-          <li><a href="#context" data-section="context"><i></i><span>Context</span></a></li>
-          <li><a href="#integrations" data-section="integrations"><i></i><span>Integrations</span></a></li>
-          <li><a href="#execution" data-section="execution"><i></i><span>Execution</span></a></li>
-          <li><a href="#records" data-section="records"><i></i><span>Records</span></a></li>
-          <li class="weave-nav"><a href="#difference" data-section="difference"><i></i><span>The diff</span><em>+ Weave</em></a></li>
-          <li class="weave-nav"><a href="#examples" data-section="examples"><i></i><span>Examples</span><em>+ Weave</em></a></li>
-          <li><a href="#sources" data-section="sources"><i></i><span>Sources</span></a></li>
-        </ol>
-      </aside>
-
-      <article>
-        <header class="hero" id="premise">
-          <p class="overline">A SOURCE-LEVEL ANATOMY · AUGUST 2026</p>
-          <h1>Codex is already<br />a harness.</h1>
-          <p class="dek">
-            It is not a chatbot with a shell bolted on. It is a stateful agent runtime that assembles
-            context, samples a model, executes typed tools, mediates permissions, compacts history,
-            and keeps going until a turn reaches a terminal state.
-          </p>
-          <div class="hero-rule">
-            <div>
-              <span>Audited version</span>
-              <a href="https://github.com/openai/codex/tree/9ded177ce7c1c0bd2047f902936c177612ab3434">9ded177</a>
-            </div>
-            <div>
-              <span>Public boundary</span>
-              <a href="https://learn.chatgpt.com/docs/app-server">Codex app-server</a>
-            </div>
-            <div>
-              <span>Reading time</span>
-              <b>16 minutes</b>
-            </div>
-          </div>
-          <div class="reveal-intro weave-only">
-            <span class="change-marker">WEAVE DIFF 01</span>
-            <p>
-              <ins>Weave does not replace that harness.</ins> It adds a human-authored program around
-              it: goal-level phases, explicit checkpoints, selected experience, verification, and a
-              receipt tying intent to the underlying Codex trace.
-            </p>
-          </div>
+      <section id="architecture-view" class="page-view active" aria-labelledby="architecture-title">
+        <header class="hero shell">
+          <p class="eyebrow">SYSTEM MAP · PINNED CODEX SOURCE 9DED177</p>
+          <h1 id="architecture-title">Codex is the agent loop.<br />Weave makes its outer workflow editable.</h1>
+          <p>Codex still decides how to inspect, reason, edit, run tools, and recover. Weave sits one level above it: people author complete goals, place decision points between them, and retain evidence about what actually ran.</p>
         </header>
 
-        <section class="lead-section">
-          <p class="dropcap">
-            The most important fact is also the easiest to miss: <strong>one Codex turn is a loop</strong>.
-            “Build Flappy Bird” may trigger a hundred reads, commands, edits, image inspections, and
-            browser checks. Those events are the inside of the instruction. Treating every event as a
-            workflow block would make a capable agent brittle—and give the user a canvas they could not
-            reasonably author.
-          </p>
-          <aside class="margin-note">
-            <span class="evidence documented">DOCUMENTED</span>
-            App-server describes the public system as threads containing turns containing typed items.
-            <a href="https://learn.chatgpt.com/docs/app-server">Open the protocol guide ↗</a>
-          </aside>
-        </section>
-
-        <section id="architecture" class="chapter">
-          <header class="chapter-head">
-            <span class="chapter-number">01</span>
-            <div>
-              <p class="chapter-kicker">THE WHOLE SYSTEM</p>
-              <h2>A client around a runtime around a loop</h2>
+        <section class="architecture-shell shell" aria-labelledby="diagram-title">
+          <header class="diagram-header">
+            <div><p class="eyebrow">ONE CURATED SYSTEM ARCHITECTURE</p><h2 id="diagram-title">Follow a task from the client to the result</h2></div>
+            <div class="layer-switch" role="group" aria-label="Architecture layer">
+              <button id="codex-layer" class="active" type="button" aria-pressed="true">Codex only</button>
+              <button id="weave-layer" type="button" aria-pressed="false">Reveal Weave layer</button>
             </div>
           </header>
-          <p>
-            Codex exposes a deep integration surface through app-server. A client initializes one
-            connection, starts or resumes a thread, starts a turn, answers server-originated approval
-            requests, and consumes streamed notifications. Inside, core captures the current world,
-            prepares the model-visible history, and routes any requested actions through the tool
-            runtime.
-          </p>
 
-          <figure class="architecture-figure" aria-labelledby="architecture-caption">
-            <svg viewBox="0 0 1040 570" role="img" aria-labelledby="codex-arch-title codex-arch-desc">
-              <title id="codex-arch-title">Codex system architecture</title>
-              <desc id="codex-arch-desc">The Codex client communicates through app-server with the core agent loop, tools, policy, and persistence. When Weave is revealed, a control plane surrounds app-server.</desc>
+          <div class="diagram-stage" aria-live="polite">
+            <svg id="system-architecture" viewBox="0 0 1160 650" role="img" aria-labelledby="diagram-svg-title diagram-svg-desc">
+              <title id="diagram-svg-title">Codex architecture with an optional Weave control plane</title>
+              <desc id="diagram-svg-desc">A user client calls Codex app-server. App-server manages threads, turns and items around the native Codex context, model and tool loop. The optional Weave layer adds a human-authored manifest, phase compiler, checkpoints and evidence receipt without replacing the native loop.</desc>
               <defs>
-                <marker id="arrowInk" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#596067" /></marker>
-                <marker id="arrowCoral" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#ea5b3f" /></marker>
-                <pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#d9dbd7" /></pattern>
+                <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" /></marker>
+                <marker id="arrow-weave" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" /></marker>
+                <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" /></pattern>
               </defs>
-              <rect class="diagram-paper" x="1" y="1" width="1038" height="568" rx="3" />
-              <rect x="18" y="18" width="1004" height="534" rx="2" fill="url(#dots)" />
+              <rect class="diagram-bg" x="0" y="0" width="1160" height="650" rx="20" />
+              <rect class="diagram-grid" x="0" y="0" width="1160" height="650" rx="20" />
 
-              <g class="codex-diagram">
-                <text class="svg-eyebrow" x="48" y="62">CLIENT SURFACE</text>
-                <rect class="node client-node" x="48" y="82" width="188" height="96" rx="4" />
-                <text class="node-title" x="68" y="116">Codex client</text>
-                <text class="node-copy" x="68" y="140">CLI · IDE · desktop</text>
-                <text class="node-copy" x="68" y="157">or another rich client</text>
-
-                <line class="flow-line" x1="236" y1="130" x2="328" y2="130" marker-end="url(#arrowInk)" />
-                <text class="line-label" x="254" y="118">JSONL / WS</text>
-
-                <text class="svg-eyebrow" x="344" y="62">PUBLIC INTEGRATION BOUNDARY</text>
-                <rect class="node server-node" x="328" y="82" width="236" height="96" rx="4" />
-                <text class="node-title" x="350" y="116">app-server</text>
-                <text class="node-copy" x="350" y="140">threads · turns · items</text>
-                <text class="node-copy" x="350" y="157">approvals · streamed events</text>
-
-                <line class="flow-line" x1="564" y1="130" x2="650" y2="130" marker-end="url(#arrowInk)" />
-
-                <text class="svg-eyebrow" x="666" y="62">AGENT RUNTIME</text>
-                <rect class="node core-node" x="650" y="82" width="330" height="96" rx="4" />
-                <text class="node-title" x="674" y="116">Codex core</text>
-                <text class="node-copy" x="674" y="140">context → model → tools → context</text>
-                <text class="node-copy" x="674" y="157">until the turn is terminal</text>
-
-                <line class="flow-line" x1="815" y1="178" x2="815" y2="238" marker-end="url(#arrowInk)" />
-                <rect class="node small-node" x="650" y="250" width="153" height="82" rx="4" />
-                <text class="node-title small" x="670" y="282">Tool registry</text>
-                <text class="node-copy" x="670" y="305">first-party · MCP</text>
-                <text class="node-copy" x="670" y="321">apps · dynamic</text>
-                <rect class="node small-node" x="827" y="250" width="153" height="82" rx="4" />
-                <text class="node-title small" x="847" y="282">Policy runtime</text>
-                <text class="node-copy" x="847" y="305">approval · sandbox</text>
-                <text class="node-copy" x="847" y="321">hooks · permissions</text>
-
-                <line class="flow-line" x1="726" y1="332" x2="726" y2="390" marker-end="url(#arrowInk)" />
-                <line class="flow-line" x1="903" y1="332" x2="903" y2="390" marker-end="url(#arrowInk)" />
-                <rect class="node record-node" x="650" y="403" width="330" height="92" rx="4" />
-                <text class="node-title small" x="674" y="434">Persistence surfaces</text>
-                <text class="node-copy" x="674" y="458">durable rollout · thread store</text>
-                <text class="node-copy" x="674" y="475">optional local diagnostic trace</text>
-
-                <rect class="thread-strip" x="48" y="250" width="516" height="245" rx="4" />
-                <text class="svg-eyebrow" x="72" y="285">PUBLIC OBJECT MODEL</text>
-                <g class="object-row">
-                  <rect x="72" y="310" width="468" height="48" rx="3" />
-                  <text class="object-index" x="92" y="340">01</text>
-                  <text class="object-name" x="133" y="340">THREAD</text>
-                  <text class="object-copy" x="242" y="340">durable conversation + ancestry</text>
-                </g>
-                <g class="object-row">
-                  <rect x="96" y="370" width="444" height="48" rx="3" />
-                  <text class="object-index" x="116" y="400">02</text>
-                  <text class="object-name" x="157" y="400">TURN</text>
-                  <text class="object-copy" x="242" y="400">one user-to-agent interaction</text>
-                </g>
-                <g class="object-row">
-                  <rect x="120" y="430" width="420" height="48" rx="3" />
-                  <text class="object-index" x="140" y="460">03</text>
-                  <text class="object-name" x="181" y="460">ITEM</text>
-                  <text class="object-copy" x="242" y="460">typed activity inside a turn</text>
-                </g>
+              <g class="codex-only-note">
+                <rect x="328" y="72" width="504" height="88" rx="13" />
+                <text class="node-kicker" x="354" y="102">NATIVE CODEX · ONE ADAPTIVE TASK</text>
+                <text class="native-note-title" x="354" y="132">The runtime chooses the path.</text>
+                <text class="node-copy" x="354" y="150">The client supplies a goal and observes typed activity.</text>
               </g>
 
-              <g class="weave-only weave-diagram">
-                <rect class="weave-boundary" x="302" y="40" width="704" height="494" rx="12" />
-                <rect class="weave-node" x="323" y="199" width="267" height="142" rx="4" />
-                <text class="weave-kicker" x="346" y="230">WEAVE CONTROL PLANE</text>
-                <text class="weave-title" x="346" y="261">Human-authored phases</text>
-                <text class="weave-copy" x="346" y="286">compile to app-server turns</text>
-                <text class="weave-copy" x="346" y="306">checkpoints pause the runner</text>
-                <text class="weave-copy" x="346" y="326">receipts link intent → trace</text>
-                <path class="weave-flow" d="M 456 199 C 456 182, 456 177, 456 177" marker-end="url(#arrowCoral)" />
-                <path class="weave-flow dashed" d="M 590 269 C 626 269, 618 449, 650 449" marker-end="url(#arrowCoral)" />
-                <rect class="weave-tag" x="674" y="515" width="278" height="24" rx="12" />
-                <text x="691" y="531">CODEx REMAINS THE INNER HARNESS</text>
+              <g class="weave-overlay">
+                <rect class="weave-boundary" x="26" y="24" width="1108" height="602" rx="17" />
+                <text class="weave-label" x="52" y="56">WEAVE · HUMAN-AUTHORED CONTROL PLANE</text>
+                <rect class="weave-node" x="68" y="77" width="205" height="84" rx="12" />
+                <text class="node-kicker weave-text" x="88" y="102">DESIGN</text><text class="node-title" x="88" y="128">Harness manifest</text><text class="node-copy" x="88" y="147">goals · limits · memory</text>
+                <rect class="weave-node" x="332" y="77" width="205" height="84" rx="12" />
+                <text class="node-kicker weave-text" x="352" y="102">COMPILE</text><text class="node-title" x="352" y="128">Phase program</text><text class="node-copy" x="352" y="147">work · checkpoint · verify</text>
+                <rect class="weave-node human-node" x="596" y="77" width="205" height="84" rx="12" />
+                <text class="node-kicker weave-text" x="616" y="102">HUMAN</text><text class="node-title" x="616" y="128">Decision point</text><text class="node-copy" x="616" y="147">continue · stop · redirect</text>
+                <rect class="weave-node" x="860" y="77" width="205" height="84" rx="12" />
+                <text class="node-kicker weave-text" x="880" y="102">EVIDENCE</text><text class="node-title" x="880" y="128">Run receipt</text><text class="node-copy" x="880" y="147">intent ↔ turns ↔ outcome</text>
+                <path class="weave-arrow" d="M273 119H324" /><path class="weave-arrow" d="M537 119H588" /><path class="weave-arrow" d="M801 119H852" />
+                <path class="weave-arrow dashed" d="M435 161V214H322V260" />
+                <path class="weave-arrow dashed" d="M963 161V214H1021V270" />
+              </g>
+
+              <text class="lane-label" x="55" y="244">CLIENT</text>
+              <rect class="base-node client" x="55" y="263" width="210" height="112" rx="14" />
+              <text class="node-kicker" x="78" y="292">USER SURFACE</text><text class="node-title" x="78" y="323">CLI · IDE · Weave</text><text class="node-copy" x="78" y="347">task, steering, approvals</text>
+
+              <text class="lane-label" x="311" y="244">PUBLIC BOUNDARY</text>
+              <rect class="base-node server" x="311" y="263" width="218" height="112" rx="14" />
+              <text class="node-kicker" x="334" y="292">APP-SERVER</text><text class="node-title" x="334" y="323">Threads · turns · items</text><text class="node-copy" x="334" y="347">auth, history, events</text>
+
+              <path class="base-arrow" d="M265 319H303" /><path class="base-arrow" d="M529 319H567" />
+
+              <text class="lane-label" x="575" y="244">NATIVE CODEX AGENT LOOP</text>
+              <rect class="loop-boundary" x="575" y="263" width="392" height="286" rx="17" />
+              <rect class="loop-node context" x="602" y="294" width="150" height="82" rx="11" />
+              <text class="node-kicker" x="620" y="319">01 · CONTEXT</text><text class="node-title small" x="620" y="345">Build request</text><text class="node-copy" x="620" y="363">history + world + tools</text>
+              <rect class="loop-node model" x="791" y="294" width="150" height="82" rx="11" />
+              <text class="node-kicker light" x="809" y="319">02 · MODEL</text><text class="node-title small light" x="809" y="345">Choose next action</text><text class="node-copy light" x="809" y="363">respond or call tools</text>
+              <rect class="loop-node tools" x="791" y="423" width="150" height="82" rx="11" />
+              <text class="node-kicker" x="809" y="448">03 · RUNTIME</text><text class="node-title small" x="809" y="474">Execute tools</text><text class="node-copy" x="809" y="492">policy · sandbox · MCP</text>
+              <rect class="loop-node evidence" x="602" y="423" width="150" height="82" rx="11" />
+              <text class="node-kicker" x="620" y="448">04 · HISTORY</text><text class="node-title small" x="620" y="474">Record results</text><text class="node-copy" x="620" y="492">append items; repeat</text>
+              <path class="base-arrow loop" d="M752 335H783" /><path class="base-arrow loop" d="M866 376V415" /><path class="base-arrow loop" d="M791 464H760" /><path class="base-arrow loop" d="M677 423V386H677V384" />
+              <text class="loop-note" x="771" y="531">loops until the turn is terminal</text>
+
+              <text class="lane-label" x="1004" y="244">RESULT</text>
+              <rect class="base-node result" x="1004" y="263" width="112" height="112" rx="14" />
+              <text class="node-kicker" x="1023" y="292">OUTPUT</text><text class="node-title small" x="1023" y="323">Files + answer</text><text class="node-copy" x="1023" y="347">durable items</text>
+              <path class="base-arrow" d="M967 319H996" />
+
+              <g class="bottom-notes">
+                <rect x="55" y="580" width="490" height="42" rx="9" /><text x="72" y="606">ONE CODEX TURN MAY CONTAIN ONE OR ONE HUNDRED TOOL CALLS.</text>
+                <rect class="weave-note" x="575" y="580" width="541" height="42" rx="9" /><text class="weave-note-text" x="592" y="606">WEAVE AUTHORS GOALS BETWEEN TURNS—NEVER A FAKE TOOL-CALL DAG.</text>
               </g>
             </svg>
-            <figcaption id="architecture-caption">
-              <span>FIGURE 1</span>
-              <p><b>Codex-only:</b> app-server is the supported seam for a rich client.</p>
-              <p class="weave-only"><b>With Weave:</b> the added layer compiles human intent into that seam and records the result; it does not fork the agent loop.</p>
-            </figcaption>
-          </figure>
-
-          <div class="evidence-grid">
-            <article>
-              <span class="evidence documented">DOCUMENTED</span>
-              <h3>App-server is meant for this</h3>
-              <p>OpenAI identifies it as the interface for rich integrations needing authentication, history, approvals, and streamed events.</p>
-              <a href="https://learn.chatgpt.com/docs/app-server">App-server guide ↗</a>
-            </article>
-            <article>
-              <span class="evidence source">SOURCE-DERIVED</span>
-              <h3>The protocol is versioned</h3>
-              <p>The pinned binary generates its own TypeScript and JSON Schema. Experimental fields require opt-in and are not compatibility promises.</p>
-              <a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/app-server/README.md">Pinned protocol README ↗</a>
-            </article>
-            <article class="weave-only change-card">
-              <span class="evidence proposal">IMPLEMENTED BY WEAVE</span>
-              <h3>A control plane, not a replacement</h3>
-              <p>Today Weave compiles a small ordered phase program, keeps one Codex thread, and saves a privacy-reduced projection beside the receipt.</p>
-            </article>
           </div>
+          <p id="diagram-caption" class="diagram-caption"><b>Codex only.</b> A client sends a task through app-server; Codex owns the adaptive context → model → tools loop.</p>
+        </section>
 
-          <div class="auth-strip weave-only">
-            <div class="auth-intro">
-              <span class="evidence proposal">WEAVE INTEGRATION</span>
-              <h3>Your Codex subscription stays with Codex</h3>
-              <p>Weave asks app-server for account state and uses its managed ChatGPT browser-login flow. It never reads, copies, or serves Codex's local credential file or tokens.</p>
-            </div>
-            <ol aria-label="Native ChatGPT login sequence">
-              <li><span>1</span><div><b><code>account/read</code></b><small>Passive, secret-free status</small></div></li>
-              <li><span>2</span><div><b><code>account/login/start</code></b><small><code>type: chatgpt</code></small></div></li>
-              <li><span>3</span><div><b>Open <code>authUrl</code></b><small>Callback is hosted by app-server</small></div></li>
-              <li><span>4</span><div><b>Observe completion</b><small><code>account/login/completed</code> + <code>account/updated</code></small></div></li>
-            </ol>
-            <p class="auth-footnote"><b>Why this matters:</b> a ChatGPT login gives Codex subscription access. Weave delegates identity and credential refresh to the native runtime instead of introducing a parallel API-key system.</p>
+        <section id="control-diff" class="diff-section shell" aria-labelledby="diff-title">
+          <header><p class="eyebrow">THE PRODUCT BOUNDARY</p><h2 id="diff-title">We change four things—and leave the agent alone</h2></header>
+          <div class="diff-grid">
+            <article><span>01</span><h3>Workflow</h3><p>Turn one large prompt into named, reusable goals such as inspect, approve, implement, and verify.</p></article>
+            <article><span>02</span><h3>Human control</h3><p>Pause between complete Codex turns. Native approvals still govern risky actions inside a turn.</p></article>
+            <article><span>03</span><h3>Experience</h3><p>Choose no prior work, all eligible work, or exact prior threads—with the selection recorded.</p></article>
+            <article><span>04</span><h3>Evidence</h3><p>Bind the authored goals and human decisions to observed Codex turns in a local run receipt.</p></article>
+          </div>
+          <div class="responsibility">
+            <div><b>Codex still owns</b><p>Reasoning, context construction, tool choice, retries, shell and file operations, MCP/Skills/AGENTS.md, sandboxing, and action approvals.</p></div>
+            <div><b>Weave owns</b><p>The outer phase program, between-phase checkpoints, selected-memory declaration, verification contract, and intent-to-trace receipt.</p></div>
           </div>
         </section>
 
-        <section id="loop" class="chapter">
-          <header class="chapter-head">
-            <span class="chapter-number">02</span>
-            <div>
-              <p class="chapter-kicker">THE ACTUAL UNIT OF AGENCY</p>
-              <h2>A turn is not a model call</h2>
-            </div>
-          </header>
-          <p>
-            The central <code>run_turn</code> path repeatedly captures state, normalizes history,
-            samples the model, executes requested tools, records their outputs, and samples again.
-            New steering input can enter between samples. A stop hook can request continuation even
-            after the model appears finished.
-          </p>
-
-          <figure class="loop-figure">
-            <div class="phase-bracket weave-only">
-              <span>ONE WEAVE WORK PHASE · ONE CONTROLLER TURN TODAY</span>
-            </div>
-            <div class="loop-grid">
-              <div class="loop-node start"><span>1</span><b>Turn input</b><small>goal + settings</small></div>
-              <div class="loop-arrow">→</div>
-              <div class="loop-node"><span>2</span><b>Capture step</b><small>world + tools</small></div>
-              <div class="loop-arrow">→</div>
-              <div class="loop-node"><span>3</span><b>Build request</b><small>normalized history</small></div>
-              <div class="loop-arrow">→</div>
-              <div class="loop-node sample"><span>4</span><b>Sample model</b><small>response stream</small></div>
-              <div class="loop-return">↖ follow-up required</div>
-              <div class="loop-node tools"><span>5</span><b>Execute tools</b><small>zero, one, or many</small></div>
-              <div class="loop-arrow reverse">←</div>
-              <div class="loop-node"><span>6</span><b>Record results</b><small>items + outputs</small></div>
-              <div class="loop-arrow reverse">←</div>
-              <div class="loop-node terminal"><span>7</span><b>Terminal?</b><small>complete · failed · stopped</small></div>
-            </div>
-            <figcaption>
-              <span>FIGURE 2</span>
-              <p>The loop may traverse the lower path many times. Parallel-safe tool calls can run concurrently, but results are drained in response order.</p>
-            </figcaption>
-          </figure>
-
-          <div class="thesis-box">
-            <p class="thesis-label">THE ABSTRACTION TEST</p>
-            <div class="wrong-right">
-              <div>
-                <span>Wrong authoring unit</span>
-                <b>Read → Edit → Test</b>
-                <p>A guessed sequence of individual tool calls.</p>
-              </div>
-              <div class="correct">
-                <span>Correct authoring unit</span>
-                <b>“Build the playable game”</b>
-                <p>A goal with context, policy, evidence, and a completion contract.</p>
-              </div>
-            </div>
-          </div>
-          <aside class="source-note">
-            <span class="evidence source">SOURCE-DERIVED</span>
-            Read the pinned <a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/core/src/session/turn.rs">turn loop</a>
-            and <a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/core/src/tools/parallel.rs">parallel tool runtime</a>.
-          </aside>
-        </section>
-
-        <section id="context" class="chapter">
-          <header class="chapter-head">
-            <span class="chapter-number">03</span>
-            <div>
-              <p class="chapter-kicker">WHAT THE MODEL SEES</p>
-              <h2>Context is constructed, not replayed</h2>
-            </div>
-          </header>
-          <p>
-            “Chat history” is too weak a description. Codex maintains append-ordered Responses items,
-            normalizes call/output pairs, truncates tool output at a boundary, and combines that history
-            with typed world-state sections. Model instructions, <code>AGENTS.md</code>, permissions,
-            environment, extensions, skills, plugins, and deferred tools all participate.
-          </p>
-          <div class="context-composer" aria-label="Model context composition">
-            <div class="context-inputs">
-              <div><span>01</span><b>Conversation</b><small>normalized items</small></div>
-              <div><span>02</span><b>World state</b><small>typed snapshot or diff</small></div>
-              <div><span>03</span><b>Instructions</b><small>system · user · AGENTS.md</small></div>
-              <div><span>04</span><b>Capabilities</b><small>tools · skills · MCP · apps</small></div>
-              <div class="weave-only added-input"><span>+W</span><b>Selected experience</b><small>bounded, cited, injected once</small></div>
-            </div>
-            <div class="composer-arrow">→</div>
-            <div class="model-context"><span>MODEL-VISIBLE</span><b>Sampling request</b><small>Not the same thing as the durable transcript</small></div>
-          </div>
-          <div class="two-column-copy">
-            <div>
-              <h3>World state uses baselines</h3>
-              <p>On the first normal turn, Codex injects a full snapshot. Later steps may contribute only changes relative to a stable baseline. A history rewrite invalidates that baseline and triggers full reinjection.</p>
-              <a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/core/src/context/world_state/mod.rs">World-state source ↗</a>
-            </div>
-            <div>
-              <h3>Compaction transforms the prompt</h3>
-              <p>Compaction creates replacement model-visible history while preserving a record of the boundary. It does not erase the earlier trace, and the resulting prompt is not a byte-for-byte replay.</p>
-              <a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/core/src/compact.rs">Compaction source ↗</a>
-            </div>
-          </div>
-          <div class="change-block weave-only">
-            <span class="change-marker">WEAVE DIFF 02 · CONTEXT</span>
-            <h3>What is actually added</h3>
-            <p>
-              The current runner can inject excerpts from explicitly selected prior threads into the
-              <em>first</em> work phase. It records which thread IDs were selected and does not repeatedly
-              paste the same excerpts into later phases. This is not a native “attach these traces” Codex
-              field, and it is not yet a retrieval graph.
-            </p>
+        <section id="integrations" class="technical shell" aria-labelledby="integration-title">
+          <div><p class="eyebrow">TECHNICAL NOTES</p><h2 id="integration-title">Where Codex integrations enter</h2></div>
+          <div class="technical-list">
+            <details open><summary>Why a phase is not a tool call</summary><p>A Work phase compiles to one Codex turn. Inside that turn, Codex can read, edit, test, call MCP tools, recover, and resample as often as needed. The canvas describes the goal boundary, not guessed tactics.</p></details>
+            <details><summary>AGENTS.md chain, Skills, MCP, and Apps</summary><p>AGENTS.md and Skills shape instructions and procedures. MCP and Apps expand the callable tool surface. Weave inventories and selects these Codex-owned integrations; it does not copy their credentials.</p></details>
+            <details><summary>What the visualization can prove</summary><p>Exact Weave phases come from the manifest and receipt. Native Codex activity groups are a deterministic projection of persisted items—not hidden reasoning or a reconstructed private plan.</p></details>
           </div>
         </section>
 
-        <section id="integrations" class="chapter">
-          <header class="chapter-head">
-            <span class="chapter-number">04</span>
-            <div>
-              <p class="chapter-kicker">INSTRUCTIONS, PROCEDURES, AND TOOLS</p>
-              <h2>Four extension systems enter the loop differently</h2>
-            </div>
-          </header>
-          <p>
-            <code>AGENTS.md</code>, Skills, MCP servers, and connector apps are often described as one
-            bucket called “integrations.” At runtime they occupy different layers. Project instructions
-            modify the instruction stack. A Skill contributes a reusable procedure and may declare tool
-            dependencies. MCP servers register tools and resources. Apps expose connected data through
-            a Codex-owned connector runtime. Collapsing them into one toggle hides both provenance and
-            enforcement.
-          </p>
-          <figure class="integration-architecture" aria-labelledby="integration-caption">
-            <svg viewBox="0 0 1040 560" role="img" aria-labelledby="integration-title integration-desc">
-              <title id="integration-title">Codex integration layers</title>
-              <desc id="integration-desc">AGENTS instructions and Skills shape the model-visible request, while MCP and Apps provide tools governed by policy, approval, and sandbox controls.</desc>
-              <defs><marker id="integration-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#69737b" /></marker></defs>
-              <rect class="diagram-paper" x="1" y="1" width="1038" height="558" />
-              <text class="svg-eyebrow" x="42" y="42">DISCOVERY AND PRECEDENCE</text>
-              <rect class="integration-source" x="42" y="65" width="204" height="90" /><text class="node-title small" x="60" y="96">AGENTS.md chain</text><text class="node-copy" x="60" y="121">global → root → cwd</text><text class="node-copy" x="60" y="138">nearer guidance wins</text>
-              <rect class="integration-source" x="42" y="178" width="204" height="90" /><text class="node-title small" x="60" y="209">Skills</text><text class="node-copy" x="60" y="234">procedure + dependencies</text><text class="node-copy" x="60" y="251">workspace-scoped discovery</text>
-              <rect class="integration-source" x="42" y="322" width="204" height="90" /><text class="node-title small" x="60" y="353">MCP servers</text><text class="node-copy" x="60" y="378">tools · resources · OAuth</text><text class="node-copy" x="60" y="395">config.toml + policy</text>
-              <rect class="integration-source" x="42" y="435" width="204" height="90" /><text class="node-title small" x="60" y="466">Apps</text><text class="node-copy" x="60" y="491">connected-data runtime</text><text class="node-copy" x="60" y="508">Codex-owned credentials</text>
-              <line class="integration-line" x1="246" y1="110" x2="360" y2="177" marker-end="url(#integration-arrow)" /><line class="integration-line" x1="246" y1="223" x2="360" y2="200" marker-end="url(#integration-arrow)" />
-              <rect class="integration-context" x="360" y="122" width="265" height="132" /><text class="svg-eyebrow" x="382" y="150">MODEL-VISIBLE REQUEST</text><text class="node-title" x="382" y="184">Instruction + procedure</text><text class="node-copy" x="382" y="210">task · history · world state</text><text class="node-copy" x="382" y="229">AGENTS · selected Skill content</text>
-              <line class="integration-line" x1="246" y1="367" x2="360" y2="360" marker-end="url(#integration-arrow)" /><line class="integration-line" x1="246" y1="480" x2="360" y2="385" marker-end="url(#integration-arrow)" />
-              <rect class="integration-tools" x="360" y="320" width="265" height="132" /><text class="svg-eyebrow" x="382" y="348">MODEL-CALLABLE SURFACE</text><text class="node-title" x="382" y="382">Tool registry</text><text class="node-copy" x="382" y="408">built-ins · MCP · Apps</text><text class="node-copy" x="382" y="427">enabled tools filtered by policy</text>
-              <line class="integration-line" x1="625" y1="188" x2="729" y2="250" marker-end="url(#integration-arrow)" /><line class="integration-line" x1="625" y1="386" x2="729" y2="318" marker-end="url(#integration-arrow)" />
-              <rect class="integration-core" x="729" y="194" width="266" height="186" /><text class="svg-eyebrow light" x="754" y="226">CODEX RUN_TURN</text><text class="integration-core-title" x="754" y="267">Model → action → result</text><text class="integration-core-copy" x="754" y="300">policy and approvals</text><text class="integration-core-copy" x="754" y="324">sandbox / permissions</text><text class="integration-core-copy" x="754" y="348">append result; sample again</text>
-              <g class="weave-only"><rect class="weave-boundary" x="335" y="94" width="686" height="390" /><rect class="weave-tag" x="817" y="76" width="174" height="29" /><text x="837" y="95">WEAVE INVENTORIES</text><text class="weave-copy" x="664" y="457">shows availability and provenance; does not copy credentials</text></g>
-            </svg>
-            <figcaption id="integration-caption"><span>FIG. 04</span><p>Instructions and procedures shape requests; MCP and Apps shape the callable surface. All remain inside the native Codex control and security model.</p></figcaption>
-          </figure>
-          <div class="fact-table">
-            <div class="fact-head"><span>System</span><span>Codex resolution</span><span>Safe Weave product surface</span></div>
-            <div><b>AGENTS.md</b><span>Global, then repository root toward cwd; nearer files override</span><span>Show inheritance and precedence; do not duplicate the files</span></div>
-            <div><b>Skills</b><span>Discovered per workspace and enabled through Codex configuration</span><span>List names and scope; leave the files in Codex</span></div>
-            <div><b>MCP</b><span>Server status, tools, resources, auth state, and policy</span><span>Inventory model-visible tools; never export credentials</span></div>
-            <div><b>Apps</b><span>Accessible connectors with Codex-owned auth and tool policy</span><span>Show accessibility or a Codex installation link</span></div>
-          </div>
-          <aside class="source-note"><span class="evidence documented">DOCUMENTED</span>See the current <a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md">AGENTS.md</a>, <a href="https://learn.chatgpt.com/docs/build-skills">Skills</a>, <a href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli">MCP</a>, and <a href="https://learn.chatgpt.com/docs/app-server">app-server</a> references. The Weave inventory deliberately returns no skill paths, configuration contents, or credentials.</aside>
-        </section>
-
-        <section id="execution" class="chapter">
-          <header class="chapter-head">
-            <span class="chapter-number">05</span>
-            <div>
-              <p class="chapter-kicker">TOOLS, CONSENT, CONTAINMENT</p>
-              <h2>Approval and sandboxing are different</h2>
-            </div>
-          </header>
-          <p>
-            A model-requested action is routed through a registry, hooks, approval logic, and a selected
-            sandbox. “May the user allow this?” and “what can the process access?” are separate questions.
-            A sandbox denial may be returned to the model as ordinary evidence, allowing another tactic,
-            or may trigger an approved escalated retry.
-          </p>
-          <div class="approval-flow" role="img" aria-label="Tool approval and sandbox sequence">
-            <div><span>MODEL</span><b>Proposes action</b></div><i>→</i>
-            <div><span>POLICY</span><b>Approval needed?</b><small>human decision</small></div><i>→</i>
-            <div><span>RUNTIME</span><b>Select sandbox</b><small>filesystem · network</small></div><i>→</i>
-            <div><span>TOOL</span><b>Attempt action</b><small>result or denial</small></div><i>→</i>
-            <div><span>HISTORY</span><b>Record outcome</b><small>model may adapt</small></div>
-          </div>
-          <div class="fact-table">
-            <div class="fact-head"><span>Surface</span><span>What it controls</span><span>What it does not guarantee</span></div>
-            <div><b>Approval policy</b><span>When consent is requested</span><span>That the OS permits the action</span></div>
-            <div><b>Sandbox / permission profile</b><span>Filesystem, network, platform access</span><span>That an action is desirable</span></div>
-            <div><b>Hooks</b><span>Pre/post-tool interposition and feedback</span><span>A fixed execution sequence</span></div>
-            <div><b>Tool registry</b><span>Which tool definitions reach the model</span><span>Why the model selected one</span></div>
-          </div>
-          <div class="change-block weave-only">
-            <span class="change-marker">WEAVE DIFF 03 · CONTROL</span>
-            <h3>Two human control points, not one</h3>
-            <p>
-              Codex-native approvals still govern risky actions <em>inside</em> a work phase. A Weave
-              checkpoint pauses <em>between</em> phases without calling the model—for example, approve a
-              plan before any implementation phase starts. Both decisions are captured in the run receipt.
-            </p>
+        <section class="sources shell" aria-labelledby="sources-title">
+          <div><p class="eyebrow">PRIMARY SOURCES</p><h2 id="sources-title">Read the contracts</h2></div>
+          <div>
+            <a href="https://learn.chatgpt.com/docs/app-server">App-server guide ↗</a>
+            <a href="https://learn.chatgpt.com/docs/auth">Codex authentication ↗</a>
+            <a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md">AGENTS.md ↗</a>
+            <a href="https://learn.chatgpt.com/docs/build-skills">Skills ↗</a>
+            <a href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli">MCP ↗</a>
+            <a href="https://github.com/openai/codex/tree/9ded177ce7c1c0bd2047f902936c177612ab3434">Pinned Codex source ↗</a>
           </div>
         </section>
+      </section>
 
-        <section id="records" class="chapter">
-          <header class="chapter-head">
-            <span class="chapter-number">06</span>
-            <div>
-              <p class="chapter-kicker">OBSERVABILITY WITHOUT FICTION</p>
-              <h2>There is no single “complete trace”</h2>
-            </div>
-          </header>
-          <p>
-            Codex emits a responsive live stream, stores a selected durable rollout for continuation,
-            and can optionally produce a sensitive local diagnostic trace. These records serve different
-            purposes. None exposes hidden chain of thought, and ordinary thread history is not a byte-perfect
-            reconstruction of every transient event.
-          </p>
-          <div class="record-stack">
-            <article>
-              <span class="record-index">LIVE</span><h3>App-server stream</h3>
-              <p>Item lifecycle, text and command deltas, approvals, transient errors, turn status.</p>
-              <small>Best for responsive UI</small>
-            </article>
-            <article>
-              <span class="record-index">DURABLE</span><h3>Thread + rollout</h3>
-              <p>Selected semantic history used for persistence, reading, resuming, and forking.</p>
-              <small>Best for continuation</small>
-            </article>
-            <article>
-              <span class="record-index">DIAGNOSTIC</span><h3>Raw local trace</h3>
-              <p>Optional, internal, sensitive diagnostic events. Not a stable public API.</p>
-              <small>Best for local debugging</small>
-            </article>
-            <article class="weave-only weave-record">
-              <span class="record-index">+ WEAVE</span><h3>Run receipt</h3>
-              <p>Authored manifest, phase-to-turn mapping, decisions, result, counts, and privacy-reduced projection.</p>
-              <small>Best for intent-to-evidence accountability</small>
-            </article>
-          </div>
-          <div class="visibility-split">
-            <div>
-              <span class="visibility-label visible">VISIBLE</span>
-              <ul><li>Typed items and their lifecycle</li><li>Command, file, MCP, app, and subagent activity</li><li>Approval requests and terminal status</li><li>Reasoning summaries when emitted</li></ul>
-            </div>
-            <div>
-              <span class="visibility-label opaque">OPAQUE</span>
-              <ul><li>Private chain of thought and model weights</li><li>Hidden service-side routing or safety layers</li><li>Deterministic replay of model choices</li><li>Automatic rollback of completed side effects</li></ul>
-            </div>
-          </div>
-          <aside class="source-note">
-            <span class="evidence source">SOURCE-DERIVED</span>
-            Compare the pinned <a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/history/src/lib.rs">durable history model</a>,
-            <a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/rollout/src/policy.rs">persistence policy</a>, and
-            <a href="https://github.com/openai/codex/tree/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/rollout-trace">diagnostic trace</a>.
-          </aside>
+      <section id="setup-view" class="page-view" aria-labelledby="setup-title" hidden>
+        <header class="setup-hero shell">
+          <p class="eyebrow">LOCAL SETUP</p>
+          <h1 id="setup-title">Connect the Codex installation you already use.</h1>
+          <p>Weave starts the official Codex app-server and inherits your normal Codex home directory. It does not ask you to paste a token or copy <code>auth.json</code>.</p>
+        </header>
+
+        <section class="account-card shell" aria-labelledby="account-title">
+          <div><p class="eyebrow">CURRENT MACHINE</p><h2 id="account-title">Codex connection</h2><p id="account-message">Checking the local Codex account…</p><small id="account-privacy">Only redacted account type and readiness are shown here.</small></div>
+          <div class="account-actions"><button id="check-account" type="button">Check again</button><button id="chatgpt-login" class="primary" type="button">Sign in with ChatGPT</button></div>
         </section>
 
-        <section id="difference" class="chapter weave-only weave-chapter">
-          <header class="chapter-head">
-            <span class="chapter-number">+W</span>
-            <div>
-              <p class="chapter-kicker">NOW REVEAL THE CONTROL PLANE</p>
-              <h2>What Weave changes—and what it leaves alone</h2>
-            </div>
-          </header>
-          <p class="section-lead">
-            Codex answers: <em>How should I accomplish this goal?</em> Weave answers the question one
-            level above it: <em>Which goals should run, under what boundaries, with which human decisions,
-            and what evidence must survive afterward?</em>
-          </p>
-          <div class="diff-table" role="table" aria-label="Codex and Weave responsibility comparison">
-            <div class="diff-row diff-head" role="row"><span role="columnheader">Concern</span><span role="columnheader">Codex today</span><span role="columnheader">Weave addition</span></div>
-            <div class="diff-row" role="row"><b>Authoring unit</b><span>Task / turn</span><ins>Ordered, goal-level phases</ins></div>
-            <div class="diff-row" role="row"><b>Tool sequence</b><span>Model-adaptive, internal</span><ins>Unchanged—never drawn as a fake DAG</ins></div>
-            <div class="diff-row" role="row"><b>Human control</b><span>Steer, stop, action approvals</span><ins>Explicit between-phase checkpoints</ins></div>
-            <div class="diff-row" role="row"><b>Prior work</b><span>Conversation + built-in memory</span><ins>User-selected thread excerpts with provenance</ins></div>
-            <div class="diff-row" role="row"><b>Completion</b><span>Terminal turn status</span><ins>Verification turn + bounded repair attempts</ins></div>
-            <div class="diff-row" role="row"><b>Observability</b><span>Typed event stream and history</span><ins>Phase projection + intent-to-trace receipt</ins></div>
-            <div class="diff-row" role="row"><b>Versioning</b><span>Thread and fork ancestry</span><ins>Human harness version, separate from threads</ins></div>
-          </div>
-
-          <div class="implemented-callout">
-            <div><span>SHIPS IN THIS PROTOTYPE</span><b>Ordered programs of ≤ 8 phases</b></div>
-            <ul>
-              <li><code>work</code>: exactly one Codex turn; internally unbounded</li>
-              <li><code>checkpoint</code>: local human continue/stop; no model call</li>
-              <li><code>verify</code>: one structured turn plus 0–2 declared repair turns</li>
-              <li>One continued Codex thread, run-wide context/sandbox/approval controls</li>
-            </ul>
-          </div>
-          <div class="not-yet">
-            <b>Not claimed:</b> arbitrary branches, per-phase forks, deterministic artifact gates,
-            strict per-phase first-party tool allowlists, a retrieval graph, or hard limits on model/tool
-            iterations inside a turn. A derived trace projection is labeled <em>derived</em>; it is not
-            presented as Codex's hidden plan.
-          </div>
+        <section class="steps shell" aria-labelledby="steps-title">
+          <header><p class="eyebrow">THREE STEPS</p><h2 id="steps-title">Start from a fresh computer</h2></header>
+          <ol>
+            <li><span>1</span><div><h3>Install Codex and sign in</h3><p>ChatGPT sign-in is the recommended route when you want usage to follow an eligible ChatGPT plan.</p><pre><code>npm install -g @openai/codex
+codex login</code></pre><button class="copy-command" type="button" data-copy="npm install -g @openai/codex&#10;codex login">Copy commands</button></div></li>
+            <li><span>2</span><div><h3>Clone and start WeaveCodex</h3><p>The server binds to your own machine and delegates agent execution and authentication to Codex.</p><pre><code>git clone https://github.com/MustafaAH10/WeaveCodex.git
+cd WeaveCodex/weave-control-plane
+uv run python -m weave_codex.server \
+  --codex-bin "$(command -v codex)" \
+  --host 127.0.0.1 --port 8790</code></pre><button class="copy-command" type="button" data-copy="git clone https://github.com/MustafaAH10/WeaveCodex.git&#10;cd WeaveCodex/weave-control-plane&#10;uv run python -m weave_codex.server --codex-bin &quot;$(command -v codex)&quot; --host 127.0.0.1 --port 8790">Copy start command</button></div></li>
+            <li><span>3</span><div><h3>Open the local app</h3><p>Keep the terminal open while you use the site. Your repository path, sandbox, approvals, integrations, and account remain controlled by the local Codex runtime.</p><a class="local-link" href="http://127.0.0.1:8790/">Open WeaveCodex →</a></div></li>
+          </ol>
         </section>
 
-        <section id="examples" class="chapter weave-only weave-chapter examples-chapter">
-          <header class="chapter-head">
-            <span class="chapter-number">EX</span>
-            <div>
-              <p class="chapter-kicker">TWO PROMPTS, TWO LEVELS OF CONTROL</p>
-              <h2>The difference becomes concrete</h2>
-            </div>
-          </header>
-
-          <article class="example-card">
-            <header><span>EXAMPLE 01 · CREATIVE BUILD</span><h3>“Design a polished Flappy Bird game.”</h3></header>
-            <div class="example-columns">
-              <div class="codex-path">
-                <p class="path-label">REGULAR CODEX</p>
-                <p>You state the goal once. Codex decides how to inspect the repository, implement the game, run it, inspect the result, and iterate.</p>
-                <div class="single-task"><b>One adaptive task</b><span>inspect · edit · run · screenshot · repair · answer</span><small>The exact sequence is powerful, but the project-level stages are implicit.</small></div>
-              </div>
-              <div class="weave-path">
-                <p class="path-label">WEAVE + CODEX</p>
-                <ol class="phase-sequence">
-                  <li><span>WORK</span><div><b>Art direction + interaction plan</b><small>Read-only goal; return a concise visual and game-feel proposal.</small></div></li>
-                  <li class="checkpoint"><span>HUMAN</span><div><b>Choose the direction</b><small>Approve the concept before implementation begins.</small></div></li>
-                  <li><span>WORK</span><div><b>Build the playable game</b><small>Codex may use as many internal reads, edits, and tools as necessary.</small></div></li>
-                  <li class="verify"><span>VERIFY</span><div><b>Play-test in the browser</b><small>Check start, flap, collision, scoring, restart, and visual hierarchy; repair once.</small></div></li>
-                </ol>
-              </div>
-            </div>
-            <div class="observed-run">
-              <div><span>EXISTING FLAPPY PROTOTYPE TRACE</span><small>not execution of the illustrated design; structural evidence, not an A/B quality result</small></div>
-              <dl><div><dt>2</dt><dd>controller turns</dd></div><div><dt>36</dt><dd>persisted items</dd></div><div><dt>23</dt><dd>tool items</dd></div><div><dt>3 + 20</dt><dd>file change + MCP</dd></div></dl>
-            </div>
-            <footer><b>The advantage is not “four tools instead of one.”</b> It is an explicit creative decision before a long implementation, followed by named acceptance evidence.</footer>
-          </article>
-
-          <article class="example-card">
-            <header><span>EXAMPLE 02 · HIGH-RISK REPOSITORY CHANGE</span><h3>“Replace session auth without breaking existing clients.”</h3></header>
-            <div class="example-columns">
-              <div class="codex-path">
-                <p class="path-label">REGULAR CODEX</p>
-                <p>Codex can investigate and implement the migration in one task, asking for protected-action approval when required.</p>
-                <div class="single-task"><b>One adaptive task</b><span>trace callers · change schema · migrate · test · answer</span><small>Action safety is mediated, but the architecture decision and migration gate are implicit.</small></div>
-              </div>
-              <div class="weave-path">
-                <p class="path-label">WEAVE + CODEX</p>
-                <ol class="phase-sequence">
-                  <li><span>WORK</span><div><b>Map auth contracts and blast radius</b><small>No edits. Produce callers, invariants, and migration risks.</small></div></li>
-                  <li class="checkpoint"><span>HUMAN</span><div><b>Accept the migration contract</b><small>A person owns the compatibility decision.</small></div></li>
-                  <li><span>WORK</span><div><b>Implement the accepted migration</b><small>Workspace-write; native Codex approvals still apply inside.</small></div></li>
-                  <li class="verify"><span>VERIFY</span><div><b>Prove old and new clients</b><small>Structured verification; up to two bounded repair turns.</small></div></li>
-                </ol>
-              </div>
-            </div>
-            <footer><b>The advantage is governance with evidence.</b> The risky choice becomes a named boundary rather than an inference buried inside a long trace.</footer>
-          </article>
+        <section class="security-note shell">
+          <b>Authentication boundary</b>
+          <p>The page calls <code>account/read</code> through the local app-server. If you choose “Sign in with ChatGPT,” Codex owns the browser flow and credential storage. Weave receives a short-lived login URL and redacted completion state, never your credential file or tokens.</p>
+          <a href="https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan">Official OpenAI setup guidance ↗</a>
         </section>
-
-        <section class="chapter closing">
-          <p class="overline">THE PRODUCT THESIS</p>
-          <h2>Let Codex choose the tactics.<br /><span class="weave-accent">Let people own the system.</span></h2>
-          <p>
-            Open source gives us the rare opportunity to build against a real, inspectable agent runtime.
-            The useful innovation is not a prettier tool-call graph. It is a truthful control plane that
-            makes intent, boundaries, experience, human judgment, and evidence first-class—while leaving
-            Codex free to be adaptive inside each goal.
-          </p>
-          <div class="closing-actions">
-            <a class="primary-action" href="/">Open the Weave app</a>
-            <button id="closing-toggle" class="secondary-action" type="button">Reveal the Weave diff</button>
-          </div>
-        </section>
-
-        <section id="sources" class="sources-section">
-          <header><p class="overline">EVIDENCE LEDGER</p><h2>Primary sources</h2></header>
-          <div class="source-columns">
-            <div>
-              <h3>Official OpenAI documentation</h3>
-              <ol>
-                <li><a href="https://learn.chatgpt.com/docs/app-server">Codex app-server</a></li>
-                <li><a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md">AGENTS.md instructions</a></li>
-                <li><a href="https://learn.chatgpt.com/docs/build-skills">Build with Skills</a></li>
-                <li><a href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli">Model Context Protocol</a></li>
-                <li><a href="https://learn.chatgpt.com/docs/agent-approvals-security">Agent approvals &amp; security</a></li>
-                <li><a href="https://learn.chatgpt.com/docs/sandboxing">Sandboxing</a></li>
-              </ol>
-            </div>
-            <div>
-              <h3>Pinned source · <code>9ded177</code></h3>
-              <ol>
-                <li><a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/app-server/README.md">App-server protocol</a></li>
-                <li><a href="https://github.com/openai/codex/tree/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/app-server-protocol/src/protocol/v2">Thread, turn, and item types</a></li>
-                <li><a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/core/src/session/turn.rs">Core turn loop</a></li>
-                <li><a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/core/src/context_manager/history.rs">Context manager</a></li>
-                <li><a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/core/src/tools/orchestrator.rs">Tool orchestrator</a></li>
-                <li><a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/memories/README.md">Memory pipeline</a></li>
-                <li><a href="https://github.com/openai/codex/tree/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/rollout-trace">Raw rollout trace</a></li>
-              </ol>
-            </div>
-          </div>
-          <p class="source-caveat">
-            <span class="evidence documented">DOCUMENTED</span> is a public product contract.
-            <span class="evidence source">SOURCE-DERIVED</span> describes the pinned implementation, not a forever-stable API.
-            <span class="evidence proposal">PROPOSAL / WEAVE</span> is our design or implementation.
-          </p>
-        </section>
-      </article>
+      </section>
     </main>
 
-    <footer class="site-footer">
-      <span>Weave for Codex</span>
-      <p>Built around Codex, not instead of it.</p>
-      <a href="#premise">Back to top ↑</a>
-    </footer>
+    <footer><span>Weave for Codex · local-first control plane</span><div><a href="/compare.html">Compare runs</a><a href="/studio.html#design">Design a harness</a></div></footer>
     <script src="/deep-dive.js"></script>
   </body>
 </html>

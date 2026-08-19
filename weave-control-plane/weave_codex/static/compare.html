@@ -3,85 +3,95 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Compare an existing Codex task with an exact WeaveCodex run without inventing hidden plans." />
-    <title>Compare runs · Weave for Codex</title>
+    <meta name="description" content="Compare ordinary Codex with a human-authored WeaveCodex workflow using matched repository evidence." />
+    <title>Codex vs WeaveCodex · Run comparison</title>
     <link rel="stylesheet" href="/compare.css" />
   </head>
   <body>
-    <header class="topbar"><a href="/studio.html#runs">← Run Explorer</a><b>Weave <span>for Codex</span></b><a href="/deep-dive.html">Technical deep dive</a></header>
+    <header class="topbar">
+      <a href="/" class="brand"><span>W</span><b>Weave</b><small>for Codex</small></a>
+      <nav><a href="/studio.html#runs">Run explorer</a><a href="/deep-dive.html">Architecture</a><a href="/deep-dive.html#setup">Setup</a></nav>
+    </header>
+
     <main>
-      <header class="hero">
-        <p>RUN COMPARISON</p>
-        <h1>Same runtime.<br />Different control surface.</h1>
-        <div><p>Choose one existing Codex task and one Weave run. The page compares observable structure and human coordination—not hidden reasoning or answer quality.</p><span>Deterministic projection · no model call</span></div>
+      <header class="hero shell">
+        <p class="eyebrow">MATCHED RUN EVIDENCE</p>
+        <h1>Codex chooses the tactics.<br />Weave lets people design the process.</h1>
+        <p>The native Codex agent stays intact. Weave adds a reusable, inspectable workflow around it: named goals, human checkpoints, verification, and an intent-to-trace receipt.</p>
       </header>
 
-      <section class="matched-evidence oss-evidence" aria-labelledby="oss-title">
-        <header>
-          <div><p>MATCHED OSS REPAIRS</p><h2 id="oss-title">Three repositories, three different Weave programs</h2></div>
-          <p>Jinja, Starlette, and Commander were cloned at pinned commits. Each arm received the same declared seeded regression, prompt, model, sandbox, memory-off setting, and external tests. Only the controller-level program differed.</p>
-        </header>
-        <div id="oss-summary" class="matched-summary"><span>Loading frozen OSS receipts…</span></div>
-        <div id="oss-trials" class="matched-trials"></div>
-        <div class="matched-reading">
-          <b>The result, without spin</b>
-          <p>Both systems repaired all three regressions. Ordinary Codex used 18 model completions; Weave used 32. These tasks did not need the extra control. Weave's measured contribution was explicit goal phases, two reached human checkpoints, and three first-pass verifier receipts—not a quality gain.</p>
-          <a href="/oss-implementation-trials-plan.json">Inspect the frozen plan</a>
+      <section id="control-diff" class="control-diff shell" aria-labelledby="control-title">
+        <header><p class="eyebrow">THE DIFFERENCE IN ONE SCREEN</p><h2 id="control-title">One adaptive task versus an authored outer program</h2></header>
+        <div class="control-grid">
+          <article class="control-card codex-card">
+            <header><span>C</span><div><p>ORDINARY CODEX</p><h3>State the outcome</h3></div></header>
+            <div class="workflow-line compact" aria-label="Ordinary Codex workflow">
+              <div><small>USER</small><b>Repair the regression</b></div><i>→</i><div class="native"><small>CODEX</small><b>Adaptive agent loop</b><em>inspect ↔ edit ↔ test ↔ retry</em></div><i>→</i><div><small>RESULT</small><b>Files + answer</b></div>
+            </div>
+            <p>People can steer the conversation and answer native action approvals. The project-level stages remain implicit.</p>
+          </article>
+          <article class="control-card weave-card">
+            <header><span>W</span><div><p>WEAVE + CODEX</p><h3>Author the handoffs</h3></div></header>
+            <div class="workflow-line" aria-label="WeaveCodex workflow">
+              <div><small>WORK</small><b>Inspect</b></div><i>→</i><div class="human"><small>HUMAN</small><b>Approve</b></div><i>→</i><div><small>WORK</small><b>Implement</b></div><i>→</i><div class="verify"><small>VERIFY</small><b>Prove it</b></div>
+            </div>
+            <p>Every Work or Verify goal contains a complete native Codex turn. A checkpoint pauses between turns without pretending to control individual tool calls.</p>
+          </article>
         </div>
+        <aside><b>What counts as value here?</b><span>A person can review the diagnosis before files change; the same workflow can be reused; and the final receipt shows which goal, decision, Codex turn, and verification outcome belong together.</span></aside>
       </section>
 
-      <section class="matched-evidence" aria-labelledby="matched-title">
+      <section id="oss-title" class="evidence shell" aria-labelledby="evidence-title">
         <header>
-          <div><p>EARLIER PRODUCT FIXTURES</p><h2 id="matched-title">Three small tasks, memory off, six runs</h2></div>
-          <p>Each fixture was run once with ordinary Codex and once with a three-stage Weave harness. The scorer checks files—not prose. This is a small product probe, not a benchmark.</p>
+          <div><p class="eyebrow">THREE MATCHED OSS REPAIRS</p><h2 id="evidence-title">Did the authored workflow change what people could control?</h2></div>
+          <p>Each repository started from the same pinned seeded regression. Both arms used the same prompt, model, sandbox, memory-off setting, and external tests. Only the controller-level program changed.</p>
         </header>
-        <div id="matched-summary" class="matched-summary"><span>Loading preserved receipts…</span></div>
-        <div id="matched-trials" class="matched-trials"></div>
-        <div class="matched-reading">
-          <b>What to look for</b>
-          <p>Both systems can solve these small tasks. Weave adds a legible contract and phase-level receipts, but it also spends more controller turns. An integration request is useful only when the extra work is justified by the task.</p>
-        </div>
+        <div id="oss-summary" class="evidence-summary"><span>Loading frozen receipts…</span></div>
+        <div id="oss-trials" class="trial-list"></div>
+        <aside class="honest-result">
+          <b>The honest result</b>
+          <p>Both systems repaired all three seeded regressions. These small tasks do not establish a quality benefit from Weave. They establish that custom goal sequences, two actual human checkpoints, and three verifier receipts can wrap real Codex execution without changing its native tool loop.</p>
+          <a href="/oss-implementation-trials-plan.json">Inspect the frozen study plan →</a>
+        </aside>
       </section>
 
-      <section class="pickers" aria-label="Choose runs">
-        <label><span>CODEX ONLY</span><b>Existing Codex task</b><select id="codex-select"><option value="">Loading tasks…</option></select></label>
-        <div class="versus">VS</div>
-        <label><span>WEAVE + CODEX</span><b>Exact Weave receipt</b><select id="weave-select"><option value="">Loading runs…</option></select></label>
-      </section>
-      <p id="comparison-status" class="status">Loading local run sources…</p>
+      <section class="inspect shell" aria-labelledby="inspect-title">
+        <header><div><p class="eyebrow">YOUR LOCAL EVIDENCE</p><h2 id="inspect-title">Compare a saved Codex task with an exact Weave receipt</h2></div><p>Loading and grouping are local and deterministic. Codex activity groups are derived from persisted items; Weave phases come from the authored manifest and run receipt.</p></header>
+        <section class="pickers" aria-label="Choose runs">
+          <label><span>CODEX TASK</span><select id="codex-select"><option value="">Loading tasks…</option></select></label>
+          <div>versus</div>
+          <label><span>WEAVE RECEIPT</span><select id="weave-select"><option value="">Loading runs…</option></select></label>
+        </section>
+        <p id="comparison-status" class="status">Loading local run sources…</p>
 
-      <section class="comparison" aria-label="Side-by-side run maps">
-        <article class="run-column codex-column">
-          <header><div><span>C</span><p>CODEX ONLY</p></div><em id="codex-provenance">Derived from persisted items</em></header>
-          <h2 id="codex-title">Choose a Codex task</h2>
-          <p id="codex-summary">Codex adapts inside one native task. We group observed items for readability; the groups are not an authored plan.</p>
-          <div id="codex-map" class="run-map empty">No task selected.</div>
-          <dl id="codex-metrics"></dl>
-        </article>
+        <section class="comparison" aria-label="Side-by-side run maps">
+          <article class="run-column codex-column">
+            <header><div><span>C</span><p>CODEX ONLY</p></div><em id="codex-provenance">Derived activity groups</em></header>
+            <h3 id="codex-title">Choose a Codex task</h3>
+            <p id="codex-summary">The native task stays adaptive. Observed items are grouped for readability, never presented as a hidden plan.</p>
+            <div id="codex-map" class="run-map empty">No task selected.</div>
+            <dl id="codex-metrics"></dl>
+          </article>
+          <article class="run-column weave-column">
+            <header><div><span>W</span><p>WEAVE + CODEX</p></div><em id="weave-provenance">Exact authored phases</em></header>
+            <h3 id="weave-title">Choose a Weave run</h3>
+            <p id="weave-summary">The receipt preserves each authored goal, checkpoint, and verification boundary.</p>
+            <div id="weave-map" class="run-map empty">No run selected.</div>
+            <dl id="weave-metrics"></dl>
+          </article>
+        </section>
 
-        <article class="run-column weave-column">
-          <header><div><span>W</span><p>WEAVE + CODEX</p></div><em id="weave-provenance">Exact local receipt</em></header>
-          <h2 id="weave-title">Choose a Weave run</h2>
-          <p id="weave-summary">Weave preserves the authored goal phases and the observed Codex activity inside each Work phase.</p>
-          <div id="weave-map" class="run-map empty">No run selected.</div>
-          <dl id="weave-metrics"></dl>
-        </article>
-      </section>
-
-      <section class="coordination">
-        <header><p>HUMAN-IN-THE-LOOP COORDINATION</p><h2>Where can a person actually intervene?</h2></header>
         <div class="coordination-grid">
-          <article><span>Codex only</span><h3>Steer in the conversation</h3><p>Users can add messages and answer native approval requests. The workflow itself is adaptive and not separately compiled before the run.</p><div id="codex-human" class="human-line"></div></article>
-          <article><span>Weave + Codex</span><h3>Author handoffs before execution</h3><p>Named checkpoints can pause between complete Codex turns. Native tool approvals still operate inside those turns.</p><div id="weave-human" class="human-line"></div></article>
+          <article><span>CODEX ONLY</span><h3>Human control lives in the conversation</h3><p>Steer the task or answer native approvals while Codex adapts.</p><div id="codex-human" class="human-line"></div></article>
+          <article><span>WEAVE + CODEX</span><h3>Human control also lives between goals</h3><p>Approve, stop, or redirect before the next complete Codex turn starts.</p><div id="weave-human" class="human-line"></div></article>
         </div>
-      </section>
 
-      <section class="matrix">
-        <header><p>STRUCTURAL DIFF</p><h2>What the evidence permits us to say</h2></header>
         <div id="comparison-matrix" class="matrix-table"></div>
-        <p class="limit"><b>Not a performance evaluation.</b> Unless both sides ran the same task under matched conditions with a scorer, this page makes no claim that one answer was better.</p>
+        <p class="limit"><b>Evidence limit.</b> This page compares observable structure and matched artifact outcomes. It does not expose hidden reasoning, claim deterministic replay, or infer a quality improvement where the external grader found none.</p>
       </section>
     </main>
+
+    <footer><span>Weave for Codex · comparison is structural, not a leaderboard</span><a href="/studio.html#design">Design a workflow →</a></footer>
     <script src="/compare.js"></script>
   </body>
 </html>

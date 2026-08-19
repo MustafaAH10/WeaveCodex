@@ -1,109 +1,119 @@
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "weave-codex:deep-dive:reveal";
-  const root = document.documentElement;
-  const toggle = document.querySelector("#weave-toggle");
-  const closingToggle = document.querySelector("#closing-toggle");
-  const modeTitle = document.querySelector("#mode-title");
-  const modeDescription = document.querySelector("#mode-description");
-  const progress = document.querySelector("#reading-progress");
-  const railLinks = [...document.querySelectorAll(".section-rail a[data-section]")];
-  const sections = [...document.querySelectorAll("article [id]")].filter((node) =>
-    railLinks.some((link) => link.dataset.section === node.id),
-  );
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+  let securitySession = null;
+  let loginPollTimer = null;
 
-  function storedPreference() {
-    const query = new URLSearchParams(window.location.search).get("weave");
-    if (query === "1" || query === "on") return true;
-    if (query === "0" || query === "off") return false;
+  async function request(path, options = {}) {
+    const headers = { ...(options.headers || {}) };
+    if (options.method && options.method !== "GET") {
+      headers["Content-Type"] = "application/json";
+      headers["X-Weave-CSRF"] = securitySession?.csrfToken || "";
+    }
+    const response = await fetch(path, { ...options, headers });
+    const data = await response.json();
+    if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : `HTTP ${response.status}`);
+    return data;
+  }
+
+  function setView(view, { updateHash = true } = {}) {
+    const active = view === "setup" ? "setup" : "architecture";
+    $$(".page-view").forEach((panel) => {
+      const selected = panel.id === `${active}-view`;
+      panel.classList.toggle("active", selected);
+      panel.hidden = !selected;
+    });
+    $$(".page-tab").forEach((button) => {
+      const selected = button.dataset.view === active;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-selected", String(selected));
+    });
+    if (updateHash) history.replaceState(null, "", `#${active}`);
+    if (updateHash) window.scrollTo(0, 0);
+    if (active === "setup") void checkAccount();
+  }
+
+  function setLayer(enabled) {
+    document.documentElement.dataset.weave = enabled ? "on" : "off";
+    $("#codex-layer").classList.toggle("active", !enabled);
+    $("#weave-layer").classList.toggle("active", enabled);
+    $("#codex-layer").setAttribute("aria-pressed", String(!enabled));
+    $("#weave-layer").setAttribute("aria-pressed", String(enabled));
+    $("#diagram-caption").innerHTML = enabled
+      ? "<b>Weave revealed.</b> The manifest, phase compiler, human checkpoint, and receipt wrap app-server. The native Codex loop is unchanged."
+      : "<b>Codex only.</b> A client sends a task through app-server; Codex owns the adaptive context → model → tools loop.";
+  }
+
+  function renderAccount(account) {
+    const message = $("#account-message");
+    const privacy = $("#account-privacy");
+    const login = $("#chatgpt-login");
+    if (account?.canRun) {
+      const type = account.accountType === "chatgpt" ? "ChatGPT" : account.accountType === "apiKey" ? "API key" : "Codex";
+      message.textContent = account.message || `Ready to run through ${type}.`;
+      privacy.textContent = "No secrets, tokens, or email are returned to this page.";
+      login.classList.toggle("hidden", account.accountType === "chatgpt");
+    } else {
+      message.textContent = account?.message || "Codex is installed, but this account is not ready to run.";
+      privacy.textContent = "Use the native ChatGPT browser flow or run codex login in a terminal.";
+      login.classList.remove("hidden");
+    }
+  }
+
+  async function checkAccount() {
     try {
-      return window.localStorage.getItem(STORAGE_KEY) === "on";
-    } catch {
-      return false;
+      securitySession ||= await request("/api/session");
+      renderAccount(await request("/api/account"));
+    } catch (error) {
+      renderAccount({ canRun: false, message: `Local Codex connection unavailable: ${error.message}` });
     }
   }
 
-  function setWeave(enabled, { persist = true, announce = false } = {}) {
-    root.dataset.weave = enabled ? "on" : "off";
-    toggle.setAttribute("aria-checked", String(enabled));
-    modeTitle.textContent = enabled ? "Weave diff revealed" : "Codex only";
-    modeDescription.textContent = enabled
-      ? "Additions are marked in coral. Codex stays visible underneath."
-      : "Read the system before we change it.";
-
-    if (persist) {
-      try {
-        window.localStorage.setItem(STORAGE_KEY, enabled ? "on" : "off");
-      } catch {
-        // Persistence is a convenience. The comparison still works without it.
-      }
+  async function pollLogin(loginId) {
+    clearTimeout(loginPollTimer);
+    try {
+      const result = await request(`/api/account/login/${encodeURIComponent(loginId)}`);
+      if (result.state === "succeeded") return renderAccount(result.account || await request("/api/account"));
+      if (result.state === "failed") return renderAccount({ canRun: false, message: result.message });
+      $("#account-message").textContent = result.message || "Waiting for ChatGPT sign-in to finish…";
+      loginPollTimer = window.setTimeout(() => pollLogin(loginId), 900);
+    } catch (error) {
+      renderAccount({ canRun: false, message: error.message });
     }
+  }
 
-    if (announce) {
-      const live = document.createElement("span");
-      live.className = "sr-only";
-      live.setAttribute("aria-live", "polite");
-      live.textContent = enabled ? "Weave comparison layer revealed." : "Showing Codex architecture only.";
-      document.body.append(live);
-      window.setTimeout(() => live.remove(), 900);
+  async function startLogin() {
+    const button = $("#chatgpt-login");
+    button.disabled = true;
+    try {
+      securitySession ||= await request("/api/session");
+      const result = await request("/api/account/login/chatgpt", { method: "POST", body: "{}" });
+      if (result.authUrl) window.open(result.authUrl, "_blank", "noopener,noreferrer");
+      $("#account-message").textContent = result.message || "Finish signing in through the Codex browser flow.";
+      if (result.loginId) void pollLogin(result.loginId);
+    } catch (error) {
+      renderAccount({ canRun: false, message: error.message });
+    } finally {
+      button.disabled = false;
     }
-
-    updateActiveSection();
   }
 
-  function toggleWeave() {
-    setWeave(root.dataset.weave !== "on", { announce: true });
+  async function copyCommand(button) {
+    await navigator.clipboard.writeText(button.dataset.copy || "");
+    const original = button.textContent;
+    button.textContent = "Copied";
+    window.setTimeout(() => { button.textContent = original; }, 1200);
   }
 
-  function updateProgress() {
-    const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-    const ratio = scrollable > 0 ? Math.min(1, Math.max(0, window.scrollY / scrollable)) : 0;
-    progress.style.width = `${ratio * 100}%`;
-  }
-
-  function updateActiveSection() {
-    const eligible = sections.filter((section) => {
-      if (root.dataset.weave === "off" && section.classList.contains("weave-only")) return false;
-      return true;
-    });
-    const marker = window.scrollY + Math.min(window.innerHeight * 0.32, 260);
-    let active = eligible[0]?.id;
-    eligible.forEach((section) => {
-      if (section.offsetTop <= marker) active = section.id;
-    });
-    railLinks.forEach((link) => link.classList.toggle("active", link.dataset.section === active));
-  }
-
-  let scheduled = false;
-  function onScroll() {
-    if (scheduled) return;
-    scheduled = true;
-    window.requestAnimationFrame(() => {
-      updateProgress();
-      updateActiveSection();
-      scheduled = false;
-    });
-  }
-
-  toggle.addEventListener("click", toggleWeave);
-  closingToggle.addEventListener("click", () => {
-    setWeave(true, { announce: true });
-    document.querySelector("#difference")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-
-  document.addEventListener("keydown", (event) => {
-    const target = event.target;
-    const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable;
-    if (!isTyping && event.key.toLowerCase() === "w" && !event.metaKey && !event.ctrlKey && !event.altKey) {
-      event.preventDefault();
-      toggleWeave();
-    }
-  });
-
-  window.addEventListener("scroll", onScroll, { passive: true });
-  window.addEventListener("resize", onScroll, { passive: true });
-  setWeave(storedPreference(), { persist: false });
-  updateProgress();
-  updateActiveSection();
+  $$(".page-tab").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
+  $("#codex-layer").addEventListener("click", () => setLayer(false));
+  $("#weave-layer").addEventListener("click", () => setLayer(true));
+  $("#check-account").addEventListener("click", checkAccount);
+  $("#chatgpt-login").addEventListener("click", startLogin);
+  $$(".copy-command").forEach((button) => button.addEventListener("click", () => copyCommand(button).catch(() => { button.textContent = "Copy failed"; })));
+  window.addEventListener("hashchange", () => setView(location.hash === "#setup" ? "setup" : "architecture", { updateHash: false }));
+  setLayer(false);
+  setView(location.hash === "#setup" ? "setup" : "architecture", { updateHash: false });
 })();

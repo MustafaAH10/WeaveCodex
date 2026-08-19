@@ -435,13 +435,44 @@ def test_run_explorer_comparison_integrations_and_technical_diagrams_are_explici
     assert 'data-trace-panel="activity"' in html
     assert 'id="integrations-view"' in html
     assert "request(`/api/integrations?" in javascript
-    assert "Same runtime.<br />Different control surface." in comparison
+    assert "Codex chooses the tactics.<br />Weave lets people design the process." in comparison
     assert 'id="codex-map"' in comparison
     assert 'id="weave-map"' in comparison
     assert "Deterministic projection of persisted items" in comparison_js
     assert 'id="integrations"' in deep_dive
     assert 'id="integration-title"' in deep_dive
     assert "AGENTS.md chain" in deep_dive
+
+
+def test_deep_dive_is_diagram_led_and_setup_is_self_contained() -> None:
+    static = Path(__file__).parents[1] / "weave_codex/static"
+    html = (static / "deep-dive.html").read_text()
+    javascript = (static / "deep-dive.js").read_text()
+
+    assert html.count('id="system-architecture"') == 1
+    assert 'id="weave-layer"' in html
+    assert 'class="weave-overlay"' in html
+    assert 'id="setup-view"' in html
+    assert "npm install -g @openai/codex" in html
+    assert "uv run python -m weave_codex.server" in html
+    assert 'request("/api/account")' in javascript
+    assert 'request("/api/account/login/chatgpt"' in javascript
+    assert "auth.json" in html
+
+
+def test_comparison_prioritizes_human_control_over_compute_totals() -> None:
+    static = Path(__file__).parents[1] / "weave_codex/static"
+    html = (static / "compare.html").read_text()
+    javascript = (static / "compare.js").read_text()
+
+    assert 'id="control-diff"' in html
+    assert "Author the handoffs" in html
+    assert "before the next complete Codex turn starts" in html
+    assert "human checkpoints actually reached" in javascript
+    assert "does not prove a better repair" in javascript
+    assert "model completions" not in html.lower()
+    assert "input tokens" not in html.lower()
+    assert "tokenUsage" not in javascript
 
 
 def test_home_is_task_first_and_defers_advanced_controls_to_studio() -> None:
