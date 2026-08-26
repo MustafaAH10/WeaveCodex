@@ -48,11 +48,98 @@ class PhaseRunResult:
     completion_status: str = "completed"
 
 
+COMMAND_RESULT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "executedCommand": {"type": "string"},
+        "exitCode": {"type": "integer"},
+        "summary": {"type": "string"},
+    },
+    "required": ["executedCommand", "exitCode", "summary"],
+    "additionalProperties": False,
+}
+
+
+def _command_prompt(
+    manifest: HarnessManifest,
+    *,
+    phase_id: str,
+    phase_name: str,
+    step_type: str,
+    command: str,
+    expected_exit_code: int,
+) -> str:
+    return f"""Execute one fine-grained {step_type} step inside Codex's sandbox.
+
+<overall_task>
+{manifest.task.instructions}
+</overall_task>
+<step id="{phase_id}" name="{phase_name}">
+Run exactly this command once, without combining it with another command:
+{command}
+</step>
+
+Do not run exploratory commands or make changes beyond the effects of the declared command.
+Return the exact command,
+observed exit code, and a short factual summary. Success requires exit code {expected_exit_code}.
+Weave will independently compare your structured report with the app-server command event."""
+
+
+def _normalize_command(value: str) -> str:
+    return " ".join(value.split())
+
+
+def _observed_command_result(
+    events: list[dict[str, Any]],
+    *,
+    requested: str,
+    expected_exit_code: int,
+) -> dict[str, Any]:
+    """Fail closed unless one completed item carries the exact requested command."""
+
+    requested_normalized = _normalize_command(requested)
+    observed: list[dict[str, Any]] = []
+    for event in events:
+        if event.get("method") != "item/completed":
+            continue
+        params = event.get("params") if isinstance(event.get("params"), dict) else {}
+        item = params.get("item") if isinstance(params.get("item"), dict) else {}
+        if item.get("type") != "commandExecution":
+            continue
+        candidates: list[str] = []
+        if isinstance(item.get("command"), str):
+            candidates.append(item["command"])
+        actions = item.get("commandActions") if isinstance(item.get("commandActions"), list) else []
+        candidates.extend(
+            action["command"]
+            for action in actions
+            if isinstance(action, dict) and isinstance(action.get("command"), str)
+        )
+        if any(_normalize_command(candidate) == requested_normalized for candidate in candidates):
+            observed.append(item)
+    exact = len(observed) == 1
+    item = observed[0] if exact else {}
+    exit_code = item.get("exitCode") if isinstance(item.get("exitCode"), int) else None
+    passed = bool(exact and exit_code == expected_exit_code and item.get("status") == "completed")
+    return {
+        "status": "pass" if passed else "fail",
+        "expectedExitCode": expected_exit_code,
+        "observedExitCode": exit_code,
+        "matchingCommandItems": len(observed),
+        "evidence": (
+            "One exact command completed with the expected exit code."
+            if passed
+            else "The exact command and expected exit code were not both observed."
+        ),
+    }
+
+
 def _work_prompt(
     manifest: HarnessManifest,
     *,
     phase_id: str,
     phase_name: str,
+    phase_scope: str,
     goal: str,
     selected_excerpts: list[str],
     first_work_phase: bool,
@@ -75,6 +162,15 @@ def _work_prompt(
         )
     )
     feedback = human_feedback or "No new human direction was supplied at the preceding checkpoint."
+    scope_contract = (
+        "This is a broad adaptive goal. Choose the necessary internal sequence and use as many "
+        "native tools as the outcome legitimately requires."
+        if phase_scope == "adaptive"
+        else (
+            "This is a deliberately focused goal. Complete only the stated instruction; do not "
+            "expand into adjacent refactors, features, or investigations."
+        )
+    )
     return f"""Execute this human-authored Codex work phase.
 
 <overall_task>
@@ -83,6 +179,7 @@ def _work_prompt(
 <phase id="{phase_id}" name="{phase_name}">
 {goal}
 </phase>
+<granularity>{phase_scope}</granularity>
 <context_paths>
 {context}
 </context_paths>
@@ -97,6 +194,7 @@ def _work_prompt(
 </human_checkpoint_feedback>
 
 {continuity}
+{scope_contract}
 When checkpoint feedback is present, treat it as the user's latest instruction for this phase.
 One phase is one controller turn, not one tool call. Use as many native Codex reasoning and tool
 steps as the goal legitimately requires. Report the phase outcome and the evidence actually used."""
@@ -150,8 +248,11 @@ def execute_phase_program(
             continue
 
         phase_turn_ids: list[str] = []
+        execution_detail: dict[str, Any] = {}
+        stop_after_execution = False
         if phase.kind == "work":
             work_count += 1
+            execution_detail = {"scope": phase.scope}
             session.stage(
                 phase.id,
                 f"{phase.name} started",
@@ -168,6 +269,7 @@ def execute_phase_program(
                     manifest,
                     phase_id=phase.id,
                     phase_name=phase.name,
+                    phase_scope=phase.scope,
                     goal=phase.goal,
                     selected_excerpts=selected_excerpts,
                     first_work_phase=work_count == 1,
@@ -181,7 +283,98 @@ def execute_phase_program(
             pending_human_feedback = ""
             phase_turn_ids.append(turn.turn_id)
             result.answer = turn.final_response
-            session.stage(phase.id, f"{phase.name} finished", f"Turn {turn.turn_id}")
+            if turn.status != "completed":
+                result.completion_status = "stopped"
+                execution_detail["status"] = "stopped"
+                stop_after_execution = True
+                session.stage(phase.id, f"{phase.name} stopped", f"Turn {turn.turn_id}")
+            else:
+                session.stage(phase.id, f"{phase.name} finished", f"Turn {turn.turn_id}")
+        elif phase.kind == "command":
+            session.stage(
+                phase.id,
+                f"{phase.name} started",
+                f"Codex must run one exact {phase.step_type} command.",
+            )
+            phase_events: list[dict[str, Any]] = []
+
+            def command_event_sink(
+                event: dict[str, Any],
+                *,
+                captured: list[dict[str, Any]] = phase_events,
+                phase_id: str = phase.id,
+            ) -> None:
+                captured.append(event)
+                session.event(event, phase=phase_id)
+
+            turn = gateway.run_turn(
+                thread_id,
+                _command_prompt(
+                    manifest,
+                    phase_id=phase.id,
+                    phase_name=phase.name,
+                    step_type=phase.step_type,
+                    command=phase.command,
+                    expected_exit_code=phase.expected_exit_code,
+                ),
+                effort="low",
+                output_schema=COMMAND_RESULT_SCHEMA,
+                event_sink=command_event_sink,
+            )
+            _record_turn(result, turn)
+            phase_turn_ids.append(turn.turn_id)
+            if turn.status != "completed":
+                passed = False
+                execution_detail = {
+                    "stepType": phase.step_type,
+                    "command": phase.command,
+                    "status": "stopped",
+                    "expectedExitCode": phase.expected_exit_code,
+                    "observedExitCode": None,
+                    "matchingCommandItems": 0,
+                    "summary": "The run was stopped before this check completed.",
+                    "evidence": "No passing result is claimed for an interrupted check.",
+                }
+                result.completion_status = "stopped"
+                stop_after_execution = True
+            else:
+                reported = json.loads(turn.final_response)
+                observed = _observed_command_result(
+                    phase_events,
+                    requested=phase.command,
+                    expected_exit_code=phase.expected_exit_code,
+                )
+                report_agrees = bool(
+                    _normalize_command(reported["executedCommand"])
+                    == _normalize_command(phase.command)
+                    and reported["exitCode"] == phase.expected_exit_code
+                )
+                passed = observed["status"] == "pass" and report_agrees
+                execution_detail = {
+                    "stepType": phase.step_type,
+                    "command": phase.command,
+                    "status": "pass" if passed else "fail",
+                    "expectedExitCode": phase.expected_exit_code,
+                    "observedExitCode": observed["observedExitCode"],
+                    "matchingCommandItems": observed["matchingCommandItems"],
+                    "summary": reported["summary"],
+                    "evidence": observed["evidence"],
+                }
+            stage_outcome = (
+                "passed"
+                if passed
+                else "stopped"
+                if execution_detail["status"] == "stopped"
+                else "failed"
+            )
+            session.stage(
+                phase.id,
+                f"{phase.name} {stage_outcome}",
+                execution_detail["evidence"],
+            )
+            if not passed and phase.stop_on_failure:
+                result.completion_status = "failedCheck"
+                stop_after_execution = True
         else:
             for attempt in range(1 + phase.max_repairs):
                 attempt_phase = phase.id if attempt == 0 else f"{phase.id}-repair-{attempt}"
@@ -215,6 +408,16 @@ def execute_phase_program(
                 _record_turn(result, turn)
                 pending_human_feedback = ""
                 phase_turn_ids.append(turn.turn_id)
+                if turn.status != "completed":
+                    result.completion_status = "stopped"
+                    execution_detail = {"status": "stopped"}
+                    stop_after_execution = True
+                    session.stage(
+                        attempt_phase,
+                        f"{phase.name}: {action} stopped",
+                        f"Turn {turn.turn_id}",
+                    )
+                    break
                 parsed = json.loads(turn.final_response)
                 result.verification.append(
                     {
@@ -238,6 +441,9 @@ def execute_phase_program(
                 "name": phase.name,
                 "kind": phase.kind,
                 "turnIds": phase_turn_ids,
+                **execution_detail,
             }
         )
+        if stop_after_execution:
+            break
     return result

@@ -6,9 +6,10 @@ and decide what evidence must pass before the work is complete. The resulting co
 reviewed, saved, and reused for another task.
 
 Weave does not replace Codex's agent loop, tools, sandbox, authentication, or approval protocol.
-A typed manifest compiles a few human-owned phases to concrete app-server operations. Each Codex
-Work phase may contain many model and tool iterations; users define complete goals and handoffs,
-not individual shell commands.
+A typed manifest compiles human-owned phases to concrete app-server operations. A person chooses
+the resolution of each node: a broad or focused Codex Work phase may contain many model and tool
+iterations, while an exact function, test, or checker phase requires one observed command and exit
+code. The canvas does not force either style.
 
 ```mermaid
 flowchart LR
@@ -20,6 +21,8 @@ flowchart LR
     AppServer --> Thread["Thread"]
     Thread --> Work["Work phase = one controller turn"]
     Work --> Loop["Codex-managed model + tool loop"]
+    Thread --> Exact["Optional exact function / test / checker"]
+    Exact --> Evidence["Observed command + exit code"]
     Loop --> Gate["Native sandbox and action approvals"]
     Gate --> Checkpoint["Optional human phase checkpoint"]
     Checkpoint --> Verify["Structured verifier / bounded repair"]
@@ -34,7 +37,8 @@ flowchart LR
 |---|---|---|
 | Task and context | `task` | Defines the overall goal; paths are explicit hints, not pre-read claims. |
 | Memory | `memory.mode` | `off` disables memory read/generation; `all` enables the native Codex memory store and marks the thread eligible; `selected` disables native memory and injects bounded excerpts from exact thread IDs. |
-| Work phase | `phaseProgram.phases[].kind=work` | Starts one controller turn. Codex owns all reasoning, tools, compaction, and adaptation inside it. |
+| Work phase | `phaseProgram.phases[].kind=work`, `scope` | Starts one controller turn. `adaptive` delegates the internal route; `focused` prohibits adjacent work. Codex still owns its internal reasoning and tools. |
+| Exact command | `phaseProgram.phases[].kind=command` | Starts one low-effort Codex turn for exactly one function, test, or checker command. Pass requires one matching app-server command item and the declared exit code. |
 | Human checkpoint | `phaseProgram.phases[].kind=checkpoint` | Pauses without a model call; the user can continue, redirect the next phase with bounded text feedback, or stop. |
 | Verification | `phaseProgram.phases[].kind=verify` | Runs a JSON-schema-constrained later turn and at most two declared repair turns. |
 | Safety | `agent.sandbox`, `approvalGate` | Applies run-wide; native action-approval requests can pause inside any Work phase. |
@@ -42,7 +46,8 @@ flowchart LR
 | Observability | `observability.traceRoot` | Enables Codex's local rollout-trace bundle and records a separate manifest-linked receipt. |
 
 `maximumTurns` bounds control-plane turns. It does not pretend to cap internal Codex tool calls;
-that would require a separate app-server capability.
+that would require a separate app-server capability. A visible Stop button uses native
+`turn/interrupt` to end the active Codex turn and records the phase as stopped.
 
 ## Launch
 

@@ -6,14 +6,15 @@ runtime. It is an independent downstream project, not an OpenAI product.
 Ordinary Codex lets you state a goal and lets its agent loop decide how to complete it. WeaveCodex
 keeps that adaptive loop intact, then adds a layer around it that a person can inspect and edit:
 
-- complete Codex work steps, where one step may contain many model and tool iterations;
+- broad or focused Codex work steps, where one step may contain many model and tool iterations;
+- optional exact function, test, or checker steps with observed command and exit-code evidence;
 - explicit human checkpoints that can continue, redirect the next step with feedback, or stop;
 - structured verification with a declared repair bound;
 - run-wide memory, sandbox, and approval choices;
 - a deterministic compiled contract used by the runtime and exposed through the API; and
 - a readable activity record that links the workflow to what Codex actually produced.
 
-It does **not** turn every tool call into a canvas block, expose private reasoning, or replace
+It does **not** require every tool call to become a canvas block, expose private reasoning, or replace
 Codex's native tools, sandbox, approvals, authentication, compaction, or agent loop.
 
 The latest external-user acceptance study ran four memory-off task pairs—forecast repair, poster
@@ -46,7 +47,8 @@ Then open <http://127.0.0.1:8790/>. The product has three places:
   account setup; and
 - **Activity** — review your runs in plain English and optionally open the bounded product checks.
 
-Architecture is explained inline under Create. Setup and integrations live together in Library.
+Architecture is explained inline under Create, with a linked
+[technical platform guide](weave-control-plane/weave_codex/static/platform.html). Setup and integrations live together in Library.
 Evidence lives below personal run history in Activity. Technical hashes and raw identifiers remain
 in machine-readable local artifacts and APIs; they do not dominate the normal interface. A saved
 workflow can be loaded for another folder and its human-readable goals can be edited manually or

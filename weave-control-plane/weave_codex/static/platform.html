@@ -50,12 +50,12 @@
         <p class="thesis-number">01</p>
         <div>
           <p class="kicker">THE CENTRAL DISTINCTION</p>
-          <h2>A workflow phase is a promise to achieve a goal. It is not one tool call.</h2>
+          <h2>A node can hold a broad outcome, a focused task, or one exact check.</h2>
         </div>
         <p>
-          A single Codex turn may read forty files, run twenty commands, revise its plan, and retry a
-          test. Weave wraps that complete turn with an intent, a boundary, and a receipt. This keeps the
-          runtime adaptive while making the larger process legible.
+          Granularity belongs to the person designing the workflow. One node may ask Codex to redesign
+          an entire frontend and use dozens of tools. The next may constrain Codex to one function. An
+          exact test node may require one observed command and exit code. Weave does not impose one size.
         </p>
       </section>
 
@@ -91,7 +91,7 @@
             </div>
             <i>→</i>
             <div class="weave-node">
-              <span>2</span><div><b>Phase compiler</b><small>work · checkpoint · verify</small></div>
+              <span>2</span><div><b>Workflow compiler</b><small>broad · focused · exact · human</small></div>
             </div>
             <i>→</i>
             <div class="weave-node human">
@@ -141,7 +141,7 @@
 
         <div class="architecture-caption">
           <p data-caption="codex"><b>Codex only:</b> the application provides a task and observes an adaptive turn.</p>
-          <p data-caption="weave"><b>With Weave:</b> each work or verify block starts a complete Codex turn; checkpoints make no model call.</p>
+          <p data-caption="weave"><b>With Weave:</b> each broad or focused Codex block starts a complete turn; an optional exact-check block must match observed command evidence; checkpoints make no model call.</p>
           <a href="https://developers.openai.com/blog/codex-as-a-platform" target="_blank" rel="noreferrer">Read the OpenAI platform article ↗</a>
         </div>
       </section>
@@ -167,7 +167,7 @@
             <h3>Owns the process between turns</h3>
             <ul>
               <li>Pair a plain-language goal with an editable starting contract</li>
-              <li>Sequence goal-level work and verification</li>
+              <li>Mix broad goals, focused tasks, exact checks, and verification</li>
               <li>Pause at explicit human decision points</li>
               <li>Scope memory and integrations by phase</li>
               <li>Save a reusable, versioned workflow receipt</li>
@@ -175,7 +175,7 @@
           </article>
           <aside>
             <p class="kicker">DOES NOT DO</p>
-            <p>Weave does not replace Codex’s planner, expose hidden reasoning, or schedule every shell command as a canvas block.</p>
+            <p>Weave does not replace Codex’s planner or expose hidden reasoning. It never forces every shell command onto the canvas; the author chooses where precision is useful.</p>
           </aside>
         </div>
       </section>
@@ -193,7 +193,7 @@
         <div class="layer-panels">
           <article id="panel-exec" role="tabpanel" aria-labelledby="layer-exec" hidden>
             <p class="panel-use">Best for <b>one bounded job</b></p>
-            <p>Scripts, CI, and background commands that need a structured result but not a long-lived product interface.</p>
+            <p>Scripts, CI, and self-contained workflow nodes that need a structured result but not a long-lived product interface. A future isolated node may use <code>codex exec</code>; the current Weave runtime uses app-server turns so context and approvals remain continuous.</p>
             <code>input → codex exec → structured output</code>
           </article>
           <article id="panel-sdk" role="tabpanel" aria-labelledby="layer-sdk" hidden>
@@ -211,8 +211,23 @@
 
       <section id="contract" class="contract shell" aria-labelledby="contract-title">
         <div class="section-heading">
-          <div><p class="kicker">THE USER-AUTHORED CONTRACT</p><h2 id="contract-title">Plain language first. Advanced controls when needed.</h2></div>
+          <div><p class="kicker">THE USER-AUTHORED CONTRACT</p><h2 id="contract-title">Choose the granularity node by node.</h2></div>
           <span class="badge proposal">Weave proposal</span>
+        </div>
+
+        <div class="granularity-spectrum" aria-label="Two valid workflow designs for the same task">
+          <article>
+            <p class="kicker">HIGH-LEVEL</p>
+            <h3>Delegate the outcome</h3>
+            <div><span>Broad Codex goal</span><i>→</i><span>Human review</span><i>→</i><span>Broad revision</span></div>
+            <p>Useful when Codex should choose the files, tools, experiments, and retries inside each milestone.</p>
+          </article>
+          <article>
+            <p class="kicker">BOTTOM-UP</p>
+            <h3>Specify the evidence path</h3>
+            <div><span>Inspect one module</span><i>→</i><span>Change one function</span><i>→</i><span>Run one test</span><i>→</i><span>Run one checker</span></div>
+            <p>Useful when scope creep is costly or a team already knows the exact acceptance path.</p>
+          </article>
         </div>
 
         <div class="contract-demo">
@@ -251,6 +266,30 @@
             <article><b>Completion</b><p>Phase-specific evidence, structured verifier output, and explicit failure state.</p></article>
           </div>
         </details>
+      </section>
+
+      <section class="real-cases shell" aria-labelledby="real-cases-title">
+        <div class="section-heading">
+          <div><p class="kicker">LOCAL PRODUCT ACCEPTANCE · AUGUST 26, 2026</p><h2 id="real-cases-title">The same task, authored at two different resolutions</h2></div>
+          <p class="comparison-note">Real Codex app-server runs through a ChatGPT subscription. These test control semantics, not model quality.</p>
+        </div>
+        <div class="real-case-grid">
+          <article>
+            <header><span>HIGH-LEVEL</span><b>One broad goal</b></header>
+            <p class="case-task">Read one schema module and explain the product’s granularity model.</p>
+            <div class="case-flow"><span>Broad Codex goal</span></div>
+            <dl><dt>Controller turns</dt><dd>1</dd><dt>Observed commands</dt><dd>2 inside the node</dd><dt>Outcome</dt><dd>Completed with five evidence-based bullets</dd></dl>
+            <p>Codex chose how to inspect the file. The person specified the outcome, not the internal tool route.</p>
+          </article>
+          <article>
+            <header><span>BOTTOM-UP</span><b>Five explicit responsibilities</b></header>
+            <p class="case-task">Validate the same implementation with narrow inspection and executable evidence.</p>
+            <div class="case-flow"><span>Inspect schema</span><i>→</i><span>Inspect runtime</span><i>→</i><span>Test</span><i>→</i><span>Checker</span><i>→</i><span>Function</span></div>
+            <dl><dt>Controller turns</dt><dd>5</dd><dt>Exact checks</dt><dd>3 / 3 passed</dd><dt>Outcome</dt><dd>Every command and exit code recorded</dd></dl>
+            <p>The read-only attempt first stopped at pytest because no temporary directory was writable. Re-running the same contract with workspace access made all three exact nodes pass. That failure was visible instead of being buried inside an answer.</p>
+          </article>
+        </div>
+        <p class="case-limit"><b>A third result matters:</b> an earlier broad audit was stopped by the user mid-turn. The run is recorded as stopped—not completed. This is why broad delegation and fine-grained proof belong on the same canvas rather than in competing product modes.</p>
       </section>
 
       <section id="example" class="comparison shell" aria-labelledby="comparison-title">
@@ -299,7 +338,7 @@
           <div><p class="kicker">IMPLEMENTATION SEAMS</p><h2 id="implementation-title">What the current build can ground in public interfaces</h2></div>
         </div>
         <div class="seam-list">
-          <article><span>01</span><div><h3>Compile a phase to a turn</h3><p>A Work or Verify phase becomes a <code>turn/start</code> request. The thread remains native Codex state.</p></div><span class="badge derived">Source-derived</span></article>
+          <article><span>01</span><div><h3>Compile broad and focused goals to turns</h3><p>Both become <code>turn/start</code> requests in one persistent thread. Their authored scope differs; Codex still owns the internal loop.</p></div><span class="badge derived">Source-derived</span></article>
           <article><span>02</span><div><h3>Project events, do not invent a trace</h3><p><code>item/started</code>, deltas, approvals, and <code>turn/completed</code> are reduced into a readable phase view.</p></div><span class="badge documented">Documented</span></article>
           <article><span>03</span><div><h3>Keep consequential consent explicit</h3><p>A Weave checkpoint pauses between turns; native tool approvals continue to protect actions inside a turn.</p></div><span class="badge proposal">Weave proposal</span></article>
           <article><span>04</span><div><h3>Reuse contracts, not stale hidden state</h3><p>Save the phase structure and pass criteria as a versioned workflow. Adapt its goals visibly for the next task.</p></div><span class="badge proposal">Weave proposal</span></article>

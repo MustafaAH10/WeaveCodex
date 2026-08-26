@@ -18,6 +18,8 @@ let voiceRecognition = null;
 let voiceListening = false;
 let voiceBaseText = "";
 let pendingIsCheckpoint = false;
+let selectedPhaseIndex = 0;
+let draggedPhaseIndex = null;
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -53,6 +55,13 @@ function phaseProgram(kind) {
       { id: "implement", kind: "work", name: "Execute the best path", goal: "Choose the strongest supported approach and produce the requested outcome using any relevant tools or integrations." },
       { id: "verify", kind: "verify", name: "Challenge the result", criteria: "Actively look for weak assumptions, missing evidence, edge cases, or quality problems; repair once if the result does not hold up.", maxRepairs: 1 },
     ],
+    precision: [
+      { id: "inspect", kind: "work", scope: "focused", name: "Find the cause", goal: "Inspect the relevant implementation and focused tests. Explain the smallest supported change.", reasoningEffort: "low" },
+      { id: "implement", kind: "work", scope: "focused", name: "Make the focused change", goal: "Implement only the supported change. Do not broaden the task.", reasoningEffort: "inherit" },
+      { id: "focused-test", kind: "command", stepType: "test", name: "Run the focused test", command: "python -m pytest -q", expectedExitCode: 0, stopOnFailure: true },
+      { id: "static-check", kind: "command", stepType: "checker", name: "Check the changed files", command: "git diff --check", expectedExitCode: 0, stopOnFailure: true },
+      { id: "review", kind: "verify", name: "Review the evidence", criteria: "The change is narrow, the requested behavior is complete, and every exact check passed.", maxRepairs: 0 },
+    ],
   };
   return workflows[kind];
 }
@@ -84,9 +93,10 @@ function buildManifest({ mode, name, cwd, instructions, integrations, agent, pro
 }
 
 function manifest() {
+  const authoredName = $("#design-save-name")?.value.trim();
   return buildManifest({
     mode: runMode,
-    name: runMode === "ordinary" ? "Codex direct" : (activeSavedWorkflow?.name || `Weave ${$("#workflow-select").value}`),
+    name: runMode === "ordinary" ? "Codex direct" : (activeSavedWorkflow?.name || authoredName || $("#workflow-select").selectedOptions[0].textContent),
     cwd: $("#workspace-input").value.trim(),
     instructions: $("#task-input").value.trim(),
     integrations: { inventoryId: integrationInventory?.inventoryId || null, requested: selectedIntegrations },
@@ -150,11 +160,17 @@ function setMode(mode) {
 
 function programNodes(program, { compact = false } = {}) {
   const phases = program?.phases || [];
-  return phases.map((phase, index) => `<article class="phase-node ${escapeHtml(phase.kind)}"><small>${index + 1} · ${escapeHtml(stepKind(phase.kind))}</small><b>${escapeHtml(phase.name)}</b></article>${index < phases.length - 1 ? '<i aria-hidden="true">→</i>' : ""}`).join("") || (compact ? "" : "<p>No steps yet.</p>");
+  return phases.map((phase, index) => `<article class="phase-node ${escapeHtml(phase.kind)}"><small>${index + 1} · ${escapeHtml(phaseKindLabel(phase))}</small><b>${escapeHtml(phase.name)}</b></article>${index < phases.length - 1 ? '<i aria-hidden="true">→</i>' : ""}`).join("") || (compact ? "" : "<p>No steps yet.</p>");
 }
 
-function stepKind(kind) {
-  return ({ work: "Codex works", checkpoint: "Your decision", verify: "Final check", native: "Codex works" })[kind] || "Observed activity";
+function stepKind(kind, stepType = "") {
+  if (kind === "command") return ({ function: "One function", test: "Exact test", checker: "Exact checker" })[stepType] || "Exact command";
+  return ({ work: "Codex works", checkpoint: "Your decision", verify: "AI review", native: "Codex works" })[kind] || "Observed activity";
+}
+
+function phaseKindLabel(phase) {
+  if (phase?.kind === "work") return phase.scope === "focused" ? "Focused Codex task" : phase.scope === "adaptive" ? "Broad Codex goal" : "Codex goal";
+  return stepKind(phase?.kind, phase?.stepType);
 }
 
 function friendlyStatus(value) {
@@ -164,8 +180,11 @@ function friendlyStatus(value) {
 
 function phasePlainCopy(phase) {
   if (phase.kind === "checkpoint") return { actor: "Your decision", copy: phase.question, note: "Codex waits here until you continue or stop." };
-  if (phase.kind === "verify") return { actor: "Final check", copy: phase.criteria, note: `Codex can repair up to ${phase.maxRepairs || 0} time${phase.maxRepairs === 1 ? "" : "s"}.` };
-  return { actor: "Codex goal", copy: phase.goal, note: "Inside this goal Codex may reason, inspect, use tools, create, edit, test, and retry." };
+  if (phase.kind === "verify") return { actor: "AI review", copy: phase.criteria, note: `Codex can repair up to ${phase.maxRepairs || 0} time${phase.maxRepairs === 1 ? "" : "s"}.` };
+  if (phase.kind === "command") return { actor: stepKind(phase.kind, phase.stepType), copy: phase.command, note: `Passed only when this exact command is observed with exit code ${phase.expectedExitCode ?? 0}.` };
+  return phase.scope === "focused"
+    ? { actor: "Focused Codex task", copy: phase.goal, note: "Codex keeps this turn narrow and does not expand into adjacent work." }
+    : { actor: "Broad Codex goal", copy: phase.goal, note: "Codex chooses the internal plan and may inspect, edit, test, and retry as much as the outcome requires." };
 }
 
 function renderRunLoop(program) {
@@ -195,15 +214,18 @@ function updateWorkflowExplanation() {
     review: "Codex first explains its direction. You decide whether it continues.",
     audit: "Codex compares approaches, takes the best-supported path, then tries to break its own result.",
     direct: "Codex completes the goal without a midpoint pause, then checks and repairs the result once.",
+    precision: "Codex works in narrow goals. Exact tests and checkers must visibly pass before the workflow can continue.",
   };
   $("#workflow-explanation").textContent = copy[$("#workflow-select").value];
+  $("#design-save-name").value = $("#workflow-select").selectedOptions[0].textContent;
   designProgram = { projectionVersion: 1, phases: clone(phaseProgram($("#workflow-select").value)) };
+  selectedPhaseIndex = 0;
   renderWorkflowPreview();
   renderPhaseEditor();
 }
 
 function selectLoopTemplate(template) {
-  if (!["review", "direct", "audit"].includes(template)) return;
+  if (!["review", "direct", "audit", "precision"].includes(template)) return;
   activeSavedWorkflow = null;
   adaptationMethod = null;
   $("#workflow-select").value = template;
@@ -299,10 +321,13 @@ function toggleVoiceInput() {
 function applyWorkflow(workflow, { customize = false } = {}) {
   activeSavedWorkflow = workflow;
   designProgram = clone(workflow.phaseProgram);
+  selectedPhaseIndex = 0;
   adaptationMethod = null;
   $("#workflow-select").value = "saved";
   $("#workflow-select").selectedOptions[0].textContent = workflow.name;
   $("#workflow-explanation").textContent = "Loaded from your local library. The new task and repository are not inherited.";
+  $("#design-save-name").value = workflow.name;
+  $("#workflow-name").value = workflow.name;
   $$("[data-loop-template]").forEach((button) => { button.classList.remove("active"); button.setAttribute("aria-checked", "false"); });
   setMode("weave");
   $("#task-input").value = "";
@@ -376,12 +401,14 @@ async function saveWorkflow() {
 function renderSteps(phases, state = {}) {
   const activePhase = state.pendingApproval?.params?.phaseId || state.result?.phaseProgram?.activePhaseId || "";
   const executions = state.result?.phaseProgram?.executions || [];
-  const completed = new Set(executions.filter((item) => item.status === "completed").map((item) => item.phaseId));
+  const executionById = new Map(executions.map((item) => [item.phaseId, item]));
   $("#run-steps").innerHTML = phases.map((phase, index) => {
+    const execution = executionById.get(phase.id);
     const nativeDone = phase.kind === "native" && state.status === "completed";
     const nativeActive = phase.kind === "native" && !["completed", "failed"].includes(state.status);
-    const className = completed.has(phase.id) || nativeDone ? "done" : activePhase === phase.id || nativeActive ? "active" : "";
-    return `<article class="${className}"><small>${escapeHtml(stepKind(phase.kind))}</small><b>${escapeHtml(phase.name)}</b></article>`;
+    const className = execution?.status === "fail" ? "failed" : execution?.status === "stopped" ? "stopped" : execution || nativeDone ? "done" : activePhase === phase.id || nativeActive ? "active" : "";
+    const stateLabel = execution?.status === "pass" ? "Passed" : execution?.status === "fail" ? "Failed" : execution?.status === "stopped" ? "Stopped" : className === "done" ? "Done" : "";
+    return `<article class="${className}"><small>${escapeHtml(phaseKindLabel(phase))}</small><b>${escapeHtml(phase.name)}</b>${stateLabel ? `<em>${stateLabel}</em>` : ""}</article>`;
   }).join("");
 }
 
@@ -409,6 +436,10 @@ async function startRun() {
     $("#live-run").scrollIntoView({ behavior: "smooth", block: "start" });
     const result = await request("/api/runs", { method: "POST", body: JSON.stringify(value) });
     activeRun = result.runId;
+    const cancelButton = $("#cancel-active-run");
+    cancelButton.disabled = false;
+    cancelButton.textContent = "Stop run";
+    cancelButton.classList.remove("hidden");
     button.textContent = "Run in progress";
     pollRun(phases);
   } catch (error) {
@@ -440,13 +471,14 @@ async function pollRun(phases) {
       pendingIsCheckpoint = false;
       $("#approval-card").classList.add("hidden");
     }
-    if (["completed", "failed"].includes(state.status)) {
+    if (["completed", "failed", "stopped"].includes(state.status)) {
       const result = state.result || {};
       $("#run-output").textContent = result.finalResponse || state.error || "Run ended without a final response.";
       $("#run-output").classList.remove("hidden");
       $("#run-note").textContent = "Finished. A readable record is available in Activity.";
       $("#run-task").disabled = false;
       $("#run-task").innerHTML = "Run another task <span>→</span>";
+      $("#cancel-active-run").classList.add("hidden");
       return;
     }
     pollTimer = setTimeout(() => pollRun(phases), 700);
@@ -454,6 +486,22 @@ async function pollRun(phases) {
     $("#run-output").textContent = String(error.message || error);
     $("#run-output").classList.remove("hidden");
     $("#run-task").disabled = false;
+    $("#cancel-active-run").classList.add("hidden");
+  }
+}
+
+async function stopActiveRun() {
+  if (!activeRun) return;
+  const button = $("#cancel-active-run");
+  button.disabled = true;
+  button.textContent = "Stopping…";
+  try {
+    await request(`/api/runs/${encodeURIComponent(activeRun)}/stop`, { method: "POST", body: "{}" });
+    $("#run-status").textContent = "Stopping";
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "Stop run";
+    $("#run-note").textContent = String(error.message || error);
   }
 }
 
@@ -516,48 +564,88 @@ function ensureDesignProgram() {
 }
 
 function phaseCopyKey(phase) {
-  return phase.kind === "work" ? "goal" : phase.kind === "checkpoint" ? "question" : "criteria";
+  if (phase.kind === "work") return "goal";
+  if (phase.kind === "checkpoint") return "question";
+  if (phase.kind === "command") return "command";
+  return "criteria";
 }
 
 function phaseCopyLabel(phase) {
-  return phase.kind === "work" ? "What Codex must accomplish" : phase.kind === "checkpoint" ? "Question shown to you" : "What counts as proven";
+  if (phase.kind === "work") return "What Codex must accomplish";
+  if (phase.kind === "checkpoint") return "Question shown to you";
+  if (phase.kind === "command") return "Exact command to observe";
+  return "What counts as proven";
+}
+
+function phaseInspector(phase, index, count) {
+  const key = phaseCopyKey(phase);
+  const scopeSelect = phase.kind === "work" ? `<label>How much freedom?<select data-phase-field="scope"><option value="adaptive" ${phase.scope !== "focused" ? "selected" : ""}>Broad · Codex chooses the internal route</option><option value="focused" ${phase.scope === "focused" ? "selected" : ""}>Focused · stay inside this instruction</option></select></label>` : "";
+  const typeSelect = phase.kind === "command" ? `<label>Step type<select data-phase-field="stepType"><option value="function" ${phase.stepType === "function" ? "selected" : ""}>One function</option><option value="test" ${phase.stepType === "test" ? "selected" : ""}>One test</option><option value="checker" ${phase.stepType === "checker" ? "selected" : ""}>One checker</option></select></label>` : "";
+  const commandSettings = phase.kind === "command" ? `<div class="inspector-grid"><label>Passing exit code<input data-phase-field="expectedExitCode" type="number" min="0" max="255" value="${phase.expectedExitCode ?? 0}"></label><label class="switch-field"><input data-phase-field="stopOnFailure" type="checkbox" ${phase.stopOnFailure !== false ? "checked" : ""}><span>Stop if this fails</span></label></div><p class="inspector-proof">Passed means this exact command was observed in Codex events with the expected exit code.</p>` : "";
+  const verifySettings = phase.kind === "verify" ? `<label>Repair attempts<select data-phase-field="maxRepairs"><option value="0" ${phase.maxRepairs === 0 ? "selected" : ""}>None</option><option value="1" ${phase.maxRepairs === 1 ? "selected" : ""}>One</option><option value="2" ${phase.maxRepairs === 2 ? "selected" : ""}>Two</option></select></label>` : "";
+  const maxLength = phase.kind === "work" ? 4000 : 2000;
+  return `<p class="kicker">STEP ${index + 1} · ${escapeHtml(phaseKindLabel(phase).toUpperCase())}</p><h2>${escapeHtml(phase.name)}</h2><div class="inspector-fields"><label>Step name<input data-phase-field="name" value="${escapeHtml(phase.name)}" maxlength="80"></label>${scopeSelect}${typeSelect}<label>${escapeHtml(phaseCopyLabel(phase))}<textarea data-phase-field="${key}" maxlength="${maxLength}" rows="6">${escapeHtml(phase[key])}</textarea></label>${commandSettings}${verifySettings}</div><div class="inspector-actions"><button type="button" data-phase-move="up" ${index === 0 ? "disabled" : ""}>← Earlier</button><button type="button" data-phase-move="down" ${index === count - 1 ? "disabled" : ""}>Later →</button><button class="danger" type="button" data-phase-delete>Delete</button></div>`;
 }
 
 function renderPhaseEditor() {
   const program = ensureDesignProgram();
   $("#design-cwd").value ||= $("#workspace-input").value;
+  selectedPhaseIndex = Math.min(Math.max(selectedPhaseIndex, 0), program.phases.length - 1);
   $("#phase-editor").innerHTML = program.phases.map((phase, index) => {
-    const key = phaseCopyKey(phase);
     const plain = phasePlainCopy(phase);
-    return `<article class="phase-card" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}"><span class="phase-number">${index + 1}</span><div class="phase-card-body"><small class="phase-actor">${escapeHtml(plain.actor)}</small><h3>${escapeHtml(phase.name)}</h3><p>${escapeHtml(plain.copy)}</p><aside>${escapeHtml(plain.note)}</aside><details class="phase-advanced"><summary>Edit instructions</summary><div class="phase-fields"><label class="phase-field">Step name<input data-phase-field="name" value="${escapeHtml(phase.name)}" maxlength="80"></label><label class="phase-field copy">${phaseCopyLabel(phase)}<textarea data-phase-field="${key}" maxlength="${phase.kind === "work" ? 4000 : 2000}">${escapeHtml(phase[key])}</textarea></label>${phase.kind === "verify" ? `<label class="phase-field">Repair attempts<select data-phase-field="maxRepairs"><option value="0" ${phase.maxRepairs === 0 ? "selected" : ""}>0</option><option value="1" ${phase.maxRepairs === 1 ? "selected" : ""}>1</option><option value="2" ${phase.maxRepairs === 2 ? "selected" : ""}>2</option></select></label>` : ""}</div></details></div><div class="phase-card-actions"><button type="button" data-phase-move="up" aria-label="Move step up">↑</button><button type="button" data-phase-move="down" aria-label="Move step down">↓</button><button class="danger" type="button" data-phase-delete aria-label="Delete step">Delete</button></div></article>`;
+    return `${index ? '<span class="canvas-edge" aria-hidden="true"><i></i><b>then</b></span>' : ""}<button class="canvas-node ${escapeHtml(phase.kind)} ${escapeHtml(phase.scope || "")} ${index === selectedPhaseIndex ? "selected" : ""}" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}" draggable="true" type="button" role="listitem"><span class="node-order">${index + 1}</span><small>${escapeHtml(plain.actor)}</small><b>${escapeHtml(phase.name)}</b><p>${escapeHtml(plain.copy)}</p><em>Not run</em></button>`;
   }).join("");
-  $$("[data-phase-field]", $("#phase-editor")).forEach((field) => field.addEventListener("input", () => {
-    const card = field.closest("[data-phase-index]");
-    const phase = program.phases[Number(card.dataset.phaseIndex)];
+  $("#phase-inspector").innerHTML = phaseInspector(program.phases[selectedPhaseIndex], selectedPhaseIndex, program.phases.length);
+  $$("[data-phase-index]", $("#phase-editor")).forEach((node) => {
+    node.addEventListener("click", () => { selectedPhaseIndex = Number(node.dataset.phaseIndex); renderPhaseEditor(); });
+    node.addEventListener("dragstart", () => { draggedPhaseIndex = Number(node.dataset.phaseIndex); node.classList.add("dragging"); });
+    node.addEventListener("dragend", () => { draggedPhaseIndex = null; node.classList.remove("dragging"); });
+    node.addEventListener("dragover", (event) => event.preventDefault());
+    node.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const target = Number(node.dataset.phaseIndex);
+      if (draggedPhaseIndex == null || draggedPhaseIndex === target) return;
+      const [moved] = program.phases.splice(draggedPhaseIndex, 1);
+      program.phases.splice(target, 0, moved);
+      selectedPhaseIndex = target;
+      adaptationMethod ||= "manual";
+      renderWorkflowPreview();
+      renderPhaseEditor();
+    });
+  });
+  $$("[data-phase-field]", $("#phase-inspector")).forEach((field) => field.addEventListener("input", () => {
+    const phase = program.phases[selectedPhaseIndex];
     const key = field.dataset.phaseField;
-    phase[key] = key === "maxRepairs" ? Number(field.value) : field.value;
+    if (["maxRepairs", "expectedExitCode"].includes(key)) phase[key] = Number(field.value);
+    else if (key === "stopOnFailure") phase[key] = field.checked;
+    else phase[key] = field.value;
     adaptationMethod ||= "manual";
     renderWorkflowPreview();
-    if (key === "name") card.querySelector("h3").textContent = field.value;
-    if (key === phaseCopyKey(phase)) card.querySelector(".phase-card-body>p").textContent = field.value;
-    if (key === "maxRepairs") card.querySelector(".phase-card-body>aside").textContent = phasePlainCopy(phase).note;
+    const node = $(`[data-phase-index="${selectedPhaseIndex}"]`, $("#phase-editor"));
+    if (key === "name") { node.querySelector("b").textContent = field.value; $("#phase-inspector h2").textContent = field.value; }
+    if (key === phaseCopyKey(phase)) node.querySelector("p").textContent = field.value;
+    if (["stepType", "scope"].includes(key)) renderPhaseEditor();
   }));
-  $$("[data-phase-move]", $("#phase-editor")).forEach((button) => button.addEventListener("click", () => {
-    const index = Number(button.closest("[data-phase-index]").dataset.phaseIndex);
+  $$("[data-phase-move]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
+    const index = selectedPhaseIndex;
     const next = button.dataset.phaseMove === "up" ? index - 1 : index + 1;
     if (next < 0 || next >= program.phases.length) return;
     [program.phases[index], program.phases[next]] = [program.phases[next], program.phases[index]];
+    selectedPhaseIndex = next;
     adaptationMethod ||= "manual";
+    renderWorkflowPreview();
     renderPhaseEditor();
   }));
-  $$("[data-phase-delete]", $("#phase-editor")).forEach((button) => button.addEventListener("click", () => {
-    const index = Number(button.closest("[data-phase-index]").dataset.phaseIndex);
+  $$("[data-phase-delete]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
+    const index = selectedPhaseIndex;
     if (program.phases.length === 1 || (program.phases[index].kind === "work" && program.phases.filter((item) => item.kind === "work").length === 1)) {
       $("#design-status").textContent = "A workflow needs at least one Codex work step.";
       return;
     }
     program.phases.splice(index, 1);
+    selectedPhaseIndex = Math.min(index, program.phases.length - 1);
     adaptationMethod ||= "manual";
+    renderWorkflowPreview();
     renderPhaseEditor();
   }));
   const origin = activeSavedWorkflow
@@ -568,21 +656,25 @@ function renderPhaseEditor() {
   $("#design-origin").textContent = origin;
 }
 
-function addPhase(kind) {
+function addPhase(kind, stepOption = "adaptive") {
   const program = ensureDesignProgram();
-  if (program.phases.length >= 8) {
-    $("#design-status").textContent = "A workflow can contain at most eight steps.";
+  if (program.phases.length >= 16) {
+    $("#design-status").textContent = "A workflow can contain at most sixteen steps.";
     return;
   }
-  const stem = kind === "work" ? "work" : kind === "checkpoint" ? "checkpoint" : "verify";
+  const commandType = kind === "command" ? stepOption : "test";
+  const stem = kind === "work" ? "work" : kind === "checkpoint" ? "checkpoint" : kind === "command" ? commandType : "verify";
   let id = stem;
   let counter = 2;
   const ids = new Set(program.phases.map((phase) => phase.id));
   while (ids.has(id)) id = `${stem}-${counter++}`;
-  if (kind === "work") program.phases.push({ id, kind, name: "New Codex goal", goal: "Describe the complete outcome Codex should achieve in this step.", reasoningEffort: "inherit" });
+  if (kind === "work") program.phases.push({ id, kind, scope: stepOption === "focused" ? "focused" : "adaptive", name: stepOption === "focused" ? "New focused task" : "New broad Codex goal", goal: stepOption === "focused" ? "Describe one narrow outcome Codex must complete without expanding scope." : "Describe a high-level outcome and let Codex choose the internal plan, tools, and retries.", reasoningEffort: "inherit" });
   if (kind === "checkpoint") program.phases.push({ id, kind, name: "My decision", question: "Continue to the next step?" });
+  if (kind === "command") program.phases.push({ id, kind, stepType: commandType, name: commandType === "test" ? "Run one test" : commandType === "checker" ? "Run one checker" : "Run one function", command: commandType === "test" ? "python -m pytest -q path/to/test.py::test_name" : commandType === "checker" ? "git diff --check" : "python -c \"from package import function; function()\"", expectedExitCode: 0, stopOnFailure: true });
   if (kind === "verify") program.phases.push({ id, kind, name: "Check the result", criteria: "The requested outcome is complete and supported by relevant checks.", maxRepairs: 1 });
+  selectedPhaseIndex = program.phases.length - 1;
   adaptationMethod ||= "manual";
+  renderWorkflowPreview();
   renderPhaseEditor();
 }
 
@@ -647,8 +739,9 @@ async function loadRuns() {
     const runs = result.runs || [];
     list.innerHTML = runs.length ? runs.map((run) => {
       const started = run.startedAt ? new Date(run.startedAt * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Recent";
-      const kind = run.phaseCount ? "Guided workflow" : "Direct Codex run";
-      return `<button class="run-list-item ${run.runId === selectedRunId ? "active" : ""}" type="button" data-run-id="${escapeHtml(run.runId)}"><span class="run-kind">${kind}</span><b>${escapeHtml(friendlyStatus(run.completionStatus || run.status))}</b><small>${escapeHtml(started)}</small></button>`;
+      const kind = run.phaseCount ? "My workflow" : "Codex directly";
+      const fallbackName = run.phaseCount ? `${run.phaseCount}-step workflow` : "One adaptive run";
+      return `<button class="run-list-item ${run.runId === selectedRunId ? "active" : ""}" type="button" data-run-id="${escapeHtml(run.runId)}"><span class="run-kind">${kind}</span><b>${escapeHtml(run.name || fallbackName)}</b><small>${escapeHtml(friendlyStatus(run.completionStatus || run.status))} · ${escapeHtml(started)}</small></button>`;
     }).join("") : "<p>No runs yet. Create one and it will appear here.</p>";
     $$("[data-run-id]", list).forEach((button) => button.addEventListener("click", () => void showRun(button.dataset.runId)));
     if (!selectedRunId && runs[0]) {
@@ -675,13 +768,18 @@ async function showRun(runId) {
       const actionCount = (counts.command || 0) + (counts.tool || 0) + (counts.toolCall || 0) + (counts.mcp || 0);
       const checkCount = (counts.verification || 0) + (counts.test || 0);
       const summary = [fileCount && `Files changed · ${fileCount}`, actionCount && `Tools used · ${actionCount}`, checkCount && `Checks · ${checkCount}`].filter(Boolean);
+      if (execution.kind === "command") summary.unshift(`Exit code · ${execution.observedExitCode ?? "not observed"}`);
       const chips = summary.map((item) => `<span>${escapeHtml(item)}</span>`).join("") || "<span>Codex activity recorded</span>";
       const intervention = execution.kind === "checkpoint" ? `<div class="human-intervention"><small>YOUR DECISION</small><b>${escapeHtml(execution.decision === "accept" || execution.decision === "acceptForSession" ? "Continued" : "Stopped")}</b>${execution.feedback ? `<p>${escapeHtml(execution.feedback)}</p>` : "<p>No additional direction was added.</p>"}</div>` : "";
+      const exactState = execution.status === "pass" ? "passed" : execution.status === "stopped" ? "stopped" : "failed";
+      const exactLabel = execution.status === "pass" ? "Passed" : execution.status === "stopped" ? "Stopped" : "Failed";
+      const exactCheck = execution.kind === "command" ? `<div class="exact-check ${exactState}"><small>${escapeHtml(phaseKindLabel(execution).toUpperCase())}</small><b>${exactLabel}</b><code>${escapeHtml(execution.command || "Command unavailable")}</code><p>${escapeHtml(execution.evidence || execution.summary || "No evidence recorded.")}</p></div>` : "";
       const title = execution.name || (execution.kind === "checkpoint" ? "Your checkpoint" : execution.kind === "verify" ? "Check the result" : "Codex worked on the goal");
-      return `<article class="receipt-phase"><header><div><small>${escapeHtml(stepKind(execution.kind))}</small><b>${escapeHtml(title)}</b></div><small>${escapeHtml(friendlyStatus(execution.status || "observed"))}</small></header>${intervention}<div class="activity-chips">${chips}</div></article>`;
+      return `<article class="receipt-phase"><header><div><small>${escapeHtml(phaseKindLabel(execution))}</small><b>${escapeHtml(title)}</b></div><small>${escapeHtml(friendlyStatus(execution.status || "observed"))}</small></header>${intervention}${exactCheck}<div class="activity-chips">${chips}</div></article>`;
     }).join("");
-    const title = executions.length ? "Guided workflow" : "Direct Codex run";
-    detail.innerHTML = `<header class="receipt-head"><div><p class="kicker">${escapeHtml(title.toUpperCase())}</p><h2>${escapeHtml(friendlyStatus(result.completionStatus || state.status))}</h2><p>What you asked Codex to do, where you intervened, and what came back.</p></div></header>${phaseCards || "<article class=\"receipt-phase\"><header><div><small>CODEX WORKED ADAPTIVELY</small><b>One direct run</b></div><small>Observed</small></header><p>Codex chose its own internal sequence of reasoning and tools.</p></article>"}<section class="result-card"><small>FINAL RESULT</small><pre class="receipt-output">${escapeHtml(result.finalResponse || state.error || "No final response.")}</pre></section><details class="technical-receipt"><summary>Technical record</summary><p>Machine-readable identifiers remain in the local receipt for reproducibility. They are intentionally hidden from the normal workflow.</p></details>`;
+    const title = result.workflow?.name || (executions.length ? "Guided workflow" : "Direct Codex run");
+    const task = result.workflow?.task || "What you asked Codex to do, where you intervened, and what came back.";
+    detail.innerHTML = `<header class="receipt-head"><div><p class="kicker">${escapeHtml(friendlyStatus(result.completionStatus || state.status).toUpperCase())}</p><h2>${escapeHtml(title)}</h2><p>${escapeHtml(task)}</p></div></header>${phaseCards || "<article class=\"receipt-phase\"><header><div><small>CODEX WORKED ADAPTIVELY</small><b>One direct run</b></div><small>Observed</small></header><p>Codex chose its own internal sequence of reasoning and tools.</p></article>"}<section class="result-card"><small>FINAL RESULT</small><pre class="receipt-output">${escapeHtml(result.finalResponse || state.error || "No final response.")}</pre></section><details class="technical-receipt"><summary>Technical record</summary><p>Machine-readable identifiers remain in the local receipt for reproducibility. They are intentionally hidden from the normal workflow.</p></details>`;
   } catch (error) { detail.innerHTML = `<p>Could not load receipt: ${escapeHtml(error.message)}</p>`; }
 }
 
@@ -776,7 +874,7 @@ function setArchitectureLayer(enabled) {
   card.dataset.weave = enabled ? "on" : "off";
   $("#architecture-codex").classList.toggle("active", !enabled);
   $("#architecture-weave").classList.toggle("active", enabled);
-  $("#architecture-caption").innerHTML = enabled ? "<b>With Weave:</b> you define the complete goals and handoffs; Codex remains free to solve each goal adaptively." : "<b>Codex only:</b> one goal enters the native adaptive loop.";
+  $("#architecture-caption").innerHTML = enabled ? '<b>With Weave:</b> you choose the responsibility of every node—from one adaptive outcome to one exact check. <a href="/platform.html">Read the technical guide →</a>' : '<b>Codex only:</b> one goal enters the native adaptive loop. <a href="/platform.html">Read the technical guide →</a>';
 }
 
 async function copyCommand(button) {
@@ -813,6 +911,7 @@ async function init() {
   $("#run-task").addEventListener("click", startRun);
   $("#continue-run").addEventListener("click", () => decide("accept"));
   $("#stop-run").addEventListener("click", () => decide("decline"));
+  $("#cancel-active-run").addEventListener("click", stopActiveRun);
   $("#save-workflow").addEventListener("click", saveWorkflow);
   $("#save-from-run").addEventListener("click", () => {
     $("#workflow-name").value = activeSavedWorkflow?.name || $("#workflow-select").selectedOptions[0].textContent;
@@ -824,7 +923,7 @@ async function init() {
     customizer.scrollIntoView({ behavior: "smooth", block: "start" });
   });
   $("#refresh-workflows").addEventListener("click", loadWorkflows);
-  $$("[data-add-phase]").forEach((button) => button.addEventListener("click", () => addPhase(button.dataset.addPhase)));
+  $$("[data-add-phase]").forEach((button) => button.addEventListener("click", () => addPhase(button.dataset.addPhase, button.dataset.stepOption)));
   $("#adapt-with-codex").addEventListener("click", adaptWithCodex);
   $("#use-design").addEventListener("click", useDesignInRun);
   $("#save-design").addEventListener("click", saveDesign);

@@ -186,6 +186,8 @@ class ControlPlane:
             runs.append(
                 {
                     "runId": payload.get("runId") or path.stem,
+                    "name": payload.get("workflow", {}).get("name"),
+                    "task": payload.get("workflow", {}).get("task"),
                     "status": "completed" if payload.get("finalResponse") is not None else "failed",
                     "startedAt": payload.get("startedAt"),
                     "completedAt": payload.get("completedAt"),
@@ -444,6 +446,14 @@ class Handler(BaseHTTPRequestHandler):
                 session.decide(str(payload.get("decision", "")), feedback)
                 self._json(HTTPStatus.OK, {"accepted": True})
                 return
+            if self.path.endswith("/stop") and self.path.startswith("/api/runs/"):
+                run_id = self.path.split("/")[3]
+                session = self.server.app.sessions.get(run_id)
+                if session is None:
+                    self._json(HTTPStatus.NOT_FOUND, {"error": "run not found"})
+                    return
+                self._json(HTTPStatus.ACCEPTED, {"stopRequested": session.request_stop()})
+                return
             self._json(HTTPStatus.NOT_FOUND, {"error": "route not found"})
         except (ValidationError, ValueError, json.JSONDecodeError) as exc:
             details = exc.errors() if isinstance(exc, ValidationError) else str(exc)
@@ -505,7 +515,6 @@ class Handler(BaseHTTPRequestHandler):
         legacy_destinations = {
             "/studio.html": "/#create",
             "/deep-dive.html": "/#create",
-            "/platform.html": "/#create",
             "/compare.html": "/#activity",
             "/sandbox-trials.html": "/#activity",
         }

@@ -68,7 +68,17 @@ def validate_goal_only_adaptation(
             raise ValueError("adaptation must preserve phase ids, kinds, and order")
         before_value = before.model_dump(by_alias=True, mode="json")
         after_value = after.model_dump(by_alias=True, mode="json")
-        structural_keys = {"id", "kind", "reasoningEffort", "maxRepairs"}
+        structural_keys = {
+            "id",
+            "kind",
+            "scope",
+            "reasoningEffort",
+            "maxRepairs",
+            "stepType",
+            "command",
+            "expectedExitCode",
+            "stopOnFailure",
+        }
         for key in structural_keys:
             if before_value.get(key) != after_value.get(key):
                 raise ValueError(f"adaptation cannot change structural field {key}")
@@ -128,8 +138,9 @@ Source phase program:
 {source_json}
 
 Return phaseProgram only. Preserve projectionVersion, phase count, every phase id,
-kind, order, reasoningEffort, and maxRepairs exactly. Rewrite only human-readable
-name/goal/question/criteria fields so the same workflow structure is useful for
+kind, order, scope, reasoningEffort, maxRepairs, stepType, command, expectedExitCode,
+and stopOnFailure exactly. Rewrite only human-readable name/goal/question/criteria
+fields so the same workflow structure is useful for
 the new task. Do not solve the task, inspect files, or propose shell commands.
 The user will review the wording before saving or running it.
 """

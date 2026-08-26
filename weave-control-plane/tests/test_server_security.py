@@ -312,7 +312,7 @@ def test_static_api_and_error_responses_deny_framing(tmp_path: Path) -> None:
     worker.start()
     port = server.server_address[1]
     try:
-        for path in ("/", "/api/session", "/missing-page"):
+        for path in ("/", "/platform.html", "/api/session", "/missing-page"):
             connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
             connection.request("GET", path)
             response = connection.getresponse()
@@ -344,7 +344,6 @@ def test_legacy_product_pages_redirect_into_the_single_app(tmp_path: Path) -> No
         expected = {
             "/studio.html": "/#create",
             "/deep-dive.html": "/#create",
-            "/platform.html": "/#create",
             "/compare.html": "/#activity",
             "/sandbox-trials.html": "/#activity",
         }

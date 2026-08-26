@@ -273,10 +273,16 @@ def _compile_phase_manifest(manifest: HarnessManifest) -> dict[str, Any]:
     for phase in program.phases:
         if phase.kind == "work":
             actions.append(
-                f"turn/start work phase '{phase.name}' (Codex manages its internal tool loop)"
+                f"turn/start {phase.scope} work phase '{phase.name}' "
+                "(Codex manages its internal tool loop)"
             )
         elif phase.kind == "checkpoint":
             actions.append(f"pause for human checkpoint '{phase.name}' (no model call)")
+        elif phase.kind == "command":
+            actions.append(
+                f"turn/start exact {phase.step_type} '{phase.name}'; require observed command "
+                f"and exit code {phase.expected_exit_code}"
+            )
         else:
             actions.append(
                 f"turn/start verifier '{phase.name}', then at most "

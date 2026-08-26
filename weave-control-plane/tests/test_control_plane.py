@@ -243,6 +243,10 @@ def test_runner_binds_requested_integrations_to_prompt_and_receipt() -> None:
     assert "$code-review" in fake.prompts[0]
     assert "not a hard tool allowlist" in fake.prompts[0]
     assert session.result is not None
+    assert session.result["workflow"] == {
+        "name": "Test harness",
+        "task": "Inspect the project and report the result.",
+    }
     assert session.result["integrations"] == {
         "inventoryId": "sha256:" + "b" * 64,
         "bindingMode": "instructional",
@@ -520,6 +524,13 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert 'request("/api/compile"' in javascript
     assert 'request("/api/runs"' in javascript
     assert "dozens of tools inside it" in html
+    assert 'data-add-phase="work" data-step-option="adaptive"' in html
+    assert 'data-add-phase="work" data-step-option="focused"' in html
+    assert 'data-add-phase="command" data-step-option="function"' in html
+    assert 'data-add-phase="command" data-step-option="test"' in html
+    assert 'data-add-phase="command" data-step-option="checker"' in html
+    assert 'id="cancel-active-run"' in html
+    assert '/stop`, { method: "POST"' in javascript
     assert 'id="checkpoint-feedback"' in html
     assert "YOUR DECISION" in javascript
     assert "execution.feedback" in javascript
@@ -556,6 +567,18 @@ def test_product_examples_api_source_includes_all_five_examples(tmp_path: Path) 
     ]
 
 
+def test_platform_guide_shows_broad_and_bottom_up_real_use_cases() -> None:
+    static = Path(__file__).parents[1] / "weave_codex/static"
+    html = (static / "platform.html").read_text()
+
+    assert "Choose the granularity node by node." in html
+    assert "One broad goal" in html
+    assert "Five explicit responsibilities" in html
+    assert "Exact checks</dt><dd>3 / 3 passed" in html
+    assert "test control semantics, not model quality" in html
+    assert "an earlier broad audit was stopped by the user" in html
+
+
 def test_saved_run_index_and_load_are_local_and_bounded(tmp_path: Path) -> None:
     app = ControlPlane("codex", tmp_path)
     receipt = {
@@ -576,3 +599,33 @@ def test_saved_run_index_and_load_are_local_and_bounded(tmp_path: Path) -> None:
     assert app.saved_runs()[0]["turnCount"] == 1
     assert app.saved_run(receipt["runId"]) == receipt
     assert app.saved_run("../outside") is None
+
+
+def test_run_session_stop_interrupts_active_turn() -> None:
+    calls: list[str] = []
+    session = RunSession(run_id="stop-active")
+    session.status = "running"
+    session.bind_interrupt(lambda: calls.append("interrupt") is None)
+
+    assert session.request_stop() is True
+    assert calls == ["interrupt"]
+    assert session.snapshot()["stopRequested"] is True
+
+
+def test_run_session_stop_releases_pending_checkpoint() -> None:
+    session = RunSession(run_id="stop-checkpoint")
+    session.status = "running"
+    result: list[dict[str, str]] = []
+
+    waiter = threading.Thread(
+        target=lambda: result.append(session.request_checkpoint("review", "Continue?"))
+    )
+    waiter.start()
+    for _ in range(100):
+        if session.snapshot()["pendingApproval"] is not None:
+            break
+        time.sleep(0.01)
+
+    assert session.request_stop() is True
+    waiter.join(timeout=1)
+    assert result == [{"decision": "cancel"}]

@@ -53,9 +53,10 @@
                 <button class="loop-template active" data-loop-template="review" type="button" role="radio" aria-checked="true"><span class="template-mark">1</span><b>Plan with me</b><small>Show a direction, then wait</small></button>
                 <button class="loop-template" data-loop-template="direct" type="button" role="radio" aria-checked="false"><span class="template-mark">2</span><b>Finish and check</b><small>Work first, verify at the end</small></button>
                 <button class="loop-template" data-loop-template="audit" type="button" role="radio" aria-checked="false"><span class="template-mark">3</span><b>Explore and challenge</b><small>Compare options, then stress-test</small></button>
+                <button class="loop-template" data-loop-template="precision" type="button" role="radio" aria-checked="false"><span class="template-mark">4</span><b>Fix, test, prove</b><small>Narrow work with exact pass/fail checks</small></button>
               </div>
               <section id="workflow-choice" class="workflow-choice" aria-label="Selected workflow">
-                <select id="workflow-select" class="visually-hidden" aria-label="Workflow"><option value="review">Plan with me</option><option value="audit">Explore and challenge</option><option value="direct">Finish and check</option><option value="saved" hidden>Saved workflow</option></select>
+                <select id="workflow-select" class="visually-hidden" aria-label="Workflow"><option value="review">Plan with me</option><option value="audit">Explore and challenge</option><option value="direct">Finish and check</option><option value="precision">Fix, test, prove</option><option value="saved" hidden>Saved workflow</option></select>
                 <p id="workflow-explanation">Codex first explains its direction. You decide whether it continues.</p>
                 <div id="run-loop-preview" class="run-loop-preview" aria-live="polite"></div>
                 <div id="active-workflow" class="active-workflow"><span>Starting design · change anything later</span></div>
@@ -71,12 +72,12 @@
             </details>
 
             <div class="composer-actions"><button id="run-task" class="run-button" type="button">Run my workflow <span>→</span></button><button id="open-customizer" class="quiet-button" type="button">Customize steps</button></div>
-            <p class="boundary">A step is a complete goal. Codex may use dozens of tools inside it; Weave does not make you micromanage those actions.</p>
+            <p class="boundary">A work step is a complete Codex goal and may contain dozens of tools inside it. A test or checker step is deliberately narrower and only passes when its exact command succeeds.</p>
           </div>
         </section>
 
         <section id="live-run" class="live-run hidden" aria-labelledby="live-run-title">
-          <header><div><p>RUNNING NOW</p><h2 id="live-run-title">Codex is starting…</h2></div><span id="run-status">Preparing</span></header>
+          <header><div><p>RUNNING NOW</p><h2 id="live-run-title">Codex is starting…</h2></div><div class="live-run-controls"><span id="run-status">Preparing</span><button id="cancel-active-run" class="hidden" type="button">Stop run</button></div></header>
           <div id="run-steps" class="run-steps"></div>
           <section id="approval-card" class="approval-card hidden"><div class="approval-copy"><b id="approval-title">Your decision is needed</b><p id="approval-detail"></p><label id="checkpoint-feedback-wrap" class="hidden">Optional direction for the next step<textarea id="checkpoint-feedback" maxlength="2000" rows="3" placeholder="Continue, but use direction B and keep the tone calmer."></textarea></label></div><div class="approval-actions"><button id="stop-run" type="button">Stop</button><button id="continue-run" type="button">Continue</button></div></section>
           <pre id="run-output" class="run-output hidden"></pre>
@@ -84,10 +85,23 @@
         </section>
 
         <details id="customize-loop" class="customize-panel section-shell">
-          <summary><span><b>Customize the workflow</b><small>Optional · edit goals, approvals, and checks</small></span><i>Open editor</i></summary>
-          <div class="customizer-body">
-            <aside class="customizer-help"><p class="kicker">ADVANCED</p><h2>Edit the working agreement</h2><p>These are meaningful steps—not individual tool calls. Keep it simple unless the task genuinely needs more coordination.</p><div class="design-legend"><span><i class="work-dot"></i> Codex works toward a goal</span><span><i class="checkpoint-dot"></i> You continue, redirect, or stop</span><span><i class="verify-dot"></i> Codex checks the result</span></div><details class="builder-advanced"><summary>Let Codex rewrite the wording</summary><textarea id="design-task" rows="4" hidden></textarea><label>Folder or repository<input id="design-cwd" autocomplete="off" /></label><button id="adapt-with-codex" type="button">Suggest goal wording</button><p>You review the proposal before saving.</p></details><p id="design-status" class="status-copy">Edits stay local until you save the workflow.</p><button id="use-design" class="primary-button" type="button">Use these steps</button></aside>
-            <section class="phase-designer" aria-labelledby="phase-designer-title"><header><div><p class="kicker">YOUR WORKFLOW</p><h2 id="phase-designer-title">Steps in plain English</h2></div><details class="phase-add"><summary>Add a step</summary><div><button data-add-phase="work" type="button">+ Codex goal</button><button data-add-phase="checkpoint" type="button">+ My decision</button><button data-add-phase="verify" type="button">+ Final check</button></div></details></header><div id="phase-editor" class="phase-editor"></div><div class="designer-footer"><div><p id="design-origin">Starting design · not saved</p><label>Workflow name<input id="design-save-name" value="Plan, approve, complete, prove" maxlength="100" /></label></div><button id="save-design" class="primary-button" type="button" hidden>Save this workflow</button></div></section>
+          <summary><span><b>Open the workflow canvas</b><small>Design exact goals, tests, checkers, and decision points</small></span><i>Full canvas</i></summary>
+          <div class="canvas-builder">
+            <header class="canvas-toolbar">
+              <div><p class="kicker">ADD A STEP · CHOOSE THE GRANULARITY</p><div class="canvas-palette" aria-label="Workflow step palette"><button data-add-phase="work" data-step-option="adaptive" type="button"><span>◆</span> Broad Codex goal</button><button data-add-phase="work" data-step-option="focused" type="button"><span>▸</span> Focused Codex task</button><button data-add-phase="command" data-step-option="function" type="button"><span>ƒ</span> One function</button><button data-add-phase="command" data-step-option="test" type="button"><span>✓</span> One test</button><button data-add-phase="command" data-step-option="checker" type="button"><span>◎</span> One checker</button><button data-add-phase="checkpoint" type="button"><span>◇</span> My decision</button><button data-add-phase="verify" type="button"><span>↻</span> AI review</button></div></div>
+              <div class="canvas-toolbar-actions"><p id="design-origin">Starting design · not saved</p><button id="use-design" class="primary-button" type="button">Use this workflow</button></div>
+            </header>
+            <div class="canvas-workspace">
+              <section class="canvas-stage-shell" aria-labelledby="phase-designer-title">
+                <header><div><p class="kicker">WORKFLOW CANVAS</p><h2 id="phase-designer-title">Each box has one job</h2></div><p>Drag a box to reorder it. Select it to edit the exact contract.</p></header>
+                <div id="phase-editor" class="phase-editor" role="list" aria-label="Executable workflow steps"></div>
+              </section>
+              <aside id="phase-inspector" class="phase-inspector" aria-live="polite"><p class="kicker">STEP SETTINGS</p><h2>Select a box</h2><p>Its instructions and pass condition will appear here.</p></aside>
+            </div>
+            <footer class="canvas-footer">
+              <div><p id="design-status" class="status-copy">Edits stay local until you save or run the workflow.</p><label>Workflow name<input id="design-save-name" value="Plan with me" maxlength="100" /></label></div>
+              <div><details class="builder-advanced"><summary>Let Codex rewrite goal wording</summary><textarea id="design-task" rows="4" hidden></textarea><label>Folder or repository<input id="design-cwd" autocomplete="off" /></label><button id="adapt-with-codex" type="button">Suggest wording</button><p>Commands and structure stay locked; you review the proposal.</p></details><button id="save-design" class="primary-button" type="button" hidden>Save this workflow</button></div>
+            </footer>
           </div>
         </details>
 
@@ -99,7 +113,7 @@
               <div class="weave-lane"><span>YOUR WORKFLOW</span><article><small>REUSE</small><b>Saved steps</b><p>A task-independent way of working</p></article><i>→</i><article><small>RUN</small><b>Fresh goal</b><p>Applied to this folder and task</p></article><i>→</i><article><small>DECIDE</small><b>Your checkpoint</b><p>Continue, redirect, or stop</p></article><i>→</i><article><small>REVIEW</small><b>Readable record</b><p>Goals connected to observed activity</p></article></div>
               <div class="codex-lane"><span>CODEX</span><article><small>INPUT</small><b>Goal + files</b></article><i>→</i><article class="agent-loop"><small>ADAPTIVE WORK</small><b>Reason · inspect · edit · test · retry</b><p>As many native tools as the task needs</p></article><i>→</i><article><small>OUTPUT</small><b>Files + answer</b></article></div>
             </div>
-            <p id="architecture-caption"><b>With Weave:</b> you define the complete goals and handoffs; Codex remains free to solve each goal adaptively.</p>
+            <p id="architecture-caption"><b>With Weave:</b> you choose the responsibility of every node—from one adaptive outcome to one exact check. <a href="/platform.html">Read the technical guide →</a></p>
           </section>
         </details>
       </section>
@@ -137,7 +151,7 @@
       </section>
     </main>
 
-    <footer class="site-footer"><a class="brand" href="#create" data-view="create"><span>W</span><b>Weave</b><small>for Codex</small></a><p>Open source · local-first · built on the official Codex app-server</p><div><a href="https://github.com/MustafaAH10/WeaveCodex">GitHub</a></div></footer>
+    <footer class="site-footer"><a class="brand" href="#create" data-view="create"><span>W</span><b>Weave</b><small>for Codex</small></a><p>Open source · local-first · built on the official Codex app-server</p><div><a href="/platform.html">Technical guide</a><a href="https://github.com/MustafaAH10/WeaveCodex">GitHub</a></div></footer>
     <script src="/home.js"></script>
   </body>
 </html>

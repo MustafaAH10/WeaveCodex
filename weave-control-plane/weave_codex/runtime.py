@@ -36,6 +36,7 @@ class Gateway(Protocol):
     def list_threads(self, cwd: str) -> list[dict[str, Any]]: ...
     def start_thread(self, params: dict[str, Any]) -> str: ...
     def set_memory_mode(self, thread_id: str, mode: str) -> None: ...
+    def interrupt(self) -> bool: ...
     def run_turn(
         self,
         thread_id: str,
@@ -56,6 +57,8 @@ class RunSession:
     result: dict[str, Any] | None = None
     error: str | None = None
     _decision: dict[str, str] | None = None
+    _interrupt: Callable[[], bool] | None = field(default=None, repr=False)
+    _stop_requested: bool = field(default=False, repr=False)
     _condition: threading.Condition = field(default_factory=threading.Condition, repr=False)
 
     def snapshot(self) -> dict[str, Any]:
@@ -68,6 +71,7 @@ class RunSession:
                 "pendingApproval": self.pending_approval,
                 "result": self.result,
                 "error": self.error,
+                "stopRequested": self._stop_requested,
             }
 
     def event(self, value: dict[str, Any], *, phase: str = "runtime") -> None:
@@ -143,6 +147,24 @@ class RunSession:
             if feedback:
                 self._decision["feedback"] = feedback
             self._condition.notify_all()
+
+    def bind_interrupt(self, callback: Callable[[], bool] | None) -> None:
+        with self._condition:
+            self._interrupt = callback
+
+    def request_stop(self) -> bool:
+        """Stop a pending checkpoint or interrupt the currently active Codex turn."""
+
+        with self._condition:
+            if self.status in {"completed", "failed", "stopped"}:
+                return False
+            self._stop_requested = True
+            if self.pending_approval is not None:
+                self._decision = {"decision": "cancel"}
+                self._condition.notify_all()
+                return True
+            callback = self._interrupt
+        return bool(callback and callback())
 
 
 class _EmptyResponse(BaseModel):
@@ -282,6 +304,9 @@ class SdkGateway:
             ),
             approval_handler=approval_handler,
         )
+        self._active_lock = threading.Lock()
+        self._active_turn: tuple[str, str] | None = None
+        self._interrupt_requested = False
 
     def start(self) -> None:
         self._client.start()
@@ -309,6 +334,15 @@ class SdkGateway:
             response_model=_EmptyResponse,
         )
 
+    def interrupt(self) -> bool:
+        with self._active_lock:
+            self._interrupt_requested = True
+            active = self._active_turn
+        if active is None:
+            return True
+        self._client.turn_interrupt(*active)
+        return True
+
     def run_turn(
         self,
         thread_id: str,
@@ -323,6 +357,11 @@ class SdkGateway:
             params["outputSchema"] = output_schema
         started = self._client.turn_start(thread_id, prompt, params=params)
         turn_id = started.turn.id
+        with self._active_lock:
+            self._active_turn = (thread_id, turn_id)
+            interrupt_requested = self._interrupt_requested
+        if interrupt_requested:
+            self._client.turn_interrupt(thread_id, turn_id)
         final_response = ""
         usage = None
         try:
@@ -350,6 +389,10 @@ class SdkGateway:
                         usage=usage,
                     )
         finally:
+            with self._active_lock:
+                if self._active_turn == (thread_id, turn_id):
+                    self._active_turn = None
+                self._interrupt_requested = False
             self._client.unregister_turn_notifications(turn_id)
 
 
@@ -410,6 +453,7 @@ class HarnessRunner:
         if not trace_root.is_absolute():
             trace_root = Path(manifest.cwd) / trace_root
         gateway = self.gateway_factory(self.codex_bin, str(trace_root), session.request_approval)
+        session.bind_interrupt(getattr(gateway, "interrupt", None))
         requested = list(manifest.memory.selected_thread_ids)
         resolved: list[str] = []
         excerpt_hashes: dict[str, str] = {}
@@ -509,10 +553,15 @@ class HarnessRunner:
                     usage_by_turn[solver.turn_id] = solver.usage
                 answer = solver.final_response
                 session.stage("solver", "Solver turn finished", f"Turn {solver.turn_id}")
+                if solver.status != "completed":
+                    completion_status = "stopped"
                 verification = []
-                for attempt in range(
-                    1 + manifest.verification.max_retries if manifest.verification.enabled else 0
-                ):
+                verifier_attempts = (
+                    1 + manifest.verification.max_retries
+                    if manifest.verification.enabled and completion_status == "completed"
+                    else 0
+                )
+                for attempt in range(verifier_attempts):
                     phase = f"verifier-{attempt + 1}"
                     session.stage(
                         phase,
@@ -563,6 +612,10 @@ class HarnessRunner:
                 "receiptVersion": 1,
                 "runId": session.run_id,
                 "manifestHash": manifest_hash(manifest),
+                "workflow": {
+                    "name": manifest.name,
+                    "task": manifest.task.instructions,
+                },
                 "startedAt": started_at,
                 "completedAt": int(time.time()),
                 "threadId": thread_id,
@@ -631,10 +684,11 @@ class HarnessRunner:
             session.result["traceProjection"] = project_events(
                 session.events, receipt=session.result
             )
-            session.status = "completed"
+            session.status = "stopped" if completion_status == "stopped" else "completed"
         except Exception as exc:  # noqa: BLE001
             session.error = str(exc)
             session.stage("error", "Run failed", str(exc))
             session.status = "failed"
         finally:
+            session.bind_interrupt(None)
             gateway.close()
