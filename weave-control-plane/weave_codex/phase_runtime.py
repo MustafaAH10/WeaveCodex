@@ -136,6 +136,7 @@ def execute_phase_program(
             result.executions.append(
                 {
                     "phaseId": phase.id,
+                    "name": phase.name,
                     "kind": phase.kind,
                     "turnIds": [],
                     "decision": decision,
@@ -232,6 +233,11 @@ def execute_phase_program(
                 if parsed["status"] == "pass":
                     break
         result.executions.append(
-            {"phaseId": phase.id, "kind": phase.kind, "turnIds": phase_turn_ids}
+            {
+                "phaseId": phase.id,
+                "name": phase.name,
+                "kind": phase.kind,
+                "turnIds": phase_turn_ids,
+            }
         )
     return result

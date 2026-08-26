@@ -201,6 +201,12 @@ def test_phase_program_executes_controller_turns_and_real_human_checkpoint() -> 
             "feedback": "Use direction B and reduce visual noise.",
         }
     ]
+    assert [entry["name"] for entry in session.result["phaseProgram"]["executions"]] == [
+        "Inspect the workspace",
+        "Approve the plan",
+        "Implement and test",
+        "Verify the result",
+    ]
     assert session.result["observed"]["modelCompletions"] == 3
     assert session.result["observed"]["completedItemsByType"] == {"commandExecution": 3}
     assert session.result["traceProjection"]["projectionBasis"] == (

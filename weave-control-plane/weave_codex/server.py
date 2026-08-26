@@ -502,9 +502,21 @@ class Handler(BaseHTTPRequestHandler):
         super().end_headers()
 
     def _static(self, request_path: str) -> None:
-        name = {"/": "index.html", "/studio.html": "index.html"}.get(
-            request_path, request_path.lstrip("/")
-        )
+        legacy_destinations = {
+            "/studio.html": "/#create",
+            "/deep-dive.html": "/#create",
+            "/platform.html": "/#create",
+            "/compare.html": "/#activity",
+            "/sandbox-trials.html": "/#activity",
+        }
+        if destination := legacy_destinations.get(request_path):
+            self.send_response(HTTPStatus.SEE_OTHER)
+            self.send_header("Location", destination)
+            self.send_header("Content-Length", "0")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            return
+        name = {"/": "index.html"}.get(request_path, request_path.lstrip("/"))
         root = Path(__file__).with_name("static").resolve()
         path = (root / name).resolve()
         if root not in path.parents or not path.is_file():

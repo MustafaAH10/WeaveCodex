@@ -6,12 +6,12 @@ runtime. It is an independent downstream project, not an OpenAI product.
 Ordinary Codex lets you state a goal and lets its agent loop decide how to complete it. WeaveCodex
 keeps that adaptive loop intact, then adds a layer around it that a person can inspect and edit:
 
-- goal-level Work phases, where one phase may contain many Codex model and tool iterations;
-- explicit human checkpoints that can continue, redirect the next phase with feedback, or stop;
+- complete Codex work steps, where one step may contain many model and tool iterations;
+- explicit human checkpoints that can continue, redirect the next step with feedback, or stop;
 - structured verification with a declared repair bound;
 - run-wide memory, sandbox, and approval choices;
 - a deterministic compiled contract used by the runtime and exposed through the API; and
-- a receipt that links the authored program to the turns and activity Codex actually produced.
+- a readable activity record that links the workflow to what Codex actually produced.
 
 It does **not** turn every tool call into a canvas block, expose private reasoning, or replace
 Codex's native tools, sandbox, approvals, authentication, compaction, or agent loop.
@@ -38,28 +38,21 @@ uv run python -m weave_codex.server \
   --port 8790
 ```
 
-Then open <http://127.0.0.1:8790/>. It is one application, with top-level tabs for Start, Loop
-builder, Saved loops, Runs, and Connect; Architecture, Setup, and evidence views are under More. Start with a task and
-repository, choose direct Codex or a visible Weave program, then run within the selected safety
-boundary. The main journey contains phase editing, Codex integration selection, saved workflow
-lineage, and run receipts. Exact selected-memory and raw manifest controls remain runtime/API
-capabilities rather than controls exposed in the novice interface. A saved workflow
-can be loaded for another repository and its human-readable goals can be edited manually or sent
-to Codex for a read-only rewrite proposal. One Work phase can contain any number of native Codex
-model/tool iterations.
+Then open <http://127.0.0.1:8790/>. The product has three places:
 
-The interactive [Codex internals deep dive](http://127.0.0.1:8790/deep-dive.html) begins with Codex
-alone and reveals Weave as an optional track-changes layer.
-The [sandbox repository trial dashboard](http://127.0.0.1:8790/sandbox-trials.html) shows three
-real, source-linked runs against pinned Click, Requests, and Express clones.
-The main app's [Field trials view](http://127.0.0.1:8790/#field-trials) under More records the newer reuse
-study and the four-domain platform study: one saved workflow family was adapted from Click to Typer, Requests to HTTPX, and Express
-to Fastify. All three accepted target runs executed sequentially inside one Runloop sandbox after
-the user completed the official ChatGPT device-login flow; no API key was injected. The page also
-retains two invalid setup attempts and keeps artifact acceptance separate from broad model-quality
-claims.
+- **Create** — describe the goal, choose direct Codex or a visible workflow, run it, and optionally
+  customize the steps;
+- **Library** — reuse saved workflows, choose existing Codex skills/connectors, and manage local
+  account setup; and
+- **Activity** — review your runs in plain English and optionally open the bounded product checks.
 
-Read the [control-plane guide](weave-control-plane/README.md), the complete source-level article
+Architecture is explained inline under Create. Setup and integrations live together in Library.
+Evidence lives below personal run history in Activity. Technical hashes and raw identifiers remain
+in machine-readable local artifacts and APIs; they do not dominate the normal interface. A saved
+workflow can be loaded for another folder and its human-readable goals can be edited manually or
+sent to Codex for a read-only rewrite proposal.
+
+For implementation details, read the [control-plane guide](weave-control-plane/README.md), the complete source-level article
 [Codex is not a flowchart](weave-control-plane/docs/CODEX_HARNESS_INTERNALS.md), and the
 [upstream provenance record](weave-control-plane/UPSTREAM.md). The
 [matched ordinary-Codex versus WeaveCodex trials](weave-control-plane/docs/MATCHED_CODEX_WEAVE_TRIALS.md)

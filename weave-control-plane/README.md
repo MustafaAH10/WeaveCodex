@@ -59,31 +59,25 @@ uv run python -m weave_codex.server \
 ```
 
 When launched from `weave-control-plane/`, the parent repository is selected as the initial
-workspace. Use `--workspace-root /absolute/path/to/project` to choose another default; the Design
-page can change it before a run.
+workspace. Use `--workspace-root /absolute/path/to/project` to choose another default; Create can
+change it before a run.
 
 Open `http://127.0.0.1:8790`. The default journey is deliberately short:
 
 1. **Describe the outcome** by speaking or typing. Voice entry uses the browser's dictation
    capability, so availability and audio handling depend on the browser; text remains the fallback.
-2. **Choose a control style:** show me the plan, do it then prove it, or explore then challenge.
-3. **Review the contract** as plain-language Codex goals, human decisions, and evidence checks.
-4. **Run or fine-tune it.** Advanced phase wording, repair bounds, integrations, sandbox, and
-   approvals remain available without dominating first-run setup. Exact selected-memory controls
-   remain a runtime/API capability rather than part of this simplified first-run screen.
-5. **Save the process** without the original task or repository, then reuse or visibly adapt it for
-   another task.
-6. **Inspect runs** starting from authored goals. Saved Weave receipts show exact authored
-   phases; existing Codex threads show explicitly derived activity groups. Result, activity, raw
-   notifications, and receipt JSON are progressive-disclosure tabs rather than one long trace wall.
-7. **Connect capabilities** through a secret-free inventory of workspace Skills, configured MCP servers, and
-   connected Apps from the local Codex app-server. The simplified UI requests a capability across
-   all Work phases; the manifest/runtime API can bind it to exact named phases. AGENTS.md remains inherited, credentials and policy remain
-   Codex-owned, and the receipt distinguishes a request from an observed MCP/dynamic tool item.
-8. **Setup** checks the native Codex account and starts the official ChatGPT browser flow when
-   sign-in is required.
+2. **Choose a control style:** direct Codex, plan with me, finish and check, or explore and
+   challenge.
+3. **Run it** or open Customize steps when the task genuinely needs finer coordination.
+4. **Save the process in Library** without the original task or repository, then reuse or visibly
+   adapt it for another task. Library also contains Codex skills, connectors, and account setup.
+5. **Review Activity** starting from the goals and human decisions—not internal IDs or protocol
+   objects. Product checks are available below personal runs as optional evidence.
 
-The Evidence view also renders the tracked four-domain container study directly from its sanitized
+Exact selected-memory controls, raw manifests, and machine-readable identifiers remain runtime/API
+capabilities rather than controls exposed in the simplified first-run screen.
+
+Activity can also render the tracked four-domain container study directly from its sanitized
 outcome receipt. Across coding, design, local-connector operations, and support simulation, both
 the one-turn baseline and Weave produced accepted artifacts (8/8 arms). Weave reached four explicit
 planning gates. This is one rollout per arm and supports a control/observability claim only; it is

@@ -3,6 +3,7 @@ from __future__ import annotations
 import http.client
 import json
 import threading
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 
@@ -322,6 +323,39 @@ def test_static_api_and_error_responses_deny_framing(tmp_path: Path) -> None:
             csp = response.getheader("Content-Security-Policy", "")
             assert "default-src 'self'" in csp
             assert "frame-ancestors 'none'" in csp
+            connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join(timeout=2)
+
+
+def test_legacy_product_pages_redirect_into_the_single_app(tmp_path: Path) -> None:
+    app = ControlPlane("codex", tmp_path)
+    native = app.auth
+    fake = FakeAuth()
+    app.auth = fake  # type: ignore[assignment]
+    native.close()
+    server = ControlServer(("127.0.0.1", 0), app)
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    port = server.server_address[1]
+    try:
+        expected = {
+            "/studio.html": "/#create",
+            "/deep-dive.html": "/#create",
+            "/platform.html": "/#create",
+            "/compare.html": "/#activity",
+            "/sandbox-trials.html": "/#activity",
+        }
+        for path, destination in expected.items():
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            connection.request("GET", path)
+            response = connection.getresponse()
+            response.read()
+            assert response.status == HTTPStatus.SEE_OTHER
+            assert response.getheader("Location") == destination
+            assert response.getheader("X-Frame-Options") == "DENY"
             connection.close()
     finally:
         server.shutdown()

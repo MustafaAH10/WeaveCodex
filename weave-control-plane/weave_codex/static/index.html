@@ -3,195 +3,141 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Run Codex directly or reuse a visible, human-authored workflow around it." />
+    <meta name="description" content="Give Codex a visible, reusable way of working—with the checkpoints you choose." />
     <title>Weave for Codex</title>
     <link rel="stylesheet" href="/home.css" />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
     <header class="site-header">
-      <a class="brand" href="#run" aria-label="Weave for Codex home"><span>W</span><b>Weave</b><small>for Codex</small></a>
-      <nav class="product-tabs" aria-label="Product">
-        <a href="#run" data-view="run">Start</a>
-        <a href="#design" data-view="design">Loop builder</a>
-        <a href="#workflows" data-view="workflows">Saved loops</a>
-        <a href="#runs" data-view="runs">Runs</a>
-        <a href="#integrations" data-view="integrations">Connect</a>
+      <a class="brand" href="#create" data-view="create" aria-label="Weave for Codex home"><span>W</span><b>Weave</b><small>for Codex</small></a>
+      <nav class="product-tabs" aria-label="Main navigation">
+        <a href="#create" data-view="create">Create</a>
+        <a href="#library" data-view="library">Library</a>
+        <a href="#activity" data-view="activity">Activity</a>
       </nav>
-      <details class="more-menu"><summary>More</summary><div><a href="/platform.html">Codex platform guide</a><a href="#field-trials" data-view="field-trials">Field trials</a><a href="#architecture" data-view="architecture">Architecture</a><a href="#setup" data-view="setup">Setup</a><a href="/deep-dive.html">How Codex works</a></div></details>
+      <a class="account-shortcut" href="#library" data-view="library" aria-label="Codex account and setup"><span class="live-dot" aria-hidden="true"></span><span id="account-state">Checking Codex…</span></a>
     </header>
 
     <main id="main-content">
-      <section id="run-view" class="product-view" aria-labelledby="run-title">
-        <div class="hero novice-hero">
-          <div class="hero-copy">
-            <p class="kicker">A CONTROL LOOP YOU CAN ACTUALLY SEE</p>
-            <h1 id="run-title">Tell Codex how you want to work.</h1>
-            <p>Describe the outcome by voice or text, then choose where Codex should pause. Your goal and chosen template form a reusable loop—without asking you to understand prompts, tools, or agents.</p>
-            <ul><li>Plain English in</li><li>Visible handoffs</li><li>Your Codex account</li></ul>
-          </div>
+      <section id="create-view" class="product-view" aria-labelledby="create-title">
+        <header class="workspace-intro section-shell">
+          <div><p class="kicker">CREATE</p><h1 id="create-title">Give Codex a working agreement.</h1></div>
+          <p>Say what you need. Choose whether Codex should check in. Run it—or open the steps if you want finer control.</p>
+        </header>
 
-          <section id="task-composer" class="composer" aria-labelledby="composer-title">
-            <header><div><span class="live-dot" aria-hidden="true"></span><p id="account-state">Connecting to local Codex…</p></div><a href="#setup">Account &amp; setup</a></header>
-            <div class="composer-step"><span>1</span><div><h2 id="composer-title">What are you trying to get done?</h2><p>Speak naturally or type it. Codex decides which files and tools it needs inside each step.</p></div></div>
+        <section id="task-composer" class="composer unified-composer section-shell" aria-labelledby="composer-title">
+          <div class="composer-main">
+            <div class="composer-step"><span>1</span><div><h2 id="composer-title">What should Codex accomplish?</h2><p>Type, paste, or dictate the outcome. Codex still chooses the files, tools, and internal actions it needs.</p></div></div>
             <div class="goal-input-shell">
-              <textarea id="task-input" rows="5" placeholder="For example: Compare three launch directions, let me choose one, then create and check the final campaign brief."></textarea>
+              <textarea id="task-input" rows="5" placeholder="For example: Explore three visual directions for a finance app, let me choose one, then create and check the final brief."></textarea>
               <button id="voice-input" class="voice-button" type="button" aria-pressed="false" aria-label="Speak your goal"><span aria-hidden="true">●</span><b>Speak</b></button>
             </div>
-            <p id="voice-status" class="voice-status" role="status" aria-live="polite">Browser dictation; availability and audio handling depend on your browser. Weave receives the resulting text, not an audio recording.</p>
+            <p id="voice-status" class="voice-status" role="status" aria-live="polite">Dictation stays in your browser; Weave receives text, not an audio recording.</p>
             <div class="prompt-examples" aria-label="Example goals">
               <button type="button" data-prompt="Explore three visual directions for a calm financial planning app, show me the options before committing, then create and critique the final design brief.">Design direction</button>
               <button type="button" data-prompt="Compare the latest customer support themes, let me approve the priorities, then draft an action plan and verify every claim against the source notes.">Support plan</button>
-              <button type="button" data-prompt="Build a small simulation of a café queue, show me the assumptions first, then run three scenarios and explain the result clearly.">Run a simulation</button>
+              <button type="button" data-prompt="Build a small simulation of a café queue, show me the assumptions first, then run three scenarios and explain the result clearly.">Simulation</button>
             </div>
+          </div>
 
-            <div class="mode-picker subtle" role="radiogroup" aria-label="Run style">
-              <span>Choose one Codex run or add visible handoffs</span>
-              <button class="mode" data-mode="ordinary" type="button" role="radio" aria-checked="false"><b>Use Codex directly</b><small>No authored handoffs</small></button>
-              <button class="mode active" data-mode="weave" type="button" role="radio" aria-checked="true"><b>Use this loop</b><small>Visible handoffs + receipt</small></button>
+          <div class="composer-control">
+            <div class="composer-step"><span>2</span><div><h2>How much control do you want?</h2><p>Use Codex normally, or put a visible workflow around its adaptive work.</p></div></div>
+            <div class="mode-picker simple-mode" role="radiogroup" aria-label="Run style">
+              <button class="mode" data-mode="ordinary" type="button" role="radio" aria-checked="false"><b>Codex directly</b><small>One adaptive run</small></button>
+              <button class="mode active" data-mode="weave" type="button" role="radio" aria-checked="true"><b>My workflow</b><small>Visible handoffs</small></button>
             </div>
 
             <div id="loop-authoring">
-              <div class="composer-step compact"><span>2</span><div><h2>How should Codex check in with you?</h2><p>Pick a starting loop. You can change every detail later.</p></div></div>
-              <div class="loop-templates" role="radiogroup" aria-label="Control loop template">
-                <button class="loop-template active" data-loop-template="review" type="button" role="radio" aria-checked="true"><span class="template-mark">↳</span><b>Show me the plan</b><small>Pause before taking action</small></button>
-                <button class="loop-template" data-loop-template="direct" type="button" role="radio" aria-checked="false"><span class="template-mark">✓</span><b>Do it, then prove it</b><small>Move fast with a final check</small></button>
-                <button class="loop-template" data-loop-template="audit" type="button" role="radio" aria-checked="false"><span class="template-mark">◇</span><b>Explore, then challenge</b><small>Compare options and stress-test</small></button>
+              <div class="loop-templates" role="radiogroup" aria-label="Workflow template">
+                <button class="loop-template active" data-loop-template="review" type="button" role="radio" aria-checked="true"><span class="template-mark">1</span><b>Plan with me</b><small>Show a direction, then wait</small></button>
+                <button class="loop-template" data-loop-template="direct" type="button" role="radio" aria-checked="false"><span class="template-mark">2</span><b>Finish and check</b><small>Work first, verify at the end</small></button>
+                <button class="loop-template" data-loop-template="audit" type="button" role="radio" aria-checked="false"><span class="template-mark">3</span><b>Explore and challenge</b><small>Compare options, then stress-test</small></button>
               </div>
-
-              <section id="workflow-choice" class="workflow-choice" aria-label="Weave control loop">
-                <select id="workflow-select" class="visually-hidden" aria-label="Workflow"><option value="review">Show me the plan</option><option value="audit">Explore, then challenge</option><option value="direct">Do it, then prove it</option><option value="saved" hidden>Saved workflow</option></select>
+              <section id="workflow-choice" class="workflow-choice" aria-label="Selected workflow">
+                <select id="workflow-select" class="visually-hidden" aria-label="Workflow"><option value="review">Plan with me</option><option value="audit">Explore and challenge</option><option value="direct">Finish and check</option><option value="saved" hidden>Saved workflow</option></select>
                 <p id="workflow-explanation">Codex first explains its direction. You decide whether it continues.</p>
                 <div id="run-loop-preview" class="run-loop-preview" aria-live="polite"></div>
-                <div id="active-workflow" class="active-workflow"><span>Starting template · edit anything later</span><code>not saved</code></div>
-                <button id="save-from-run" class="text-button" type="button">Save this loop for another task</button>
+                <div id="active-workflow" class="active-workflow"><span>Starting design · change anything later</span></div>
+                <button id="save-from-run" class="text-button" type="button">Save this workflow for another task</button>
               </section>
             </div>
 
             <details class="run-settings advanced-drawer">
-              <summary><span>Advanced settings</span><small id="settings-summary">Workspace write · ask for protected actions</small></summary>
-              <label>Repository path<input id="workspace-input" autocomplete="off" /></label>
-              <div><label>Filesystem<select id="sandbox-select"><option value="workspace-write">Workspace write</option><option value="read-only">Read only</option></select></label><label>Protected actions<select id="approval-select"><option value="manual">Ask me</option><option value="deny">Deny</option><option value="auto-review">Codex reviews</option></select></label></div>
+              <summary><span>Workspace and safety</span><small id="settings-summary">Workspace write · ask for protected actions</small></summary>
+              <label>Folder or repository<input id="workspace-input" autocomplete="off" /></label>
+              <div><label>File access<select id="sandbox-select"><option value="workspace-write">Allow changes here</option><option value="read-only">Read only</option></select></label><label>Protected actions<select id="approval-select"><option value="manual">Ask me</option><option value="deny">Deny</option><option value="auto-review">Let Codex review</option></select></label></div>
+              <p><a href="#library" data-view="library">Choose skills and connectors in Library →</a></p>
             </details>
 
-            <div class="composer-actions"><button id="run-task" class="run-button" type="button">Run my loop <span>→</span></button><a id="design-loop-link" href="#design" data-view="design">Build a loop</a></div>
-            <p class="boundary">One Codex run may contain one or one hundred native Codex tool calls. When you use Weave, you author complete goals and handoffs—not fake tool-call blocks.</p>
-          </section>
-        </div>
+            <div class="composer-actions"><button id="run-task" class="run-button" type="button">Run my workflow <span>→</span></button><button id="open-customizer" class="quiet-button" type="button">Customize steps</button></div>
+            <p class="boundary">A step is a complete goal. Codex may use dozens of tools inside it; Weave does not make you micromanage those actions.</p>
+          </div>
+        </section>
 
         <section id="live-run" class="live-run hidden" aria-labelledby="live-run-title">
-          <header><div><p>LIVE LOCAL RUN</p><h2 id="live-run-title">Codex is starting…</h2></div><span id="run-status">Preparing</span></header>
+          <header><div><p>RUNNING NOW</p><h2 id="live-run-title">Codex is starting…</h2></div><span id="run-status">Preparing</span></header>
           <div id="run-steps" class="run-steps"></div>
-          <section id="approval-card" class="approval-card hidden"><div class="approval-copy"><b id="approval-title">Your decision is needed</b><p id="approval-detail"></p><label id="checkpoint-feedback-wrap" class="hidden">Optional direction for the next phase<textarea id="checkpoint-feedback" maxlength="2000" rows="3" placeholder="Example: Continue, but use direction B and make the typography quieter."></textarea></label></div><div class="approval-actions"><button id="stop-run" type="button">Stop</button><button id="continue-run" type="button">Continue</button></div></section>
+          <section id="approval-card" class="approval-card hidden"><div class="approval-copy"><b id="approval-title">Your decision is needed</b><p id="approval-detail"></p><label id="checkpoint-feedback-wrap" class="hidden">Optional direction for the next step<textarea id="checkpoint-feedback" maxlength="2000" rows="3" placeholder="Continue, but use direction B and keep the tone calmer."></textarea></label></div><div class="approval-actions"><button id="stop-run" type="button">Stop</button><button id="continue-run" type="button">Continue</button></div></section>
           <pre id="run-output" class="run-output hidden"></pre>
-          <footer><span id="run-note">The run receipt stays on this machine.</span><a href="#runs" data-view="runs">Open run explorer →</a></footer>
+          <footer><span id="run-note">A readable record will appear in Activity.</span><a href="#activity" data-view="activity">Review this run →</a></footer>
         </section>
 
-        <section class="comparison-showcase section-shell" aria-labelledby="comparison-title">
-          <header><div><p class="kicker">SAME GOAL, DIFFERENT CONTROL</p><h2 id="comparison-title">The difference is not a prettier answer.<br />It is knowing when you get a say.</h2></div><div class="example-switcher" aria-label="Illustrative example"><button class="active" data-example-case="design" type="button">Design</button><button data-example-case="operations" type="button">Operations</button><button data-example-case="simulation" type="button">Simulation</button></div></header>
-          <p id="example-goal" class="example-goal"></p>
-          <div class="output-comparison">
-            <article><span class="output-label">CODEX DIRECT</span><h3>One adaptive run</h3><div id="codex-example-output" class="example-output"></div><footer>Useful result. The route there is chosen by Codex.</footer></article>
-            <article class="weave-output"><span class="output-label">YOUR WEAVECODEX LOOP</span><h3>Visible decisions around the run</h3><div id="weave-example-output" class="example-output"></div><footer>You define handoffs. Codex still chooses its internal tools.</footer></article>
+        <details id="customize-loop" class="customize-panel section-shell">
+          <summary><span><b>Customize the workflow</b><small>Optional · edit goals, approvals, and checks</small></span><i>Open editor</i></summary>
+          <div class="customizer-body">
+            <aside class="customizer-help"><p class="kicker">ADVANCED</p><h2>Edit the working agreement</h2><p>These are meaningful steps—not individual tool calls. Keep it simple unless the task genuinely needs more coordination.</p><div class="design-legend"><span><i class="work-dot"></i> Codex works toward a goal</span><span><i class="checkpoint-dot"></i> You continue, redirect, or stop</span><span><i class="verify-dot"></i> Codex checks the result</span></div><details class="builder-advanced"><summary>Let Codex rewrite the wording</summary><textarea id="design-task" rows="4" hidden></textarea><label>Folder or repository<input id="design-cwd" autocomplete="off" /></label><button id="adapt-with-codex" type="button">Suggest goal wording</button><p>You review the proposal before saving.</p></details><p id="design-status" class="status-copy">Edits stay local until you save the workflow.</p><button id="use-design" class="primary-button" type="button">Use these steps</button></aside>
+            <section class="phase-designer" aria-labelledby="phase-designer-title"><header><div><p class="kicker">YOUR WORKFLOW</p><h2 id="phase-designer-title">Steps in plain English</h2></div><details class="phase-add"><summary>Add a step</summary><div><button data-add-phase="work" type="button">+ Codex goal</button><button data-add-phase="checkpoint" type="button">+ My decision</button><button data-add-phase="verify" type="button">+ Final check</button></div></details></header><div id="phase-editor" class="phase-editor"></div><div class="designer-footer"><div><p id="design-origin">Starting design · not saved</p><label>Workflow name<input id="design-save-name" value="Plan, approve, complete, prove" maxlength="100" /></label></div><button id="save-design" class="primary-button" type="button" hidden>Save this workflow</button></div></section>
           </div>
-          <p class="illustrative-note">Illustrative output shapes—not a benchmark or claim that more steps always improve quality.</p>
-        </section>
+        </details>
 
-        <section class="why section-shell">
-          <header><p>WHAT YOU KEEP</p><h2>Codex’s adaptive loop.<br />Your working agreement.</h2></header>
-          <div class="value-grid"><article><span>01</span><h3>Say it normally</h3><p>Dictate or type the goal, then pair it with a clear starting template you choose.</p></article><article><span>02</span><h3>Reuse what works</h3><p>Save the loop separately from the original task and apply it in another workspace.</p></article><article><span>03</span><h3>See every handoff</h3><p>Connect your intended phases and decisions to the native Codex activity underneath.</p></article></div>
-        </section>
-      </section>
-
-      <section id="design-view" class="product-view" hidden aria-labelledby="design-title">
-        <header class="view-hero section-shell compact-hero"><p class="kicker">LOOP BUILDER</p><h1 id="design-title">Shape the handoffs.<br />Leave the busywork to Codex.</h1><p>Each card is a goal or decision—not a tool call. Codex can inspect, reason, edit, use integrations, test, and retry inside one Work card.</p></header>
-        <section class="builder-guide section-shell" aria-label="How to build a loop"><article><span>1</span><b>Pick a shape</b><p>Start from a common working agreement.</p></article><article><span>2</span><b>Adjust handoffs</b><p>Change what Codex must show you or prove.</p></article><article><span>3</span><b>Save and reuse</b><p>Plug the same loop into a fresh task.</p></article></section>
-        <section class="builder-templates section-shell" aria-labelledby="builder-template-title"><div><p class="kicker">STARTING SHAPES</p><h2 id="builder-template-title">Choose the amount of control</h2></div><div class="loop-templates"><button class="loop-template active" data-loop-template="review" type="button"><span class="template-mark">↳</span><b>Show me the plan</b><small>Human checkpoint before action</small></button><button class="loop-template" data-loop-template="direct" type="button"><span class="template-mark">✓</span><b>Do it, then prove it</b><small>No midpoint interruption</small></button><button class="loop-template" data-loop-template="audit" type="button"><span class="template-mark">◇</span><b>Explore, then challenge</b><small>More deliberate and adversarial</small></button></div></section>
-        <div class="designer-shell section-shell">
-          <aside class="design-controls">
-            <div><p class="kicker">USE IT FOR A TASK</p><h2>Give the loop context</h2><p>The task helps you tailor the wording. It is never baked into the reusable loop.</p></div>
-            <label>Current goal<textarea id="design-task" rows="5" placeholder="Describe what you want to accomplish."></textarea></label>
-            <div class="design-action-stack"><button id="use-design" class="primary-button" type="button">Use this loop</button></div>
-            <details class="builder-advanced"><summary>Advanced adaptation</summary><label>Repository path<input id="design-cwd" autocomplete="off" /></label><button id="adapt-with-codex" type="button">Ask Codex to rewrite goals</button><p>Runs read-only. You review every proposal.</p></details>
-            <p id="design-status" class="status-copy">Changes stay local until you save an immutable version.</p>
-            <div class="design-legend"><span><i class="work-dot"></i> Codex works autonomously inside this goal</span><span><i class="checkpoint-dot"></i> You decide whether it continues</span><span><i class="verify-dot"></i> Codex checks evidence and may repair once</span></div>
-          </aside>
-          <section class="phase-designer" aria-labelledby="phase-designer-title">
-            <header><div><p class="kicker">YOUR CONTROL LOOP</p><h2 id="phase-designer-title">What happens, in plain English</h2></div><details class="phase-add"><summary>Advanced blocks</summary><div><button data-add-phase="work" type="button">+ Codex goal</button><button data-add-phase="checkpoint" type="button">+ My decision</button><button data-add-phase="verify" type="button">+ Proof check</button></div></details></header>
-            <div id="phase-editor" class="phase-editor"></div>
-            <div class="designer-footer"><div><p id="design-origin">Built-in starting design · not saved</p><label>Loop name<input id="design-save-name" value="Plan, approve, complete, prove" maxlength="100" /></label></div><button id="save-design" class="primary-button" type="button">Save this loop</button></div>
+        <details class="how-it-works section-shell">
+          <summary><span><b>How Weave sits around Codex</b><small>The technical boundary, without a separate page</small></span><i>See architecture</i></summary>
+          <section class="architecture-card" data-weave="on" aria-labelledby="architecture-diagram-title">
+            <header><div><p class="kicker">ONE TASK · TWO LAYERS</p><h2 id="architecture-diagram-title">Your workflow around Codex</h2></div><div class="layer-switch"><button id="architecture-codex" type="button">Codex only</button><button id="architecture-weave" class="active" type="button">With Weave</button></div></header>
+            <div class="architecture-diagram" role="img" aria-label="Codex adaptive work inside an optional human-authored Weave workflow">
+              <div class="weave-lane"><span>YOUR WORKFLOW</span><article><small>REUSE</small><b>Saved steps</b><p>A task-independent way of working</p></article><i>→</i><article><small>RUN</small><b>Fresh goal</b><p>Applied to this folder and task</p></article><i>→</i><article><small>DECIDE</small><b>Your checkpoint</b><p>Continue, redirect, or stop</p></article><i>→</i><article><small>REVIEW</small><b>Readable record</b><p>Goals connected to observed activity</p></article></div>
+              <div class="codex-lane"><span>CODEX</span><article><small>INPUT</small><b>Goal + files</b></article><i>→</i><article class="agent-loop"><small>ADAPTIVE WORK</small><b>Reason · inspect · edit · test · retry</b><p>As many native tools as the task needs</p></article><i>→</i><article><small>OUTPUT</small><b>Files + answer</b></article></div>
+            </div>
+            <p id="architecture-caption"><b>With Weave:</b> you define the complete goals and handoffs; Codex remains free to solve each goal adaptively.</p>
           </section>
+        </details>
+      </section>
+
+      <section id="library-view" class="product-view" hidden aria-labelledby="library-title">
+        <header class="workspace-intro section-shell"><div><p class="kicker">LIBRARY</p><h1 id="library-title">Reuse what already works.</h1></div><p>Keep your workflows, Codex connections, and local setup in one place.</p></header>
+        <div class="library-layout section-shell">
+          <section class="workflow-library-card"><header><div><p class="kicker">SAVED WORKFLOWS</p><h2>Your reusable processes</h2></div><button id="refresh-workflows" class="text-button" type="button">Refresh</button></header><div id="workflow-library" class="workflow-library"><p>Loading saved workflows…</p></div></section>
+          <aside class="workflow-save-card"><div><p class="kicker">SAVE CURRENT</p><h2>Name this workflow</h2><p>Only the process is saved—not the task or folder.</p></div><div id="workflow-preview" class="workflow-preview"></div><label>Name<input id="workflow-name" value="Plan, approve, complete, prove" maxlength="100" /></label><label>When should I use this?<textarea id="workflow-description" rows="3" maxlength="500">Use when I want to approve the direction before Codex completes and checks the work.</textarea></label><button id="save-workflow" class="primary-button" type="button">Save workflow</button><p id="save-status" class="status-copy">Ready to save on this machine.</p></aside>
         </div>
+
+        <details class="library-drawer section-shell" id="connections-panel">
+          <summary><span><b>Skills and connections</b><small>Use what is already configured in Codex</small></span><i>Manage</i></summary>
+          <div class="integration-toolbar"><label>Folder or repository<input id="integrations-cwd" autocomplete="off" /></label><button id="load-integrations" class="primary-button" type="button">Load from Codex</button><p id="integrations-status">Nothing loaded yet.</p></div><div id="integration-groups" class="integration-groups"></div>
+        </details>
+
+        <details class="library-drawer section-shell" id="setup-panel">
+          <summary><span><b>Codex account and setup</b><small>Weave uses your existing Codex sign-in</small></span><i>Open setup</i></summary>
+          <section class="account-card"><div><p class="kicker">THIS MACHINE</p><h2>Codex connection</h2><p id="setup-account-message">Checking your local Codex account…</p><small id="setup-account-privacy">Only redacted readiness and account type are shown.</small></div><div><button id="check-account" type="button">Check again</button><button id="chatgpt-login" class="primary-button" type="button">Sign in with ChatGPT</button></div></section>
+          <div class="setup-inline"><div><span>1</span><p><b>Install and sign in</b><code>npm install -g @openai/codex &amp;&amp; codex login</code></p></div><div><span>2</span><p><b>Start Weave locally</b><code>uv run python -m weave_codex.server --codex-bin "$(command -v codex)" --host 127.0.0.1 --port 8790</code></p></div></div>
+          <div class="copy-row"><button class="copy-command" data-copy="npm install -g @openai/codex&#10;codex login" type="button">Copy Codex setup</button><button class="copy-command" data-copy="uv run python -m weave_codex.server --codex-bin &quot;$(command -v codex)&quot; --host 127.0.0.1 --port 8790" type="button">Copy start command</button></div>
+          <p class="security-note"><b>Your credentials stay with Codex.</b> Weave never reads, displays, or copies auth tokens, your email, or <code>auth.json</code>.</p>
+        </details>
       </section>
 
-      <section id="workflows-view" class="product-view" hidden aria-labelledby="workflows-title">
-        <header class="view-hero section-shell"><p class="kicker">PLUG-AND-PLAY PHASE PROGRAMS</p><h1 id="workflows-title">Save the process.<br />Change the task.</h1><p>A workflow stores only goals, verification criteria, and checkpoints. It never stores the original prompt or repository.</p></header>
-        <div class="workflow-workspace section-shell">
-          <section class="workflow-save-card" aria-labelledby="save-title">
-            <div><p class="kicker">CURRENT SHAPE</p><h2 id="save-title">Save a reusable workflow</h2></div>
-            <div id="workflow-preview" class="workflow-preview"></div>
-            <label>Name<input id="workflow-name" value="Inspect, approve, implement, verify" maxlength="100" /></label>
-            <label>What is this process for?<textarea id="workflow-description" rows="3" maxlength="500">Use for changes where a person should approve the direction before implementation.</textarea></label>
-            <button id="save-workflow" class="primary-button" type="button">Save immutable workflow</button>
-            <p id="save-status" class="status-copy">Task and repository will be excluded.</p>
-          </section>
-          <section class="workflow-library-card" aria-labelledby="library-title">
-            <header><div><p class="kicker">LOCAL LIBRARY</p><h2 id="library-title">Your workflows</h2></div><button id="refresh-workflows" class="text-button" type="button">Refresh</button></header>
-            <div id="workflow-library" class="workflow-library"><p>Loading saved workflows…</p></div>
-          </section>
-        </div>
-        <section class="reuse-proof section-shell"><div><p class="kicker">THE REUSE CONTRACT</p><h2>Same program hash. Fresh task manifest.</h2></div><ol><li>Save the phase program once.</li><li>Load it into a different task and repository.</li><li>Compile a new run without changing the saved program.</li></ol></section>
-      </section>
+      <section id="activity-view" class="product-view" hidden aria-labelledby="activity-title">
+        <header class="workspace-intro section-shell"><div><p class="kicker">ACTIVITY</p><h1 id="activity-title">See the work, not the machinery.</h1></div><p>Review your intended steps, your decisions, the observed Codex activity, and the final result.</p></header>
+        <div class="runs-shell section-shell"><aside><header><h2>Recent runs</h2><button id="refresh-runs" class="text-button" type="button">Refresh</button></header><div id="runs-list" class="runs-list"><p>Loading runs…</p></div></aside><section id="run-detail" class="run-detail"><div class="empty-run"><b>Choose a run</b><p>The workflow and result will appear here in plain English.</p></div></section></div>
 
-      <section id="runs-view" class="product-view" hidden aria-labelledby="runs-title">
-        <header class="view-hero section-shell compact-hero"><p class="kicker">OBSERVED EXECUTION</p><h1 id="runs-title">What you authored.<br />What Codex actually did.</h1><p>Start with the few complete goals you designed. Expand a run only when you need the underlying turns, commands, file changes, tests, or receipt.</p></header>
-        <div class="runs-shell section-shell">
-          <aside><header><h2>Recorded runs</h2><button id="refresh-runs" class="text-button" type="button">Refresh</button></header><div id="runs-list" class="runs-list"><p>Loading runs…</p></div></aside>
-          <section id="run-detail" class="run-detail"><div class="empty-run"><b>Choose a run</b><p>Its authored phases and observed Codex activity will appear here.</p></div></section>
-        </div>
-      </section>
-
-      <section id="integrations-view" class="product-view" hidden aria-labelledby="integrations-title">
-        <header class="view-hero section-shell compact-hero"><p class="kicker">INHERIT YOUR CODEX ENVIRONMENT</p><h1 id="integrations-title">Choose context.<br />Keep credentials in Codex.</h1><p>Weave reads a redacted inventory of workspace skills, MCP servers, and connector apps. Your choices become explicit requests in the run manifest; Codex still owns authentication and execution.</p></header>
-        <section class="integration-toolbar section-shell"><label>Repository path<input id="integrations-cwd" autocomplete="off" /></label><button id="load-integrations" class="primary-button" type="button">Load from Codex</button><p id="integrations-status">Nothing loaded yet.</p></section>
-        <div id="integration-groups" class="integration-groups section-shell"></div>
-      </section>
-
-      <section id="field-trials-view" class="product-view" hidden aria-labelledby="field-trials-title">
-        <header class="view-hero section-shell compact-hero"><p class="kicker">PRODUCT EVIDENCE</p><h1 id="field-trials-title">Control you can inspect.<br />Results you can open.</h1><p>First, compare a one-turn Codex baseline with a hand-authored Weave loop across coding, design, operations, and support. Then see three saved loops reused in new repositories. These are bounded product checks—not benchmark or model-quality claims.</p></header>
-        <section class="trial-section section-shell" aria-labelledby="platform-trials-title"><header><div><p class="kicker">ONE GOAL · TWO CONTROL STYLES</p><h2 id="platform-trials-title">Four real, memory-off acceptance pairs</h2></div><p>Same Codex model and task fixtures. The baseline uses one adaptive turn; Weave adds a visible plan gate, another work turn, and verification.</p></header><section id="platform-trials-summary" class="trial-summary"><p>Loading frozen platform evidence…</p></section><div id="platform-trials-grid" class="platform-trial-grid"></div><aside id="platform-trials-limits" class="trial-limits"></aside></section>
-        <section class="trial-section reusable-trial-section section-shell" aria-labelledby="reuse-trials-title"><header><div><p class="kicker">PLUG-AND-PLAY WORKFLOWS</p><h2 id="reuse-trials-title">One saved shape, a different repository</h2></div><p>Three pinned OSS trials bind the original loop, the human-readable goal rewrite, the produced artifact, and an independent repository check.</p></header></section>
-        <section id="field-trials-summary" class="trial-summary section-shell"><p>Loading frozen trial evidence…</p></section>
-        <div id="field-trials-grid" class="trial-grid section-shell"></div>
-        <aside id="field-trials-limits" class="trial-limits section-shell"></aside>
-      </section>
-
-      <section id="architecture-view" class="product-view" hidden aria-labelledby="architecture-title">
-        <header class="view-hero section-shell"><p class="kicker">SYSTEM ARCHITECTURE</p><h1 id="architecture-title">Codex runs the loop.<br />Weave controls the handoffs.</h1><p>Toggle the coral layer to see the exact boundary. Weave does not replace Codex or micromanage its tools.</p></header>
-        <section class="architecture-card section-shell" data-weave="off" aria-labelledby="architecture-diagram-title">
-          <header><div><p class="kicker">ONE TASK, TWO LAYERS</p><h2 id="architecture-diagram-title">Execution path</h2></div><div class="layer-switch"><button id="architecture-codex" class="active" type="button">Codex only</button><button id="architecture-weave" type="button">Reveal Weave</button></div></header>
-          <div class="architecture-diagram" role="img" aria-label="Codex native agent loop with optional Weave workflow layer">
-            <div class="weave-lane"><span>WEAVE WORKFLOW</span><article><small>1</small><b>Saved phase program</b><p>Task-independent goals</p></article><i>→</i><article><small>2</small><b>Compile new task</b><p>Fresh manifest</p></article><i>→</i><article><small>3</small><b>Human checkpoint</b><p>Continue, redirect, or stop</p></article><i>→</i><article><small>4</small><b>Evidence receipt</b><p>Intent linked to activity</p></article></div>
-            <div class="codex-lane"><span>NATIVE CODEX</span><article><small>CLIENT</small><b>Task + repository</b></article><i>→</i><article><small>APP-SERVER</small><b>Thread · turns · items</b></article><i>→</i><article class="agent-loop"><small>ADAPTIVE LOOP</small><b>Reason ↔ inspect ↔ edit ↔ test ↔ retry</b><p>Any number of native tools inside a turn</p></article><i>→</i><article><small>RESULT</small><b>Files + answer</b></article></div>
-          </div>
-          <p id="architecture-caption"><b>Codex only:</b> one goal enters the native adaptive loop.</p>
-        </section>
-        <section class="ownership section-shell"><article><b>Codex owns</b><p>Context construction, reasoning, tool choice, filesystem actions, tests, recovery, sandbox, and action approvals.</p></article><article><b>Weave owns</b><p>Reusable goals between turns, human checkpoints, selected prior threads, task-independent workflow storage, and receipts.</p></article></section>
-        <div class="architecture-links section-shell"><a href="/deep-dive.html">Read the technical Codex deep dive →</a><a href="/compare.html">See matched Codex vs Weave runs →</a></div>
-      </section>
-
-      <section id="setup-view" class="product-view" hidden aria-labelledby="setup-title">
-        <header class="view-hero section-shell"><p class="kicker">SETUP</p><h1 id="setup-title">Use the Codex installation you already have.</h1><p>Weave starts the official Codex app-server. It inherits your normal Codex sign-in and does not copy credentials into this repository.</p></header>
-        <section class="account-card section-shell"><div><p class="kicker">THIS MACHINE</p><h2>Codex connection</h2><p id="setup-account-message">Checking your local Codex account…</p><small id="setup-account-privacy">Only redacted readiness and account type are shown.</small></div><div><button id="check-account" type="button">Check again</button><button id="chatgpt-login" class="primary-button" type="button">Sign in with ChatGPT</button></div></section>
-        <section class="setup-steps section-shell"><article><span>1</span><div><h2>Install and sign in to Codex</h2><pre><code>npm install -g @openai/codex
-codex login</code></pre><button class="copy-command" data-copy="npm install -g @openai/codex&#10;codex login" type="button">Copy commands</button></div></article><article><span>2</span><div><h2>Clone and start WeaveCodex</h2><pre><code>git clone https://github.com/MustafaAH10/WeaveCodex.git
-cd WeaveCodex/weave-control-plane
-uv run python -m weave_codex.server --codex-bin "$(command -v codex)" --host 127.0.0.1 --port 8790</code></pre><button class="copy-command" data-copy="git clone https://github.com/MustafaAH10/WeaveCodex.git&#10;cd WeaveCodex/weave-control-plane&#10;uv run python -m weave_codex.server --codex-bin &quot;$(command -v codex)&quot; --host 127.0.0.1 --port 8790" type="button">Copy start command</button></div></article><article><span>3</span><div><h2>Open the local app</h2><p>Keep that terminal open. Weave remains loopback-only; Codex owns authentication, sandboxing, and protected-action approvals.</p><a href="http://127.0.0.1:8790/#run">Open WeaveCodex →</a></div></article></section>
-        <aside class="security-note section-shell"><b>Credential boundary</b><p>ChatGPT login happens through Codex’s native browser flow. Weave never reads, displays, or copies <code>auth.json</code>, access tokens, or your email.</p></aside>
+        <details class="evidence-drawer section-shell">
+          <summary><span><b>Product checks</b><small>Real acceptance trials, kept separate from your own runs</small></span><i>View evidence</i></summary>
+          <section class="trial-section" aria-labelledby="platform-trials-title"><header><div><p class="kicker">CODEX DIRECT · WEAVECODEX</p><h2 id="platform-trials-title">Four matched task checks</h2></div><p>These show where a human checkpoint appeared—not that Weave makes the model smarter.</p></header><section id="platform-trials-summary" class="trial-summary"><p>Loading product checks…</p></section><div id="platform-trials-grid" class="platform-trial-grid"></div><aside id="platform-trials-limits" class="trial-limits"></aside></section>
+          <section class="trial-section reusable-trial-section" aria-labelledby="reuse-trials-title"><header><div><p class="kicker">REUSABLE WORKFLOWS</p><h2 id="reuse-trials-title">Three processes reused in new repositories</h2></div><p>The wording changed for the new task; the visible process stayed the same.</p></header><section id="field-trials-summary" class="trial-summary"><p>Loading reuse checks…</p></section><div id="field-trials-grid" class="trial-grid"></div><aside id="field-trials-limits" class="trial-limits"></aside></section>
+        </details>
       </section>
     </main>
 
-    <footer class="site-footer"><a class="brand" href="#run"><span>W</span><b>Weave</b><small>for Codex</small></a><p>Open source. Local-first. Built on the official Codex app-server.</p><div><a href="https://github.com/MustafaAH10/WeaveCodex">GitHub</a><a href="/deep-dive.html">Technical deep dive</a><a href="#field-trials" data-view="field-trials">Evidence</a></div></footer>
+    <footer class="site-footer"><a class="brand" href="#create" data-view="create"><span>W</span><b>Weave</b><small>for Codex</small></a><p>Open source · local-first · built on the official Codex app-server</p><div><a href="https://github.com/MustafaAH10/WeaveCodex">GitHub</a></div></footer>
     <script src="/home.js"></script>
   </body>
 </html>

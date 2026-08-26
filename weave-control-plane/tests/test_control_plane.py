@@ -506,32 +506,38 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert 'id="task-composer"' in html
     assert 'data-mode="ordinary"' in html
     assert 'data-mode="weave"' in html
-    assert 'id="design-view"' in html
-    assert 'id="runs-view"' in html
-    assert 'id="integrations-view"' in html
-    assert 'id="field-trials-view"' in html
+    assert 'id="create-view"' in html
+    assert 'id="library-view"' in html
+    assert 'id="activity-view"' in html
+    assert html.count('class="product-view"') == 3
+    assert 'data-view="design"' not in html
+    assert 'data-view="runs"' not in html
+    assert 'data-view="integrations"' not in html
+    assert 'data-view="field-trials"' not in html
     assert 'id="platform-trials-grid"' in html
     assert 'href="/studio.html#design"' not in html
     assert "phaseProgram(kind)" in javascript
     assert 'request("/api/compile"' in javascript
     assert 'request("/api/runs"' in javascript
-    assert "one or one hundred native Codex tool calls" in html
+    assert "dozens of tools inside it" in html
     assert 'id="checkpoint-feedback"' in html
     assert "YOUR DECISION" in javascript
     assert "execution.feedback" in javascript
     assert 'request("/api/platform-trials"' in javascript
-    assert 'data-view="workflows"' in html
-    assert 'data-view="architecture"' in html
-    assert 'data-view="setup"' in html
+    assert 'data-view="create"' in html
+    assert 'data-view="library"' in html
+    assert 'data-view="activity"' in html
+    assert "programHash.slice" not in javascript
+    assert "manifestHash || runId" not in javascript
+    assert "runId.slice" not in javascript
     assert 'id="workflow-library"' in html
     assert 'request("/api/workflows"' in javascript
     assert 'request("/api/workflows/adapt"' in javascript
     assert "request(`/api/integrations?cwd=" in javascript
     assert 'request("/reusable-workflow-trials.json"' in javascript
-    assert "Actual external-user login" in javascript
-    assert "rawEvidenceAvailability" in javascript
-    assert "Three pinned OSS trials" in html
-    assert "Task and repository will be excluded" in html
+    assert "Test setup" in javascript
+    assert "Three processes reused in new repositories" in html
+    assert "Only the process is saved—not the task or folder" in html
 
 
 def test_product_examples_api_source_includes_all_five_examples(tmp_path: Path) -> None:
