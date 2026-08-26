@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "study": "Codex platform workflow acceptance trials \u2014 environment recovery",
+  "planId": "sha256:cb61b2f65745b67801c54e38c623a1dbb06004c0bde606469ebb9e037f5d643e",
+  "summaryId": "sha256:cc40b93b4aa1bddb8f2c65b27ef6aa197eb1bd0ea13696155081b10741ace512",
+  "executedAtUtc": {
+    "started": "2026-08-26T02:54:17Z",
+    "completed": "2026-08-26T03:05:03Z"
+  },
+  "authentication": "official ChatGPT device authorization; no API key",
+  "model": "gpt-5.6-terra",
+  "codexVersion": "codex-cli 0.147.0",
+  "totals": {
+    "trials": 4,
+    "arms": 8,
+    "artifactsAccepted": 8,
+    "weaveCheckpointsAccepted": 4,
+    "observedControllerTurns": 16,
+    "configuredMaximumControllerTurns": 16
+  },
+  "results": [
+    {
+      "trialId": "forecast-zero-override",
+      "ordinaryCodex": {
+        "artifactPassed": true,
+        "artifactHashes": {
+          "forecast.py": "sha256:4900aec0a22d4bc1ca8f1022fee3ac1ae2090b8763b59bd3f6e11adfd13c3821"
+        },
+        "inputIntegrity": true,
+        "checkpointDecisions": [],
+        "observedControllerTurns": 1,
+        "finalResponseExcerpt": "Updated [forecast.py](/workspace/trial-results/workspaces/forecast-zero-override/ordinary/forecast.py) so: - `0` is preserved as an explicit override. - Blank or missing overrides use `baseline_growth`. - Invalid overrides raise `ValueError` including the row ID. Verification: `python3 -m unittest -v` \u2014 3 tests run, all passed.",
+        "receiptId": "sha256:d536129c85d86bb6c0330a9e428eb883e84da2d71a91225cf5757b87879bce64",
+        "publicArtifactRoot": "artifacts/forecast-zero-override/ordinary",
+        "receiptPath": "receipts/forecast-zero-override-ordinary.json"
+      },
+      "weaveCodex": {
+        "artifactPassed": true,
+        "artifactHashes": {
+          "forecast.py": "sha256:e39a4312537c668b1e29c1a1dae16ee42f7a0640d97f06ffd57c6943cc345b54"
+        },
+        "inputIntegrity": true,
+        "checkpointDecisions": [
+          {
+            "method": "harness/checkpoint",
+            "decision": "accept",
+            "gate": {
+              "passed": true,
+              "checks": {
+                "requiredKeys": true,
+                "explicitZero": true,
+                "testCommand": true
+              },
+              "artifactSha256": "sha256:140af0b7f33c8dfd2716260df4c37937ff7726a7c45a74cab4136340284a1138"
+            }
+          }
+        ],
+        "observedControllerTurns": 3,
+        "finalResponseExcerpt": "Verified: all 3 supplied tests pass with the available interpreter (`python3 -m unittest -v`); `test_forecast.py` has no diff; `0` is explicit, blank/missing uses baseline, and invalid overrides raise a row-ID-specific ValueError. `git diff --check` passes.",
+        "receiptId": "sha256:55b79e97d995b4d0e332f37b3a56710afa1ac7750807987cd086ffb23f70967b",
+        "publicArtifactRoot": "artifacts/forecast-zero-override/weave",
+        "receiptPath": "receipts/forecast-zero-override-weave.json"
+      }
+    },
+    {
+      "trialId": "night-bloom-poster",
+      "ordinaryCodex": {
+        "artifactPassed": true,
+        "artifactHashes": {
+          "poster.svg": "sha256:fef528793120d1db1d1577faa104a2323af3a07b0eac51ff5458f6f7f38bcd9a",
+          "design-notes.md": "sha256:0a6ea3ac999c1fdb889ec681f8a19db7ea8a1e7a1e96fe907a791fbb71330754"
+        },
+        "inputIntegrity": true,
+        "checkpointDecisions": [],
+        "observedControllerTurns": 1,
+        "finalResponseExcerpt": "Created [poster.svg](/workspace/trial-results/workspaces/night-bloom-poster/ordinary/poster.svg) and [design-notes.md](/workspace/trial-results/workspaces/night-bloom-poster/ordinary/design-notes.md). The poster is an original 1200\u00d71600 self-contained SVG using the specified ink, moon, orchid, and leaf palette. It features editorial typography and an abstract botanical bloom, preserving all event facts. Checks performed: - Inspected SVG text for required event details, palette values, `<title>`, `<desc>`, and `aria-labelledby`. - Confirmed no external URLs, image elements, scripts, or font-face declarations. - Confirmed canvas dimensions/viewBox. - Ran `git diff --check` with no reported whitespace errors. - Local XML and SVG rendering utilities were unavailable; a local SVG structure-presence check passed.",
+        "receiptId": "sha256:925a47f9b8228802730e9331c9a02fe06588c3c11b180e887fe87a16c1f089ef",
+        "publicArtifactRoot": "artifacts/night-bloom-poster/ordinary",
+        "receiptPath": "receipts/night-bloom-poster-ordinary.json"
+      },
+      "weaveCodex": {
+        "artifactPassed": true,
+        "artifactHashes": {
+          "poster.svg": "sha256:8e7f3ea7fc0b459a69585ccfd392cae53870109010421309a000d490494b53d5",
+          "design-notes.md": "sha256:9cd2f1c052c2472829c2a20550b48049636a61a97f282ec7ce9b12103dbc62e5"
+        },
+        "inputIntegrity": true,
+        "checkpointDecisions": [
+          {
+            "method": "harness/checkpoint",
+            "decision": "accept",
+            "gate": {
+              "passed": true,
+              "checks": {
+                "requiredKeys": true,
+                "allFacts": true,
+                "palette": true
+              },
+              "artifactSha256": "sha256:19d375a151be03b0e5351025322693524538d0533ff789655dfcfbcf192f6a03"
+            }
+          }
+        ],
+        "observedControllerTurns": 3,
+        "finalResponseExcerpt": "Verified: poster.svg contains the required 1200\u00d71600 viewBox, event facts, four palette colors, title/description metadata, and multiple inline vector shapes; it has no external-asset markers. design-notes.md explicitly covers hierarchy and accessibility.",
+        "receiptId": "sha256:b31df51d0a5e6158514f886bba71e8ac0d77cbf2aace8b003df535ec1d1f4ecb",
+        "publicArtifactRoot": "artifacts/night-bloom-poster/weave",
+        "receiptPath": "receipts/night-bloom-poster-weave.json"
+      }
+    },
+    {
+      "trialId": "connector-action-draft",
+      "ordinaryCodex": {
+        "artifactPassed": true,
+        "artifactHashes": {
+          "proposed_actions.json": "sha256:61294e766663d0ae86b9190e438f7a05cdc5692576babf1c66c3acfdfda1a3fd"
+        },
+        "inputIntegrity": true,
+        "checkpointDecisions": [],
+        "observedControllerTurns": 1,
+        "finalResponseExcerpt": "Created and validated [proposed_actions.json](/workspace/trial-results/workspaces/connector-action-draft/ordinary/proposed_actions.json). It contains two approval-required drafts: - `ORD-101` / `ACC-1`: `priority_outreach` - `ORD-102` / `ACC-2`: `draft_refund` Source records were read through `mock_connector.py list orders` and `mock_connector.py list accounts`. No apply command was invoked and source data was not mutated.",
+        "receiptId": "sha256:9bc8512f184fb4395a23f1d49f9fdb2e632e384288a5d2dfb2dcf8feaad799f3",
+        "publicArtifactRoot": "artifacts/connector-action-draft/ordinary",
+        "receiptPath": "receipts/connector-action-draft-ordinary.json"
+      },
+      "weaveCodex": {
+        "artifactPassed": true,
+        "artifactHashes": {
+          "proposed_actions.json": "sha256:ceb7ef51d3202d3f4267b2a75d40f832a126e0c6ba7a6315532b23c06a008092"
+        },
+        "inputIntegrity": true,
+        "checkpointDecisions": [
+          {
+            "method": "harness/checkpoint",
+            "decision": "accept",
+            "gate": {
+              "passed": true,
+              "checks": {
+                "requiredKeys": true,
+                "eligibleOrders": true,
+                "safetyBoundary": true
+              },
+              "artifactSha256": "sha256:1637ab4c6343ff21841ff286103c0ce9c9a0fa62c7fd3b38290a08ccf90b7c1e"
+            }
+          }
+        ],
+        "observedControllerTurns": 3,
+        "finalResponseExcerpt": "Verified against policy.md, orders.json, and accounts.json. The draft contains exactly the eligible ORD-101 and ORD-102 actions, all source IDs/references exist, every action requires approval, and no mock_mutations.log exists.",
+        "receiptId": "sha256:8b705436b778c77ee6d2b44e7a944c82a51cfcb7fbf3a06c4794f4370cf6ca71",
+        "publicArtifactRoot": "artifacts/connector-action-draft/weave",
+        "receiptPath": "receipts/connector-action-draft-weave.json"
+      }
+    },
+    {
+      "trialId": "incident-support-brief",
+      "ordinaryCodex": {
+        "artifactPassed": true,
+        "artifactHashes": {
+          "support_brief.json": "sha256:6ef61867dde14fdfdcf84f222a1a546aba69e330e1f47f8d7cb95c7476c0c05f",
+          "customer_update.md": "sha256:a0a8a4040acad795fe7ae16c6151dcb6a3fe6aa2b4d0baf12780831a7ff10420"
+        },
+        "inputIntegrity": true,
+        "checkpointDecisions": [],
+        "observedControllerTurns": 1,
+        "finalResponseExcerpt": "Created and source-anchored: - [support_brief.json](/workspace/trial-results/workspaces/incident-support-brief/ordinary/support_brief.json) - [customer_update.md](/workspace/trial-results/workspaces/incident-support-brief/ordinary/customer_update.md) Validated the JSON with Node. Both artifacts preserve timestamps and affected scope, distinguish observations from inference, state the root cause is unknown, set the next update for 10:00Z, and make no recovery promise. Remaining uncertainty is explicitly recorded.",
+        "receiptId": "sha256:59c9d6d84da42d8dde80f5dd2cb83d491c57d97aeadf9a899908c9154ea566f4",
+        "publicArtifactRoot": "artifacts/incident-support-brief/ordinary",
+        "receiptPath": "receipts/incident-support-brief-ordinary.json"
+      },
+      "weaveCodex": {
+        "artifactPassed": true,
+        "artifactHashes": {
+          "support_brief.json": "sha256:2767cf06a872b73a82ce8e5e31801b1df05f48f496358aa7905e223387ef31f8",
+          "customer_update.md": "sha256:a4bb20356378b17b04e26e5705cf6e03552d37200ca758c40b40369741dafe42"
+        },
+        "inputIntegrity": true,
+        "checkpointDecisions": [
+          {
+            "method": "harness/checkpoint",
+            "decision": "accept",
+            "gate": {
+              "passed": true,
+              "checks": {
+                "requiredKeys": true,
+                "unknownRootCause": true,
+                "cadenceAndCitations": true
+              },
+              "artifactSha256": "sha256:51aebcf90075ecddd0310cbddeec3915f01a7f73c4a3d38ea197c7ade7d5d2b2"
+            }
+          }
+        ],
+        "observedControllerTurns": 3,
+        "finalResponseExcerpt": "Verified and repaired. Both artifacts now include INC-42, the 09:10Z start, 09:30Z update, `ap-southeast-1`, investigating status, 10:00Z next update, and all required source anchors. Root cause remains unknown; no recovery ETA or unsupported recovery claim appears.",
+        "receiptId": "sha256:06b2ac77954c45f003df584c75463d91c6499c6c05b74742c5cf918c754e25f3",
+        "publicArtifactRoot": "artifacts/incident-support-brief/weave",
+        "receiptPath": "receipts/incident-support-brief-weave.json"
+      }
+    }
+  ],
+  "invalidEnvironmentAttempt": {
+    "summaryId": "sha256:5b4abb1f92b61a486289c9aca95a899ad3beb4c716d69a89a8408aa47415bde7",
+    "evidencePath": "reports/platform-workflow-trials/summary.json",
+    "validSamples": 0,
+    "reason": "Every arm was blocked before fixture inspection because the first container could not create the user namespace required by Codex's bwrap sandbox.",
+    "promptExposure": "All four task prompts were exposed to the same model/account during the invalid environment attempt. Recovery results are product acceptance evidence, not unseen-task or benchmark evidence."
+  },
+  "claimLimits": [
+    "One rollout per arm cannot estimate variance or general model quality.",
+    "The deterministic operator gate is a disclosed stand-in for a person clicking Continue.",
+    "The integration trial uses a local mock and proves control semantics, not a live vendor connector.",
+    "The artifact graders test explicit contracts and do not measure subjective design excellence.",
+    "No token, call-count, latency, or cost comparison is used as a product advantage claim.",
+    "The recovery tasks are not unseen: their prompts were exposed during the invalid environment attempt.",
+    "The first dispatch is preserved as an infrastructure incident and contributes zero valid samples.",
+    "Privileged mode enables Codex's nested bwrap sandbox; the host source repository remains mounted read-only and only a fresh result volume is writable."
+  ],
+  "provenance": {
+    "grader": {
+      "sourcePath": "weave-control-plane/scripts/run_platform_workflow_trials.py",
+      "sourceSha256": "sha256:72ce882c6f247afa253b58cad5a2850ad2d2bb04266804f76cf5d100f25be5e3"
+    },
+    "environmentPreflight": "sha256:1e116a67723ca934fb11c8b75c94aa62cf2371c5b63316d8a4665a8d8f6801b3"
+  },
+  "outcomeId": "sha256:f4a24827a56dcb3a610d68ee4274051c21a293ce040b0b0b0eb9c7d14596dcef"
+}

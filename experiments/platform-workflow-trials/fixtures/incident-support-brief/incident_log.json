@@ -1,0 +1,9 @@
+{
+  "incidentId": "INC-42",
+  "startedAt": "2026-08-26T09:10:00Z",
+  "affectedRegion": "ap-southeast-1",
+  "service": "media-rendering",
+  "symptom": "render jobs remain queued longer than 15 minutes",
+  "rootCause": null,
+  "status": "investigating"
+}

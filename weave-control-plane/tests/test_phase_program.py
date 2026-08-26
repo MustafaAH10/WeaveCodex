@@ -186,7 +186,7 @@ def test_phase_program_executes_controller_turns_and_real_human_checkpoint() -> 
             "question": "Continue from inspection into implementation?",
         },
     }
-    session.decide("accept")
+    session.decide("accept", "Use direction B and reduce visual noise.")
     worker.join(timeout=2)
 
     assert session.status == "completed"
@@ -195,7 +195,11 @@ def test_phase_program_executes_controller_turns_and_real_human_checkpoint() -> 
     assert session.result["finalResponse"] == "verified result"
     assert session.result["completionStatus"] == "completed"
     assert session.result["phaseProgram"]["checkpoints"] == [
-        {"phaseId": "approve-plan", "decision": "accept"}
+        {
+            "phaseId": "approve-plan",
+            "decision": "accept",
+            "feedback": "Use direction B and reduce visual noise.",
+        }
     ]
     assert session.result["observed"]["modelCompletions"] == 3
     assert session.result["observed"]["completedItemsByType"] == {"commandExecution": 3}
@@ -204,3 +208,5 @@ def test_phase_program_executes_controller_turns_and_real_human_checkpoint() -> 
     )
     assert session.result["traceProjection"]["counts"]["toolCalls"] == 3
     assert "many native Codex reasoning and tool" in fake.prompts[0]
+    assert "Use direction B and reduce visual noise." in fake.prompts[1]
+    assert "latest instruction for this phase" in fake.prompts[1]

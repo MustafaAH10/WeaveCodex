@@ -8,6 +8,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import threading
 from collections import deque
 from http import HTTPStatus
@@ -41,6 +42,20 @@ _IGNORED_WORKSPACE_NAMES = {
     "node_modules",
     "target",
 }
+
+
+def resolve_codex_binary(value: str) -> str:
+    """Resolve the user-facing Codex command before constructing app-server clients."""
+
+    candidate = Path(value).expanduser()
+    if candidate.is_absolute():
+        if candidate.is_file():
+            return str(candidate.resolve())
+        raise ValueError(f"Codex binary does not exist: {candidate}")
+    resolved = shutil.which(value)
+    if resolved is None:
+        raise ValueError(f"Codex binary is not available on PATH: {value}")
+    return str(Path(resolved).resolve())
 
 
 def list_workspace_paths(
@@ -216,6 +231,19 @@ class ControlPlane:
                 examples.append(value)
         return examples
 
+    def platform_trial_outcome(self) -> dict[str, Any] | None:
+        """Load the tracked, sanitized product-trial outcome when present."""
+
+        path = (
+            Path(__file__).resolve().parents[2]
+            / "experiments/platform-workflow-trials/results-v2/outcome.json"
+        )
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        return value if isinstance(value, dict) else None
+
 
 class Handler(BaseHTTPRequestHandler):
     server: "ControlServer"
@@ -247,6 +275,13 @@ class Handler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/examples":
             self._json(HTTPStatus.OK, {"examples": self.server.app.product_examples()})
+            return
+        if parsed.path == "/api/platform-trials":
+            outcome = self.server.app.platform_trial_outcome()
+            self._json(
+                HTTPStatus.OK if outcome else HTTPStatus.NOT_FOUND,
+                outcome or {"error": "platform trial evidence is not installed"},
+            )
             return
         if parsed.path == "/api/integrations":
             cwd = parse_qs(parsed.query).get("cwd", [str(self.server.app.workspace_root)])[0]
@@ -403,7 +438,10 @@ class Handler(BaseHTTPRequestHandler):
                 if session is None:
                     self._json(HTTPStatus.NOT_FOUND, {"error": "run not found"})
                     return
-                session.decide(str(payload.get("decision", "")))
+                feedback = payload.get("feedback", "")
+                if not isinstance(feedback, str):
+                    raise ValueError("checkpoint feedback must be text")
+                session.decide(str(payload.get("decision", "")), feedback)
                 self._json(HTTPStatus.OK, {"accepted": True})
                 return
             self._json(HTTPStatus.NOT_FOUND, {"error": "route not found"})
@@ -449,6 +487,20 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def end_headers(self) -> None:
+        """Apply browser hardening to static, API, and error responses."""
+
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+            "connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; "
+            "form-action 'self'",
+        )
+        super().end_headers()
+
     def _static(self, request_path: str) -> None:
         name = {"/": "index.html", "/studio.html": "index.html"}.get(
             request_path, request_path.lstrip("/")
@@ -493,9 +545,13 @@ def main() -> None:
     args = parser.parse_args()
     if args.host not in {"127.0.0.1", "localhost", "::1"}:
         parser.error("WeaveCodex currently binds only to a loopback host")
+    try:
+        codex_bin = resolve_codex_binary(args.codex_bin)
+    except ValueError as exc:
+        parser.error(str(exc))
     server = ControlServer(
         (args.host, args.port),
-        ControlPlane(args.codex_bin, args.data_root, args.workspace_root),
+        ControlPlane(codex_bin, args.data_root, args.workspace_root),
     )
     print(f"Weave Codex listening on http://{args.host}:{args.port}")
     try:

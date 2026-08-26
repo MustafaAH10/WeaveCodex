@@ -1,0 +1,50 @@
+{
+  "trialId": "night-bloom-poster",
+  "domain": "design",
+  "title": "Create an accessible event poster",
+  "arm": "ordinary",
+  "runStatus": "completed",
+  "artifactPassed": true,
+  "grade": {
+    "checks": {
+      "outputsExist": true,
+      "canvas": true,
+      "facts": true,
+      "palette": true,
+      "metadata": true,
+      "vectorComposition": true,
+      "selfContained": true,
+      "notes": true
+    },
+    "inputIntegrity": {
+      "passed": true,
+      "before": {
+        "brief.md": "sha256:cd8ea0993831ecaf2e3cb357051a92c90c4f3c2bc0276f5837cbaf3bc315a251"
+      },
+      "after": {
+        "brief.md": "sha256:cd8ea0993831ecaf2e3cb357051a92c90c4f3c2bc0276f5837cbaf3bc315a251"
+      }
+    },
+    "passed": true,
+    "artifacts": {
+      "poster.svg": "sha256:fef528793120d1db1d1577faa104a2323af3a07b0eac51ff5458f6f7f38bcd9a",
+      "design-notes.md": "sha256:0a6ea3ac999c1fdb889ec681f8a19db7ea8a1e7a1e96fe907a791fbb71330754"
+    }
+  },
+  "manifestHash": "sha256:4649641aa8fb56f552e4f5644b551ce7f8ce087382806f90e44db6591bfe9514",
+  "receiptId": "sha256:925a47f9b8228802730e9331c9a02fe06588c3c11b180e887fe87a16c1f089ef",
+  "completionStatus": "completed",
+  "checkpointDecisions": [],
+  "phaseExecutions": [],
+  "finalResponseExcerpt": "Created [poster.svg](/workspace/trial-results/workspaces/night-bloom-poster/ordinary/poster.svg) and [design-notes.md](/workspace/trial-results/workspaces/night-bloom-poster/ordinary/design-notes.md). The poster is an original 1200\u00d71600 self-contained SVG using the specified ink, moon, orchid, and leaf palette. It features editorial typography and an abstract botanical bloom, preserving all event facts. Checks performed: - Inspected SVG text for required event details, palette values, `<title>`, `<desc>`, and `aria-labelledby`. - Confirmed no external URLs, image elements, scripts, or font-face declarations. - Confirmed canvas dimensions/viewBox. - Ran `git diff --check` with no reported whitespace errors. - Local XML and SVG rendering utilities were unavailable; a local SVG structure-presence check passed.",
+  "elapsedSeconds": 88.373,
+  "childProcess": {
+    "exitCode": 0,
+    "elapsedSeconds": 88.362,
+    "stdoutSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderrSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "rawReceipt": "/workspace/trial-results/raw/night-bloom-poster-ordinary.json",
+  "workspace": "/workspace/trial-results/workspaces/night-bloom-poster/ordinary",
+  "observedControllerTurns": 1
+}

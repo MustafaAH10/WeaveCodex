@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en" data-stack="codex">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A source-grounded explanation of the Codex agent loop and the user-authored contracts Weave adds around it."
+    />
+    <title>Codex, then Weave · Platform guide</title>
+    <link rel="stylesheet" href="/platform.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="/#run" aria-label="Weave for Codex home">
+        <span class="brand-mark" aria-hidden="true">W</span>
+        <span><b>Weave</b><small>for Codex</small></span>
+      </a>
+      <nav aria-label="Article sections">
+        <a href="#system">System</a>
+        <a href="#contract">Contract</a>
+        <a href="#example">Example</a>
+        <a href="#sources">Sources</a>
+      </nav>
+      <a class="header-cta" href="/#design">Build a workflow <span aria-hidden="true">→</span></a>
+    </header>
+
+    <main id="main">
+      <section class="hero shell" aria-labelledby="hero-title">
+        <div>
+          <p class="kicker">PLATFORM NOTE · AUGUST 2026</p>
+          <h1 id="hero-title">Codex supplies the capable loop.<br />Weave supplies the contract.</h1>
+        </div>
+        <div class="hero-summary">
+          <p>
+            Codex can inspect, reason, call tools, recover, and keep going. Weave does not replace that
+            loop. It lets a person decide <em>which outcomes must happen in which order</em>, where work
+            pauses, and what counts as done.
+          </p>
+          <div class="legend" aria-label="Evidence labels">
+            <span class="badge documented">Documented</span>
+            <span class="badge derived">Source-derived</span>
+            <span class="badge proposal">Weave proposal</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="thesis shell" aria-label="The central distinction">
+        <p class="thesis-number">01</p>
+        <div>
+          <p class="kicker">THE CENTRAL DISTINCTION</p>
+          <h2>A workflow phase is a promise to achieve a goal. It is not one tool call.</h2>
+        </div>
+        <p>
+          A single Codex turn may read forty files, run twenty commands, revise its plan, and retry a
+          test. Weave wraps that complete turn with an intent, a boundary, and a receipt. This keeps the
+          runtime adaptive while making the larger process legible.
+        </p>
+      </section>
+
+      <section id="system" class="system-section shell" aria-labelledby="system-title">
+        <div class="section-heading">
+          <div>
+            <p class="kicker">SYSTEM ARCHITECTURE</p>
+            <h2 id="system-title">The same Codex loop, with an optional control plane</h2>
+          </div>
+          <div class="stack-toggle" role="group" aria-label="Architecture layers">
+            <button class="active" type="button" data-stack-choice="codex" aria-pressed="true">
+              Codex only
+            </button>
+            <button type="button" data-stack-choice="weave" aria-pressed="false">
+              + Weave
+            </button>
+          </div>
+        </div>
+
+        <div class="architecture" role="img" aria-labelledby="architecture-title architecture-desc">
+          <span id="architecture-title" class="sr-only">Codex and Weave system architecture</span>
+          <span id="architecture-desc" class="sr-only">
+            An application starts Codex threads and turns through app-server. Codex repeatedly builds
+            context, asks the model for a next action, executes allowed tools, records results, and
+            returns an output. When enabled, Weave compiles a human-authored contract into goal-level
+            turns, checkpoints, verification, and an observable receipt.
+          </span>
+
+          <div class="weave-band" aria-hidden="true">
+            <div class="band-label"><span class="badge proposal">Weave proposal</span><b>Human-authored control plane</b></div>
+            <div class="weave-node">
+              <span>1</span><div><b>Contract</b><small>goal · guardrails · pass condition</small></div>
+            </div>
+            <i>→</i>
+            <div class="weave-node">
+              <span>2</span><div><b>Phase compiler</b><small>work · checkpoint · verify</small></div>
+            </div>
+            <i>→</i>
+            <div class="weave-node human">
+              <span>3</span><div><b>Human gate</b><small>continue · redirect · stop</small></div>
+            </div>
+            <i>→</i>
+            <div class="weave-node">
+              <span>4</span><div><b>Run receipt</b><small>intent ↔ turn ↔ outcome</small></div>
+            </div>
+          </div>
+
+          <div class="codex-band">
+            <div class="band-label"><span class="badge documented">Documented</span><b>Codex app-server boundary</b></div>
+            <div class="outside-node">
+              <span class="node-label">APPLICATION</span>
+              <b>Task-specific interface</b>
+              <small>view · context · tools · consent</small>
+            </div>
+            <i class="main-arrow">→</i>
+            <div class="outside-node app-server">
+              <span class="node-label">APP-SERVER</span>
+              <b>Threads · turns · items</b>
+              <small>auth · history · events · approvals</small>
+            </div>
+            <i class="main-arrow">→</i>
+            <div class="agent-loop">
+              <span class="loop-label"><span class="badge derived">Source-derived</span> Native Codex turn</span>
+              <div class="loop-grid">
+                <div class="loop-node"><span>01</span><b>Build context</b><small>instructions, history, world, tools</small></div>
+                <i>→</i>
+                <div class="loop-node dark"><span>02</span><b>Choose action</b><small>answer or request a tool</small></div>
+                <i class="down">↓</i>
+                <div class="loop-node result"><span>04</span><b>Append result</b><small>typed item enters history</small></div>
+                <i class="back">←</i>
+                <div class="loop-node execution"><span>03</span><b>Execute safely</b><small>tool, policy, sandbox, approval</small></div>
+              </div>
+              <span class="repeat">Repeat until the turn reaches a terminal state</span>
+            </div>
+            <i class="main-arrow">→</i>
+            <div class="outside-node output">
+              <span class="node-label">RESULT</span>
+              <b>Answer + changes</b>
+              <small>streamed and persisted</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="architecture-caption">
+          <p data-caption="codex"><b>Codex only:</b> the application provides a task and observes an adaptive turn.</p>
+          <p data-caption="weave"><b>With Weave:</b> each work or verify block starts a complete Codex turn; checkpoints make no model call.</p>
+          <a href="https://developers.openai.com/blog/codex-as-a-platform" target="_blank" rel="noreferrer">Read the OpenAI platform article ↗</a>
+        </div>
+      </section>
+
+      <section class="ownership shell" aria-labelledby="ownership-title">
+        <div class="section-heading compact">
+          <div><p class="kicker">WHO OWNS WHAT</p><h2 id="ownership-title">A clean seam, not a second agent</h2></div>
+        </div>
+        <div class="ownership-grid">
+          <article>
+            <span class="badge documented">Codex</span>
+            <h3>Owns the work inside a turn</h3>
+            <ul>
+              <li>Maintain model-visible context</li>
+              <li>Select and execute tools</li>
+              <li>Stream typed events and progress</li>
+              <li>Apply sandbox and approval policy</li>
+              <li>Recover, retry, steer, or interrupt</li>
+            </ul>
+          </article>
+          <article class="weave-card">
+            <span class="badge proposal">Weave</span>
+            <h3>Owns the process between turns</h3>
+            <ul>
+              <li>Pair a plain-language goal with an editable starting contract</li>
+              <li>Sequence goal-level work and verification</li>
+              <li>Pause at explicit human decision points</li>
+              <li>Scope memory and integrations by phase</li>
+              <li>Save a reusable, versioned workflow receipt</li>
+            </ul>
+          </article>
+          <aside>
+            <p class="kicker">DOES NOT DO</p>
+            <p>Weave does not replace Codex’s planner, expose hidden reasoning, or schedule every shell command as a canvas block.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="layers shell" aria-labelledby="layers-title">
+        <div class="section-heading compact">
+          <div><p class="kicker">INTEGRATION LAYERS</p><h2 id="layers-title">Use the smallest Codex surface that fits</h2></div>
+          <span class="badge documented">Documented</span>
+        </div>
+        <div class="layer-tabs" role="tablist" aria-label="Codex integration layers">
+          <button id="layer-exec" role="tab" aria-controls="panel-exec" aria-selected="false" tabindex="-1" data-layer="exec">codex exec</button>
+          <button id="layer-sdk" role="tab" aria-controls="panel-sdk" aria-selected="false" tabindex="-1" data-layer="sdk">Codex SDK</button>
+          <button id="layer-server" class="active" role="tab" aria-controls="panel-server" aria-selected="true" data-layer="server">app-server</button>
+        </div>
+        <div class="layer-panels">
+          <article id="panel-exec" role="tabpanel" aria-labelledby="layer-exec" hidden>
+            <p class="panel-use">Best for <b>one bounded job</b></p>
+            <p>Scripts, CI, and background commands that need a structured result but not a long-lived product interface.</p>
+            <code>input → codex exec → structured output</code>
+          </article>
+          <article id="panel-sdk" role="tabpanel" aria-labelledby="layer-sdk" hidden>
+            <p class="panel-use">Best for <b>application orchestration</b></p>
+            <p>Program code that starts, resumes, or streams tasks without owning every client protocol event.</p>
+            <code>application → SDK → Codex task</code>
+          </article>
+          <article id="panel-server" role="tabpanel" aria-labelledby="layer-server">
+            <p class="panel-use">Best for <b>a product built around the agent</b></p>
+            <p>Persistent threads, streamed items, steering, interruptions, tools, authentication, and approval handling.</p>
+            <code>initialize → thread/start → turn/start → item/* → turn/completed</code>
+          </article>
+        </div>
+      </section>
+
+      <section id="contract" class="contract shell" aria-labelledby="contract-title">
+        <div class="section-heading">
+          <div><p class="kicker">THE USER-AUTHORED CONTRACT</p><h2 id="contract-title">Plain language first. Advanced controls when needed.</h2></div>
+          <span class="badge proposal">Weave proposal</span>
+        </div>
+
+        <div class="contract-demo">
+          <div class="spoken-goal">
+            <p class="kicker">SAY OR TYPE</p>
+            <blockquote>
+              “Review the launch assets. Give me two defensible directions. Stop before changing the
+              final files, and verify the approved direction against the brief.”
+            </blockquote>
+            <div class="goal-pills"><span>Review first</span><span>Human decides</span><span>Verify at end</span></div>
+          </div>
+          <div class="contract-arrow" aria-hidden="true">→</div>
+          <ol class="contract-loop" aria-label="Chosen and edited contract loop">
+            <li><span>Work</span><div><b>Inspect and propose</b><small>Codex may use many tools until two directions are ready.</small></div></li>
+            <li class="checkpoint"><span>Pause</span><div><b>You choose a direction</b><small>No model call. Continue, redirect, or stop.</small></div></li>
+            <li><span>Work</span><div><b>Produce the approved direction</b><small>Codex receives your decision as the next complete goal.</small></div></li>
+            <li class="verify"><span>Verify</span><div><b>Check against the brief</b><small>Return a pass/fail receipt and bounded repair.</small></div></li>
+          </ol>
+        </div>
+
+        <p class="dictation-note">
+          <span class="badge documented">Documented distinction</span>
+          Codex offers voice dictation for tasks started outside voice mode. Weave’s “say a goal” control
+          follows that interaction pattern: it places the transcript in the goal field; you then choose
+          the starting contract template. It is not a
+          full voice conversation and does not claim the same internal implementation.
+          <a href="https://learn.chatgpt.com/docs/features/voice#start-talking" target="_blank" rel="noreferrer">Codex voice guide ↗</a>
+        </p>
+
+        <details class="advanced">
+          <summary><span>Advanced contract controls</span><small>Open only when defaults are not enough</small></summary>
+          <div>
+            <article><b>Boundaries</b><p>Working directory, sandbox, approval policy, maximum repairs.</p></article>
+            <article><b>Context</b><p>Selected files, prior run receipts, instructions, and phase-scoped memory.</p></article>
+            <article><b>Capabilities</b><p>Skills, MCP servers, and connected apps stay native to Codex and keep their own auth.</p></article>
+            <article><b>Completion</b><p>Phase-specific evidence, structured verifier output, and explicit failure state.</p></article>
+          </div>
+        </details>
+      </section>
+
+      <section id="example" class="comparison shell" aria-labelledby="comparison-title">
+        <div class="section-heading">
+          <div>
+            <p class="kicker">SAME CAPABLE AGENT · DIFFERENT CONTROL SURFACE</p>
+            <h2 id="comparison-title">What the person gains</h2>
+          </div>
+          <p class="comparison-note">Illustrative interface examples—not benchmark results.</p>
+        </div>
+
+        <div class="scenario-tabs" role="tablist" aria-label="Example domains">
+          <button class="active" role="tab" aria-selected="true" data-scenario="design">Design review</button>
+          <button role="tab" aria-selected="false" data-scenario="ops">Operations</button>
+          <button role="tab" aria-selected="false" data-scenario="research">Research</button>
+        </div>
+
+        <div class="compare-grid">
+          <article class="output-card ordinary">
+            <header><span>Regular Codex</span><b>One adaptive request</b></header>
+            <p class="prompt-label">PROMPT</p>
+            <p class="prompt" data-example="prompt"></p>
+            <div class="run-line"><span></span><span></span><span></span><span></span><span></span></div>
+            <p class="output-label">RESULT</p>
+            <p class="result-copy" data-example="regular"></p>
+            <footer>Good for delegated work. The agent chooses when its work is complete.</footer>
+          </article>
+
+          <article class="output-card woven">
+            <header><span>Weave + Codex</span><b>User-defined contract</b></header>
+            <p class="prompt-label">CONTRACT</p>
+            <div class="mini-phases" data-example="phases"></div>
+            <p class="output-label">CONTROL RECEIPT</p>
+            <div class="receipt">
+              <p><span>Human decision</span><b data-example="decision"></b></p>
+              <p><span>Verifier</span><b data-example="verifier"></b></p>
+              <p><span>Scope</span><b data-example="scope"></b></p>
+            </div>
+            <footer>Same native Codex loop. The person owns the milestones and stop conditions.</footer>
+          </article>
+        </div>
+      </section>
+
+      <section class="implementation shell" aria-labelledby="implementation-title">
+        <div class="section-heading compact">
+          <div><p class="kicker">IMPLEMENTATION SEAMS</p><h2 id="implementation-title">What the current build can ground in public interfaces</h2></div>
+        </div>
+        <div class="seam-list">
+          <article><span>01</span><div><h3>Compile a phase to a turn</h3><p>A Work or Verify phase becomes a <code>turn/start</code> request. The thread remains native Codex state.</p></div><span class="badge derived">Source-derived</span></article>
+          <article><span>02</span><div><h3>Project events, do not invent a trace</h3><p><code>item/started</code>, deltas, approvals, and <code>turn/completed</code> are reduced into a readable phase view.</p></div><span class="badge documented">Documented</span></article>
+          <article><span>03</span><div><h3>Keep consequential consent explicit</h3><p>A Weave checkpoint pauses between turns; native tool approvals continue to protect actions inside a turn.</p></div><span class="badge proposal">Weave proposal</span></article>
+          <article><span>04</span><div><h3>Reuse contracts, not stale hidden state</h3><p>Save the phase structure and pass criteria as a versioned workflow. Adapt its goals visibly for the next task.</p></div><span class="badge proposal">Weave proposal</span></article>
+        </div>
+      </section>
+
+      <section id="sources" class="sources shell" aria-labelledby="sources-title">
+        <div class="section-heading compact">
+          <div><p class="kicker">SOURCE LEDGER</p><h2 id="sources-title">What is fact, inference, and product design</h2></div>
+        </div>
+        <div class="source-table" role="table" aria-label="Source ledger">
+          <div class="source-row head" role="row"><span role="columnheader">Claim</span><span role="columnheader">Status</span><span role="columnheader">Primary source</span></div>
+          <div class="source-row" role="row"><span role="cell">Codex is an open harness that manages context, tools, boundaries, approvals, and continuity.</span><span role="cell"><span class="badge documented">Documented</span></span><span role="cell"><a href="https://developers.openai.com/blog/codex-as-a-platform" target="_blank" rel="noreferrer">Codex as a platform ↗</a></span></div>
+          <div class="source-row" role="row"><span role="cell">app-server exposes threads, turns, items, streaming events, steering, and approval handling.</span><span role="cell"><span class="badge documented">Documented</span></span><span role="cell"><a href="https://learn.chatgpt.com/docs/app-server" target="_blank" rel="noreferrer">Codex App Server ↗</a></span></div>
+          <div class="source-row" role="row"><span role="cell">Turn settings include cwd, model, sandbox or permission profile, approval policy, and output schema.</span><span role="cell"><span class="badge derived">Source-derived</span></span><span role="cell"><a href="https://github.com/openai/codex/blob/9ded177ce7c1c0bd2047f902936c177612ab3434/codex-rs/app-server-protocol/src/protocol/v2.rs" target="_blank" rel="noreferrer">Pinned Codex source ↗</a></span></div>
+          <div class="source-row" role="row"><span role="cell">Tasks started outside voice mode can use voice dictation; Weave applies dictation to goal entry.</span><span role="cell"><span class="badge documented">Documented</span></span><span role="cell"><a href="https://learn.chatgpt.com/docs/features/voice#start-talking" target="_blank" rel="noreferrer">Codex voice guide ↗</a></span></div>
+          <div class="source-row" role="row"><span role="cell">Goal contracts, between-turn checkpoints, phase receipts, and workflow reuse are Weave’s layer.</span><span role="cell"><span class="badge proposal">Weave proposal</span></span><span role="cell"><a href="/#architecture">Local product architecture →</a></span></div>
+        </div>
+        <p class="source-note">
+          “Proposal” marks the Weave product boundary; it is not presented as an OpenAI capability.
+          The repository imports OpenAI Codex source at pinned revision <code>9ded177</code> and builds the control plane alongside it.
+        </p>
+      </section>
+
+      <section class="final-cta shell">
+        <div><p class="kicker">START WITH THE WORK</p><h2>Describe the outcome. Choose a starting loop. Edit only what matters.</h2></div>
+        <a href="/#design">Open the workflow builder <span aria-hidden="true">→</span></a>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>Weave for Codex · platform guide</span>
+      <div><a href="/#run">Product</a><a href="/#setup">Setup</a><a href="https://github.com/openai/codex" target="_blank" rel="noreferrer">Codex source ↗</a></div>
+    </footer>
+    <script src="/platform.js"></script>
+  </body>
+</html>

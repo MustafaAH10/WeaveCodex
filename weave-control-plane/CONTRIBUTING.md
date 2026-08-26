@@ -15,9 +15,12 @@ uv run ruff check .
 uv run ruff format --check .
 uv run pytest
 node --check weave_codex/static/app.js
+node --check weave_codex/static/home.js
 node --check weave_codex/static/compare.js
 node --check weave_codex/static/deep-dive.js
+node --check weave_codex/static/platform.js
 uv run python scripts/check_public_release.py
+git diff --check
 ```
 
 Run the server only on loopback during development:

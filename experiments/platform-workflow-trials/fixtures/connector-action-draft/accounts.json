@@ -1,0 +1,6 @@
+[
+  {"accountId": "ACC-1", "tier": "priority", "contactable": true},
+  {"accountId": "ACC-2", "tier": "standard", "contactable": true},
+  {"accountId": "ACC-3", "tier": "priority", "contactable": true},
+  {"accountId": "ACC-4", "tier": "standard", "contactable": true}
+]

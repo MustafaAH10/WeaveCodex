@@ -1,0 +1,94 @@
+{
+  "trialId": "incident-support-brief",
+  "domain": "support-research-simulation",
+  "title": "Ground a customer update in incident evidence",
+  "arm": "weave",
+  "runStatus": "completed",
+  "artifactPassed": true,
+  "grade": {
+    "checks": {
+      "outputsExist": true,
+      "incidentFacts": true,
+      "nextUpdate": true,
+      "citations": true,
+      "uncertainty": true,
+      "noRecoveryPromise": true
+    },
+    "inputIntegrity": {
+      "passed": true,
+      "before": {
+        "incident_log.json": "sha256:f7d6f9f9ec9b2a4f156fa1d3d800e92aa089c7e46a85fd3d2d687d8dd8b906e9",
+        "runbook.md": "sha256:5cbc6db8b5270d23d78f733292c8de0b75552bae2ac1cee2beca015d5e59e8ef",
+        "status_history.md": "sha256:4c00c80b3ab52937173da07121884fa851b8dcb7f89b18f72733b8fcf3fd50e1"
+      },
+      "after": {
+        "incident_log.json": "sha256:f7d6f9f9ec9b2a4f156fa1d3d800e92aa089c7e46a85fd3d2d687d8dd8b906e9",
+        "runbook.md": "sha256:5cbc6db8b5270d23d78f733292c8de0b75552bae2ac1cee2beca015d5e59e8ef",
+        "status_history.md": "sha256:4c00c80b3ab52937173da07121884fa851b8dcb7f89b18f72733b8fcf3fd50e1"
+      }
+    },
+    "passed": true,
+    "artifacts": {
+      "support_brief.json": "sha256:2767cf06a872b73a82ce8e5e31801b1df05f48f496358aa7905e223387ef31f8",
+      "customer_update.md": "sha256:a4bb20356378b17b04e26e5705cf6e03552d37200ca758c40b40369741dafe42"
+    }
+  },
+  "manifestHash": "sha256:2de33de3c0cc2693d02026e6de3204fca91357622b97aa6c2452540c4a9fd340",
+  "receiptId": "sha256:06b2ac77954c45f003df584c75463d91c6499c6c05b74742c5cf918c754e25f3",
+  "completionStatus": "completed",
+  "checkpointDecisions": [
+    {
+      "method": "harness/checkpoint",
+      "decision": "accept",
+      "gate": {
+        "passed": true,
+        "checks": {
+          "requiredKeys": true,
+          "unknownRootCause": true,
+          "cadenceAndCitations": true
+        },
+        "artifactSha256": "sha256:51aebcf90075ecddd0310cbddeec3915f01a7f73c4a3d38ea197c7ade7d5d2b2"
+      }
+    }
+  ],
+  "phaseExecutions": [
+    {
+      "phaseId": "map-evidence",
+      "kind": "work",
+      "turnIds": [
+        "01a03c05-bb76-7902-ba45-bf621b29ad0b"
+      ]
+    },
+    {
+      "phaseId": "review-evidence",
+      "kind": "checkpoint",
+      "turnIds": [],
+      "decision": "accept"
+    },
+    {
+      "phaseId": "draft-update",
+      "kind": "work",
+      "turnIds": [
+        "01a03c06-5eeb-7451-b191-8161173247e2"
+      ]
+    },
+    {
+      "phaseId": "verify",
+      "kind": "verify",
+      "turnIds": [
+        "01a03c06-e0bb-7660-94e8-4e1949158959"
+      ]
+    }
+  ],
+  "finalResponseExcerpt": "Verified and repaired. Both artifacts now include INC-42, the 09:10Z start, 09:30Z update, `ap-southeast-1`, investigating status, 10:00Z next update, and all required source anchors. Root cause remains unknown; no recovery ETA or unsupported recovery claim appears.",
+  "elapsedSeconds": 102.268,
+  "childProcess": {
+    "exitCode": 0,
+    "elapsedSeconds": 102.253,
+    "stdoutSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderrSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "rawReceipt": "/workspace/trial-results/raw/incident-support-brief-weave.json",
+  "workspace": "/workspace/trial-results/workspaces/incident-support-brief/weave",
+  "observedControllerTurns": 3
+}

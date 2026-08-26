@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "classification": "invalid-environment-attempt",
+  "planId": "sha256:c4b3c1d3ee060472f0e72a623f52c903e24e4935f7e80b16c46700f4cbdf6457",
+  "runnerSummaryId": "sha256:5b4abb1f92b61a486289c9aca95a899ad3beb4c716d69a89a8408aa47415bde7",
+  "environment": "unprivileged Docker container",
+  "failure": "Codex's bundled bwrap could not create the user namespace required by the workspace sandbox.",
+  "scope": {
+    "armsAttempted": 8,
+    "validSamples": 0,
+    "artifactsAccepted": 0,
+    "inputIntegrityChecksPassed": 8,
+    "weaveCheckpointsDeclined": 4,
+    "connectorMutations": 0
+  },
+  "interpretation": "This is an infrastructure incident, not a Codex-versus-Weave result. Ordinary Codex abstained when it could not inspect evidence. Each Weave run failed its planning-artifact gate and stopped before later phases.",
+  "promptExposure": "All four task prompts reached the same model and account. The v2 recovery is therefore acceptance evidence on exposed tasks, never unseen-task or benchmark evidence.",
+  "rawEvidence": "Retained locally under reports/platform-workflow-trials and excluded from the public experiment bundle because it contains verbose model/runtime events."
+}

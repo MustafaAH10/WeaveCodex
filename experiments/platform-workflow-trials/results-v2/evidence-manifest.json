@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "basePlanId": "sha256:c4b3c1d3ee060472f0e72a623f52c903e24e4935f7e80b16c46700f4cbdf6457",
+  "recoveryPlanId": "sha256:cb61b2f65745b67801c54e38c623a1dbb06004c0bde606469ebb9e037f5d643e",
+  "invalidRunnerSummaryId": "sha256:5b4abb1f92b61a486289c9aca95a899ad3beb4c716d69a89a8408aa47415bde7",
+  "runnerSummaryId": "sha256:208afd2e1567b0761b776efb2dc60d26668df9b496c1dc9e8937a2560fa75864",
+  "curatedSummaryId": "sha256:cc40b93b4aa1bddb8f2c65b27ef6aa197eb1bd0ea13696155081b10741ace512",
+  "outcomeId": "sha256:f4a24827a56dcb3a610d68ee4274051c21a293ce040b0b0b0eb9c7d14596dcef",
+  "environmentReceiptId": "sha256:1e116a67723ca934fb11c8b75c94aa62cf2371c5b63316d8a4665a8d8f6801b3",
+  "files": [
+    {
+      "path": "curated-summary.json",
+      "sha256": "sha256:0f063a6b89d8769706f617e105803ad64e5dddf552cfeab928abdeea72f03172"
+    },
+    {
+      "path": "runner-summary.json",
+      "sha256": "sha256:e82be26ce80650d2187e7efee6072ae5cb57d049b0b0b76cde4b0527a00e7d50"
+    },
+    {
+      "path": "outcome.json",
+      "sha256": "sha256:81e3787a5ef4200d6bf173a72f7a405303c2820e1f25fbb0efd003890240d224"
+    },
+    {
+      "path": "environment-preflight.json",
+      "sha256": "sha256:326aa239a8fd14427a44c587dd0f31a7a490621095420dfacaa3dab6e70fb970"
+    },
+    {
+      "path": "RESULTS.md",
+      "sha256": "sha256:6fb122577f36041ad677ad421d8d54b81f45e8a283a08a7caddb45022866dd6e"
+    }
+  ],
+  "trees": {
+    "artifacts": "sha256:7d502d928ae9ed73086d4713313695ad8867014feaee545ec9c6f0b21fbb8025",
+    "receipts": "sha256:a23bbd06beab3938dd102f1e91c540494574861a5cf1c6b741e3dbbaaa6e5529"
+  },
+  "grader": {
+    "path": "../../../weave-control-plane/scripts/run_platform_workflow_trials.py",
+    "sha256": "sha256:72ce882c6f247afa253b58cad5a2850ad2d2bb04266804f76cf5d100f25be5e3"
+  },
+  "tests": {
+    "path": "../../../weave-control-plane/tests/test_platform_workflow_trials.py",
+    "sha256": "sha256:8c0e7be0c4e05f2fdaa978e8d7e7711c671b2fc9b1b11e784c6b29b48f2f6f46",
+    "result": "10 passed; Ruff clean"
+  },
+  "invalidIncident": {
+    "path": "../results-v1-invalid/incident.json",
+    "sha256": "sha256:d83516d89e3fa8ec9ae4488122f13f7839d33b176942df842f7125b86782396f"
+  },
+  "sanitization": "Only public grades, output excerpts, checkpoint decisions, requested artifacts, and hashes were copied. Raw model events, auth material, sandbox traces, and nested Git repositories remain outside this bundle."
+}

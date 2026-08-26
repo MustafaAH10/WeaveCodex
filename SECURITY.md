@@ -1,16 +1,30 @@
 # Security Policy
 
-Thank you for helping us keep Codex secure!
+This repository is an independent downstream of OpenAI Codex. Its Weave control
+plane is not an OpenAI product.
 
-## Reporting Security Issues
+## Reporting WeaveCodex issues
 
-The security is essential to OpenAI's mission. We appreciate the work of security researchers acting in good faith to identify and responsibly report potential vulnerabilities, helping us maintain strong privacy and security standards for our users and technology.
+Use this repository's GitHub **private security advisory** flow for suspected
+vulnerabilities in `weave-control-plane/`, its local web interface, trial
+infrastructure, or downstream packaging. Do not put credentials, private Codex
+threads, raw receipts, or rollout traces in a public issue.
 
-Our security program is managed through Bugcrowd, and we ask that any validated vulnerabilities be reported via the [Bugcrowd program](https://bugcrowd.com/engagements/openai).
+WeaveCodex is currently a local, single-user application. Keep its server bound
+to `127.0.0.1`; the execution API is not designed for public internet exposure.
+Authentication and credential storage remain owned by the official Codex
+app-server. WeaveCodex must not read, copy, display, or persist Codex login
+tokens.
 
-## Vulnerability Disclosure Program
+See [`weave-control-plane/SECURITY.md`](weave-control-plane/SECURITY.md) for the
+control plane's deployment and credential boundary.
 
-Our Vulnerability Program Guidelines are defined on our [Bugcrowd program page](https://bugcrowd.com/engagements/openai).
+## Reporting upstream Codex issues
+
+If the issue is reproducible in unmodified OpenAI Codex rather than the Weave
+layer, follow OpenAI's security program and report it through the
+[OpenAI Bugcrowd program](https://bugcrowd.com/engagements/openai). OpenAI's
+Vulnerability Disclosure Program terms apply to that upstream report.
 
 ## How to operate CODEX safely
 

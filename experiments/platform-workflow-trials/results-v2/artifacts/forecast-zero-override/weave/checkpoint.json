@@ -1,0 +1,12 @@
+{
+  "rootCause": "forecast_rows selects growth with row.get(\"growth_override\") or baseline_growth. Because Python treats numeric 0 and an empty string as falsy, both values currently fall back to the baseline; this contradicts test_explicit_zero_override_is_preserved, while test_blank_override_uses_baseline confirms that only a blank override should do so.",
+  "intendedChange": "Keep the public forecast_rows(rows, baseline_growth) API. Read growth_override explicitly, use baseline_growth only when the override is blank (the fixture supplies \"\"), otherwise convert the override with float and use it. Let conversion failures raise ValueError augmented with the row's row_id so test_invalid_override_names_the_row can identify \"west\".",
+  "testsToRun": [
+    "python -m unittest test_forecast"
+  ],
+  "risks": [
+    "Missing growth_override is currently treated like a blank override by row.get(... ) or baseline_growth; the requested fixture only specifies blank text, so the repair should preserve that practical fallback if possible.",
+    "The error path must retain the original conversion failure as context while reliably including row_id in the ValueError message.",
+    "Revenue and baseline_growth are also converted with float in the existing implementation; changing those conversions would expand the requested scope."
+  ]
+}

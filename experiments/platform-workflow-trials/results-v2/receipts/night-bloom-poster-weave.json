@@ -1,0 +1,92 @@
+{
+  "trialId": "night-bloom-poster",
+  "domain": "design",
+  "title": "Create an accessible event poster",
+  "arm": "weave",
+  "runStatus": "completed",
+  "artifactPassed": true,
+  "grade": {
+    "checks": {
+      "outputsExist": true,
+      "canvas": true,
+      "facts": true,
+      "palette": true,
+      "metadata": true,
+      "vectorComposition": true,
+      "selfContained": true,
+      "notes": true
+    },
+    "inputIntegrity": {
+      "passed": true,
+      "before": {
+        "brief.md": "sha256:cd8ea0993831ecaf2e3cb357051a92c90c4f3c2bc0276f5837cbaf3bc315a251"
+      },
+      "after": {
+        "brief.md": "sha256:cd8ea0993831ecaf2e3cb357051a92c90c4f3c2bc0276f5837cbaf3bc315a251"
+      }
+    },
+    "passed": true,
+    "artifacts": {
+      "poster.svg": "sha256:8e7f3ea7fc0b459a69585ccfd392cae53870109010421309a000d490494b53d5",
+      "design-notes.md": "sha256:9cd2f1c052c2472829c2a20550b48049636a61a97f282ec7ce9b12103dbc62e5"
+    }
+  },
+  "manifestHash": "sha256:4260994735f0241ec8c1e04e6bd81ba7ba164f8385199c3c67f2b44639f045af",
+  "receiptId": "sha256:b31df51d0a5e6158514f886bba71e8ac0d77cbf2aace8b003df535ec1d1f4ecb",
+  "completionStatus": "completed",
+  "checkpointDecisions": [
+    {
+      "method": "harness/checkpoint",
+      "decision": "accept",
+      "gate": {
+        "passed": true,
+        "checks": {
+          "requiredKeys": true,
+          "allFacts": true,
+          "palette": true
+        },
+        "artifactSha256": "sha256:19d375a151be03b0e5351025322693524538d0533ff789655dfcfbcf192f6a03"
+      }
+    }
+  ],
+  "phaseExecutions": [
+    {
+      "phaseId": "art-direction",
+      "kind": "work",
+      "turnIds": [
+        "01a03c00-4846-7cc3-b389-83268b3f87d5"
+      ]
+    },
+    {
+      "phaseId": "review-direction",
+      "kind": "checkpoint",
+      "turnIds": [],
+      "decision": "accept"
+    },
+    {
+      "phaseId": "compose-poster",
+      "kind": "work",
+      "turnIds": [
+        "01a03c00-eaa9-74a3-8a6e-397d7433b91a"
+      ]
+    },
+    {
+      "phaseId": "verify",
+      "kind": "verify",
+      "turnIds": [
+        "01a03c02-7d67-76a0-9f36-032537000531"
+      ]
+    }
+  ],
+  "finalResponseExcerpt": "Verified: poster.svg contains the required 1200\u00d71600 viewBox, event facts, four palette colors, title/description metadata, and multiple inline vector shapes; it has no external-asset markers. design-notes.md explicitly covers hierarchy and accessibility.",
+  "elapsedSeconds": 179.041,
+  "childProcess": {
+    "exitCode": 0,
+    "elapsedSeconds": 179.021,
+    "stdoutSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderrSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "rawReceipt": "/workspace/trial-results/raw/night-bloom-poster-weave.json",
+  "workspace": "/workspace/trial-results/workspaces/night-bloom-poster/weave",
+  "observedControllerTurns": 3
+}

@@ -8,7 +8,12 @@ from typing import Any
 
 import pytest
 
-from weave_codex.server import ControlPlane, ControlServer, list_workspace_paths
+from weave_codex.server import (
+    ControlPlane,
+    ControlServer,
+    list_workspace_paths,
+    resolve_codex_binary,
+)
 
 
 class FakeAuth:
@@ -130,6 +135,12 @@ def test_local_session_token_guards_side_effects_and_auth_flow(tmp_path: Path) -
         assert integrations["mcpServers"][0]["tools"] == ["open"]
         assert integrations["privacy"]["secretsIncluded"] is False
 
+        status, platform_trials = _request(port, "GET", "/api/platform-trials")
+        assert status == 200
+        assert platform_trials["totals"]["arms"] == 8
+        assert platform_trials["totals"]["artifactsAccepted"] == 8
+        assert len(platform_trials["results"]) == 4
+
         (workspace / "src").mkdir()
         (workspace / "src" / "main.py").write_text("SECRET_FILE_CONTENT", encoding="utf-8")
         status, paths = _request(
@@ -235,6 +246,20 @@ def test_workspace_listing_rejects_invalid_roots_and_caps_results(tmp_path: Path
     assert value["truncated"] is True
 
 
+def test_codex_binary_resolution_uses_path_and_fails_clearly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    executable = tmp_path / "codex"
+    executable.write_text("#!/bin/sh\n", encoding="utf-8")
+    executable.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path))
+
+    assert resolve_codex_binary("codex") == str(executable.resolve())
+    assert resolve_codex_binary(str(executable)) == str(executable.resolve())
+    with pytest.raises(ValueError, match="not available on PATH"):
+        resolve_codex_binary("missing-codex")
+
+
 def test_non_json_and_hostile_host_are_rejected(tmp_path: Path) -> None:
     app = ControlPlane("codex", tmp_path)
     native = app.auth
@@ -264,7 +289,40 @@ def test_non_json_and_hostile_host_are_rejected(tmp_path: Path) -> None:
         connection.endheaders()
         response = connection.getresponse()
         assert response.status == 403
+        assert response.getheader("X-Frame-Options") == "DENY"
+        assert response.getheader("X-Content-Type-Options") == "nosniff"
+        assert response.getheader("Referrer-Policy") == "no-referrer"
+        assert "frame-ancestors 'none'" in response.getheader("Content-Security-Policy", "")
         connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join(timeout=2)
+
+
+def test_static_api_and_error_responses_deny_framing(tmp_path: Path) -> None:
+    app = ControlPlane("codex", tmp_path)
+    native = app.auth
+    fake = FakeAuth()
+    app.auth = fake  # type: ignore[assignment]
+    native.close()
+    server = ControlServer(("127.0.0.1", 0), app)
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    port = server.server_address[1]
+    try:
+        for path in ("/", "/api/session", "/missing-page"):
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            connection.request("GET", path)
+            response = connection.getresponse()
+            response.read()
+            assert response.getheader("X-Frame-Options") == "DENY"
+            assert response.getheader("X-Content-Type-Options") == "nosniff"
+            assert response.getheader("Referrer-Policy") == "no-referrer"
+            csp = response.getheader("Content-Security-Policy", "")
+            assert "default-src 'self'" in csp
+            assert "frame-ancestors 'none'" in csp
+            connection.close()
     finally:
         server.shutdown()
         server.server_close()

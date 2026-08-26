@@ -1,10 +1,14 @@
 # Weave Codex control plane
 
-Weave Codex is an additive local UI for observing existing Codex threads and designing how
-app-server executes a task. It does not replace Codex's agent loop, tools, sandbox,
-authentication, or approval protocol. A typed manifest compiles a small number of human-owned
-phases to concrete app-server operations. Each Codex Work phase may contain many model and tool
-iterations.
+Weave Codex is a local control plane for people who want Codex to follow an explicit working
+agreement. Describe a goal by typing or browser-native dictation, choose where Codex should pause,
+and decide what evidence must pass before the work is complete. The resulting contract can be
+reviewed, saved, and reused for another task.
+
+Weave does not replace Codex's agent loop, tools, sandbox, authentication, or approval protocol.
+A typed manifest compiles a few human-owned phases to concrete app-server operations. Each Codex
+Work phase may contain many model and tool iterations; users define complete goals and handoffs,
+not individual shell commands.
 
 ```mermaid
 flowchart LR
@@ -31,10 +35,10 @@ flowchart LR
 | Task and context | `task` | Defines the overall goal; paths are explicit hints, not pre-read claims. |
 | Memory | `memory.mode` | `off` disables memory read/generation; `all` enables the native Codex memory store and marks the thread eligible; `selected` disables native memory and injects bounded excerpts from exact thread IDs. |
 | Work phase | `phaseProgram.phases[].kind=work` | Starts one controller turn. Codex owns all reasoning, tools, compaction, and adaptation inside it. |
-| Human checkpoint | `phaseProgram.phases[].kind=checkpoint` | Pauses between turns for a continue-or-stop decision without calling a model. |
+| Human checkpoint | `phaseProgram.phases[].kind=checkpoint` | Pauses without a model call; the user can continue, redirect the next phase with bounded text feedback, or stop. |
 | Verification | `phaseProgram.phases[].kind=verify` | Runs a JSON-schema-constrained later turn and at most two declared repair turns. |
 | Safety | `agent.sandbox`, `approvalGate` | Applies run-wide; native action-approval requests can pause inside any Work phase. |
-| Integrations | `integrations.requested[]` | Requests a Skill, MCP server, or connected App in all Work phases or exact named phases; the receipt reports the request separately from observable use. |
+| Integrations | `integrations.requested[]` | Requests a Skill, MCP server, or connected App; the manifest API supports all Work phases or exact named phases, while the current simplified UI requests across all Work phases. The receipt reports a request separately from observable use. |
 | Observability | `observability.traceRoot` | Enables Codex's local rollout-trace bundle and records a separate manifest-linked receipt. |
 
 `maximumTurns` bounds control-plane turns. It does not pretend to cap internal Codex tool calls;
@@ -58,24 +62,33 @@ When launched from `weave-control-plane/`, the parent repository is selected as 
 workspace. Use `--workspace-root /absolute/path/to/project` to choose another default; the Design
 page can change it before a run.
 
-Open `http://127.0.0.1:8790`. The product is organized as a short, explicit journey:
+Open `http://127.0.0.1:8790`. The default journey is deliberately short:
 
-1. **Why Weave** explains the boundary: people author goal-level phases and handoffs, while Codex
-   keeps control of the adaptive model-and-tool loop inside each Work phase.
-2. **Examples** compares ordinary Codex with a reviewable Weave program for a frontend task and a
-   diagnosis-first program for a bug repair. These are architectural comparisons, not benchmark
-   claims.
-3. **Design** lets you edit Work, Human Checkpoint, and Verify + Repair phases, then inspect the
-   exact app-server operations before execution.
-4. **Runs** starts with a deterministic task-to-output map. Saved Weave receipts show exact authored
+1. **Describe the outcome** by speaking or typing. Voice entry uses the browser's dictation
+   capability, so availability and audio handling depend on the browser; text remains the fallback.
+2. **Choose a control style:** show me the plan, do it then prove it, or explore then challenge.
+3. **Review the contract** as plain-language Codex goals, human decisions, and evidence checks.
+4. **Run or fine-tune it.** Advanced phase wording, repair bounds, integrations, sandbox, and
+   approvals remain available without dominating first-run setup. Exact selected-memory controls
+   remain a runtime/API capability rather than part of this simplified first-run screen.
+5. **Save the process** without the original task or repository, then reuse or visibly adapt it for
+   another task.
+6. **Inspect runs** starting from authored goals. Saved Weave receipts show exact authored
    phases; existing Codex threads show explicitly derived activity groups. Result, activity, raw
    notifications, and receipt JSON are progressive-disclosure tabs rather than one long trace wall.
-5. **Integrations** reads a secret-free inventory of workspace Skills, configured MCP servers, and
-   connected Apps from the local Codex app-server. Any of the three can be requested in all Work
-   phases or one named phase. AGENTS.md remains inherited, credentials and policy remain
+7. **Connect capabilities** through a secret-free inventory of workspace Skills, configured MCP servers, and
+   connected Apps from the local Codex app-server. The simplified UI requests a capability across
+   all Work phases; the manifest/runtime API can bind it to exact named phases. AGENTS.md remains inherited, credentials and policy remain
    Codex-owned, and the receipt distinguishes a request from an observed MCP/dynamic tool item.
-6. **Setup** checks the native Codex account and starts the official ChatGPT browser flow when
+8. **Setup** checks the native Codex account and starts the official ChatGPT browser flow when
    sign-in is required.
+
+The Evidence view also renders the tracked four-domain container study directly from its sanitized
+outcome receipt. Across coding, design, local-connector operations, and support simulation, both
+the one-turn baseline and Weave produced accepted artifacts (8/8 arms). Weave reached four explicit
+planning gates. This is one rollout per arm and supports a control/observability claim only; it is
+not evidence that Weave improves Codex quality, cost, or call efficiency. Full methods and public
+artifacts are in [the trial report](../experiments/platform-workflow-trials/results-v2/RESULTS.md).
 
 Open `http://127.0.0.1:8790/compare.html` to place a Codex-only thread projection beside an exact
 Weave receipt. The comparison reports observable structure and human coordination; it does not
@@ -85,13 +98,14 @@ That comparison page also contains [three matched memory-off product trials](doc
 All six artifacts passed, while Weave used 46 model completions versus 15 for ordinary Codex. The
 result is presented as an observability/compute tradeoff, not an improvement claim.
 
-For a Codex-first explanation, open `http://127.0.0.1:8790/deep-dive.html`. The article initially
-describes Codex by itself. **Reveal Weave layer** then adds track-change annotations and transforms
-the architecture to show the exact additions.
+For a concise, source-grounded explanation, open `http://127.0.0.1:8790/platform.html`. Its central
+architecture toggle first explains Codex by itself, then reveals the exact Weave control-plane
+additions. The longer source audit remains at `http://127.0.0.1:8790/deep-dive.html`.
 
-Choose **Selected** memory and load saved workspace threads to inject only checked histories; the
-receipt lists the requested/resolved IDs and hashes each excerpt. In **All** mode, Codex decides
-which consolidated memories are relevant, so the receipt does not invent exact source-thread IDs.
+Through the manifest/runtime API, **Selected** memory can inject only explicitly named workspace
+threads; the receipt lists requested/resolved IDs and hashes each excerpt. In **All** mode, Codex
+decides which consolidated memories are relevant, so the receipt does not invent exact
+source-thread IDs. These exact memory controls are not exposed in the current novice interface.
 
 ## Authentication and subscription use
 

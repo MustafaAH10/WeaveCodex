@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600" viewBox="0 0 1200 1600" role="img" aria-labelledby="poster-title poster-desc">
+  <title id="poster-title">Night Bloom — 17 October at Riverside Makers Hall</title>
+  <desc id="poster-desc">An editorial event poster in deep ink blue with a pale moon circle, violet abstract flower forms, green leaves, and text announcing Night Bloom, 17 October, Riverside Makers Hall, and free entry.</desc>
+  <defs>
+    <clipPath id="canvas"><rect width="1200" height="1600" rx="0"/></clipPath>
+  </defs>
+  <g clip-path="url(#canvas)">
+    <rect width="1200" height="1600" fill="#101828"/>
+
+    <!-- moon and quiet orbital detail -->
+    <circle cx="888" cy="342" r="294" fill="#F8F5EC"/>
+    <circle cx="888" cy="342" r="244" fill="none" stroke="#101828" stroke-width="2" opacity=".18"/>
+    <path d="M622 356C725 259 868 209 1058 226" fill="none" stroke="#101828" stroke-width="2" opacity=".28"/>
+    <circle cx="1034" cy="225" r="9" fill="#8B5CF6"/>
+
+    <!-- abstract stem -->
+    <path d="M939 1608C874 1377 911 1177 816 1006C751 888 799 764 868 643" fill="none" stroke="#2E7D5B" stroke-width="24" stroke-linecap="round"/>
+    <path d="M942 1608C887 1379 928 1180 835 1002" fill="none" stroke="#F8F5EC" stroke-width="3" opacity=".75"/>
+
+    <!-- violet bloom: petal geometry -->
+    <g fill="#8B5CF6">
+      <path d="M858 650C762 571 739 438 825 358C907 442 934 560 858 650Z"/>
+      <path d="M860 650C936 550 1066 530 1146 611C1048 695 937 715 860 650Z"/>
+      <path d="M860 655C954 729 961 858 881 933C802 838 787 729 860 655Z"/>
+      <path d="M853 655C754 746 621 715 552 624C650 558 766 573 853 655Z"/>
+      <path d="M855 652C804 531 850 420 965 383C998 500 958 606 855 652Z" opacity=".78"/>
+    </g>
+    <circle cx="857" cy="653" r="45" fill="#101828"/>
+    <circle cx="857" cy="653" r="18" fill="#F8F5EC"/>
+
+    <!-- leaves -->
+    <path d="M829 987C703 979 617 903 606 782C743 785 828 862 829 987Z" fill="#2E7D5B"/>
+    <path d="M815 1004C698 945 645 853 656 736" fill="none" stroke="#F8F5EC" stroke-width="4" opacity=".8"/>
+    <path d="M871 1147C992 1107 1079 1019 1084 896C952 919 874 1017 871 1147Z" fill="#2E7D5B"/>
+    <path d="M884 1127C980 1056 1035 976 1051 905" fill="none" stroke="#F8F5EC" stroke-width="4" opacity=".8"/>
+    <path d="M904 1301C783 1278 706 1188 711 1065C838 1089 911 1175 904 1301Z" fill="#2E7D5B"/>
+    <path d="M887 1283C817 1205 776 1134 760 1082" fill="none" stroke="#F8F5EC" stroke-width="4" opacity=".8"/>
+
+    <!-- editorial frame and copy -->
+    <path d="M72 86H1128M72 1513H1128" stroke="#F8F5EC" stroke-width="3" opacity=".75"/>
+    <g fill="#F8F5EC" font-family="serif">
+      <text x="76" y="156" font-size="25" letter-spacing="7">RIVERSIDE MAKERS HALL</text>
+      <text x="76" y="298" font-size="192" letter-spacing="-10">Night</text>
+      <text x="76" y="465" font-size="192" letter-spacing="-10">Bloom</text>
+    </g>
+    <rect x="76" y="516" width="410" height="4" fill="#8B5CF6"/>
+    <g fill="#F8F5EC" font-family="sans-serif">
+      <text x="78" y="1096" font-size="61" font-weight="700" letter-spacing="2">17 OCTOBER</text>
+      <text x="81" y="1162" font-size="33" letter-spacing="2">RIVERSIDE MAKERS HALL</text>
+      <text x="81" y="1211" font-size="27" letter-spacing="2">FREE ENTRY</text>
+    </g>
+    <circle cx="79" cy="1282" r="8" fill="#8B5CF6"/>
+    <path d="M103 1282H388" stroke="#F8F5EC" stroke-width="2" opacity=".8"/>
+    <text x="78" y="1351" fill="#F8F5EC" font-family="sans-serif" font-size="20" letter-spacing="4">AN EVENING IN FULL FLOWER</text>
+  </g>
+</svg>

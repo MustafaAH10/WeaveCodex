@@ -34,7 +34,7 @@ class PhaseGateway(Protocol):
 class PhaseSession(Protocol):
     def event(self, value: dict[str, Any], *, phase: str = "runtime") -> None: ...
     def stage(self, phase: str, title: str, detail: str = "") -> None: ...
-    def request_checkpoint(self, phase_id: str, question: str) -> str: ...
+    def request_checkpoint(self, phase_id: str, question: str) -> dict[str, str]: ...
 
 
 @dataclass
@@ -56,6 +56,7 @@ def _work_prompt(
     goal: str,
     selected_excerpts: list[str],
     first_work_phase: bool,
+    human_feedback: str,
 ) -> str:
     context = "\n".join(f"- {path}" for path in manifest.task.context_paths) or "- none"
     if first_work_phase:
@@ -73,6 +74,7 @@ def _work_prompt(
             "in context; do not redo work without a concrete reason."
         )
     )
+    feedback = human_feedback or "No new human direction was supplied at the preceding checkpoint."
     return f"""Execute this human-authored Codex work phase.
 
 <overall_task>
@@ -90,8 +92,12 @@ def _work_prompt(
 <requested_integrations binding="instructional">
 {integration_prompt(manifest, phase_id)}
 </requested_integrations>
+<human_checkpoint_feedback>
+{feedback}
+</human_checkpoint_feedback>
 
 {continuity}
+When checkpoint feedback is present, treat it as the user's latest instruction for this phase.
 One phase is one controller turn, not one tool call. Use as many native Codex reasoning and tool
 steps as the goal legitimately requires. Report the phase outcome and the evidence actually used."""
 
@@ -117,22 +123,29 @@ def execute_phase_program(
         raise ValueError("phase program is required")
     result = PhaseRunResult()
     work_count = 0
+    pending_human_feedback = ""
     for phase in program.phases:
         if phase.kind == "checkpoint":
             session.stage(phase.id, phase.name, phase.question)
-            decision = session.request_checkpoint(phase.id, phase.question)
-            result.checkpoints.append({"phaseId": phase.id, "decision": decision})
+            resolution = session.request_checkpoint(phase.id, phase.question)
+            decision = resolution["decision"]
+            checkpoint = {"phaseId": phase.id, "decision": decision}
+            if feedback := resolution.get("feedback", ""):
+                checkpoint["feedback"] = feedback
+            result.checkpoints.append(checkpoint)
             result.executions.append(
                 {
                     "phaseId": phase.id,
                     "kind": phase.kind,
                     "turnIds": [],
                     "decision": decision,
+                    **({"feedback": feedback} if feedback else {}),
                 }
             )
             if decision not in {"accept", "acceptForSession"}:
                 result.completion_status = "stoppedAtCheckpoint"
                 break
+            pending_human_feedback = feedback
             continue
 
         phase_turn_ids: list[str] = []
@@ -157,12 +170,14 @@ def execute_phase_program(
                     goal=phase.goal,
                     selected_excerpts=selected_excerpts,
                     first_work_phase=work_count == 1,
+                    human_feedback=pending_human_feedback,
                 ),
                 effort=effort,
                 output_schema=None,
                 event_sink=lambda event, phase_id=phase.id: session.event(event, phase=phase_id),
             )
             _record_turn(result, turn)
+            pending_human_feedback = ""
             phase_turn_ids.append(turn.turn_id)
             result.answer = turn.final_response
             session.stage(phase.id, f"{phase.name} finished", f"Turn {turn.turn_id}")
@@ -175,9 +190,15 @@ def execute_phase_program(
                     f"{phase.name}: {action} started",
                     phase.criteria,
                 )
+                feedback_context = (
+                    f"\n\nLatest human checkpoint feedback:\n{pending_human_feedback}"
+                    if pending_human_feedback
+                    else ""
+                )
                 prompt = (
                     "Verify the current result against the overall task and criterion below.\n\n"
                     f"Criterion:\n{phase.criteria}\n\nCurrent result:\n{result.answer}\n\n"
+                    f"{feedback_context}\n\n"
                     "Return status=pass if ready. Otherwise repair the result in answer and list "
                     "the issues. Use native tools when evidence must be checked."
                 )
@@ -191,6 +212,7 @@ def execute_phase_program(
                     ),
                 )
                 _record_turn(result, turn)
+                pending_human_feedback = ""
                 phase_turn_ids.append(turn.turn_id)
                 parsed = json.loads(turn.final_response)
                 result.verification.append(

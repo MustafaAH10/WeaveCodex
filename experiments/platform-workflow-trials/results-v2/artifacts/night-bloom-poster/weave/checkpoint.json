@@ -1,0 +1,35 @@
+{
+  "hierarchy": {
+    "primary": "Night Bloom is the dominant element: a large, quiet editorial wordmark with generous breathing room, positioned in the upper half of the 1200 × 1600 composition.",
+    "secondary": "17 October follows directly beneath the title in a clearly smaller but still highly legible line, making the date the immediate next read.",
+    "tertiary": "Riverside Makers Hall is grouped with the admission line in the lower portion of the poster; the venue precedes Free entry so the required venue remains ahead of supporting information.",
+    "composition": "An asymmetrical botanical field frames rather than competes with the text. Broad empty areas, a restrained typographic scale ladder, and high-contrast text establish a calm editorial reading path from event name to date to venue."
+  },
+  "palette": {
+    "ink": "#101828 — primary background and dark typographic anchor.",
+    "moon": "#F8F5EC — main text colour and pale botanical highlight, selected for strong contrast on ink.",
+    "orchid": "#8B5CF6 — measured accent for a nocturnal bloom and small editorial details.",
+    "leaf": "#2E7D5B — low-key botanical structure and leaf forms."
+  },
+  "motif": {
+    "concept": "An original abstract nocturnal botanical arrangement: overlapping stem arcs, simplified leaves, and a single open geometric bloom rising from the lower edge toward the title.",
+    "treatment": "Use SVG-native paths, circles, and translucent layers only. Keep the motif flat and graphic, with orchid bloom petals, leaf stems and foliage, and moon highlights against an ink field. The botanical forms remain partially cropped at the edges to feel cultivated and editorial rather than illustrative.",
+    "typographic_relationship": "The botanical movement guides the eye upward without crossing key text or reducing legibility."
+  },
+  "accessibility": {
+    "metadata": "The finished SVG must include a descriptive <title> and <desc> that identify the Night Bloom event, its date, venue, free admission, colour palette, and abstract botanical composition.",
+    "legibility": "Use native SVG text with no external font dependency, maintain generous sizes and spacing, and set the primary event information in moon on ink for dependable contrast.",
+    "non_text": "Decorative botanical shapes are supplemental; the required event facts must remain available as real text and in the SVG description."
+  },
+  "facts": {
+    "Canvas": "1200 × 1600, delivered as an original SVG.",
+    "Event name": "Night Bloom",
+    "Date": "17 October",
+    "Venue": "Riverside Makers Hall",
+    "Admission": "Free entry",
+    "Palette": "ink #101828, moon #F8F5EC, orchid #8B5CF6, leaf #2E7D5B.",
+    "Direction": "quiet editorial typography with an abstract botanical motif; the event name is the dominant element, followed by date and venue.",
+    "Accessibility": "include an SVG <title> and <desc>, maintain readable text sizes, and explain the hierarchy and accessibility decisions in design-notes.md.",
+    "Constraints": "no external images, fonts, scripts, or network assets."
+  }
+}

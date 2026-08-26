@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "actions": [
+    {
+      "orderId": "ORD-101",
+      "accountId": "ACC-1",
+      "action": "priority_outreach",
+      "requiresApproval": true,
+      "reason": "Delayed 5 days; account ACC-1 is priority.",
+      "sourceRefs": [
+        "ORD-101",
+        "ACC-1"
+      ]
+    },
+    {
+      "orderId": "ORD-102",
+      "accountId": "ACC-2",
+      "action": "draft_refund",
+      "requiresApproval": true,
+      "reason": "Refund requested 18 days after purchase.",
+      "sourceRefs": [
+        "ORD-102",
+        "ACC-2"
+      ]
+    }
+  ]
+}

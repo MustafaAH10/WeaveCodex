@@ -1,0 +1,97 @@
+{
+  "trialId": "forecast-zero-override",
+  "domain": "coding",
+  "title": "Repair an explicit-zero forecasting bug",
+  "arm": "weave",
+  "runStatus": "completed",
+  "artifactPassed": true,
+  "grade": {
+    "checks": {
+      "unittest": true,
+      "regressionRemoved": true
+    },
+    "verification": {
+      "command": [
+        "/opt/weave/bin/python",
+        "-m",
+        "unittest",
+        "-v"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.054,
+      "outputSha256": "sha256:2c62a12e03ca80fb2c5c88cc2cab69534a5fcd65c26cf76a97eae82e1d455f96",
+      "outputExcerpt": "test_blank_override_uses_baseline (test_forecast.ForecastRowsTests.test_blank_override_uses_baseline) ... ok test_explicit_zero_override_is_preserved (test_forecast.ForecastRowsTests.test_explicit_zero_override_is_preserved) ... ok test_invalid_override_names_the_row (test_forecast.ForecastRowsTests.test_invalid_override_names_the_row) ... ok ---------------------------------------------------------------------- Ran 3 tests in 0.000s OK"
+    },
+    "inputIntegrity": {
+      "passed": true,
+      "before": {
+        "test_forecast.py": "sha256:6e67a1462830a66f0ecf81f031ea935ff8af2160bd10f54c7b32a71f1d6bc3a8"
+      },
+      "after": {
+        "test_forecast.py": "sha256:6e67a1462830a66f0ecf81f031ea935ff8af2160bd10f54c7b32a71f1d6bc3a8"
+      }
+    },
+    "passed": true,
+    "artifacts": {
+      "forecast.py": "sha256:e39a4312537c668b1e29c1a1dae16ee42f7a0640d97f06ffd57c6943cc345b54"
+    }
+  },
+  "manifestHash": "sha256:b6ae2b9b6e6158ba93b15ea7dab0b9937a35afd2788f8eea451086b75e5cdde9",
+  "receiptId": "sha256:55b79e97d995b4d0e332f37b3a56710afa1ac7750807987cd086ffb23f70967b",
+  "completionStatus": "completed",
+  "checkpointDecisions": [
+    {
+      "method": "harness/checkpoint",
+      "decision": "accept",
+      "gate": {
+        "passed": true,
+        "checks": {
+          "requiredKeys": true,
+          "explicitZero": true,
+          "testCommand": true
+        },
+        "artifactSha256": "sha256:140af0b7f33c8dfd2716260df4c37937ff7726a7c45a74cab4136340284a1138"
+      }
+    }
+  ],
+  "phaseExecutions": [
+    {
+      "phaseId": "diagnose",
+      "kind": "work",
+      "turnIds": [
+        "01a03bfd-ea65-7090-9943-df757be907eb"
+      ]
+    },
+    {
+      "phaseId": "review-diagnosis",
+      "kind": "checkpoint",
+      "turnIds": [],
+      "decision": "accept"
+    },
+    {
+      "phaseId": "implement",
+      "kind": "work",
+      "turnIds": [
+        "01a03bfe-6765-74e3-a2b1-537e18fbc537"
+      ]
+    },
+    {
+      "phaseId": "verify",
+      "kind": "verify",
+      "turnIds": [
+        "01a03bfe-b02b-7242-bb47-fb157a032e85"
+      ]
+    }
+  ],
+  "finalResponseExcerpt": "Verified: all 3 supplied tests pass with the available interpreter (`python3 -m unittest -v`); `test_forecast.py` has no diff; `0` is explicit, blank/missing uses baseline, and invalid overrides raise a row-ID-specific ValueError. `git diff --check` passes.",
+  "elapsedSeconds": 66.472,
+  "childProcess": {
+    "exitCode": 0,
+    "elapsedSeconds": 66.41,
+    "stdoutSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderrSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "rawReceipt": "/workspace/trial-results/raw/forecast-zero-override-weave.json",
+  "workspace": "/workspace/trial-results/workspaces/forecast-zero-override/weave",
+  "observedControllerTurns": 3
+}

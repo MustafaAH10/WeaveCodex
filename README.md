@@ -7,14 +7,21 @@ Ordinary Codex lets you state a goal and lets its agent loop decide how to compl
 keeps that adaptive loop intact, then adds a layer around it that a person can inspect and edit:
 
 - goal-level Work phases, where one phase may contain many Codex model and tool iterations;
-- explicit human checkpoints between phases;
+- explicit human checkpoints that can continue, redirect the next phase with feedback, or stop;
 - structured verification with a declared repair bound;
 - run-wide memory, sandbox, and approval choices;
-- a manifest preview showing the exact app-server operations before execution; and
+- a deterministic compiled contract used by the runtime and exposed through the API; and
 - a receipt that links the authored program to the turns and activity Codex actually produced.
 
 It does **not** turn every tool call into a canvas block, expose private reasoning, or replace
 Codex's native tools, sandbox, approvals, authentication, compaction, or agent loop.
+
+The latest external-user acceptance study ran four memory-off task pairs—forecast repair, poster
+design, a local connector action draft, and an incident-support brief—inside one fresh container
+using official ChatGPT device authorization and no API key. The one-turn Codex baseline and the
+hand-authored Weave loop both produced contract-valid artifacts in all eight arms. Weave added four
+accepted pre-production gates; it did not show a model-quality or efficiency advantage. See the
+[methods, outputs, and receipts](experiments/platform-workflow-trials/results-v2/RESULTS.md).
 
 ## Run WeaveCodex locally
 
@@ -31,11 +38,12 @@ uv run python -m weave_codex.server \
   --port 8790
 ```
 
-Then open <http://127.0.0.1:8790/>. It is one application, with top-level tabs for Run, Design,
-saved Workflows, Runs, Integrations, Field trials, Architecture, and Setup. Start with a task and
+Then open <http://127.0.0.1:8790/>. It is one application, with top-level tabs for Start, Loop
+builder, Saved loops, Runs, and Connect; Architecture, Setup, and evidence views are under More. Start with a task and
 repository, choose direct Codex or a visible Weave program, then run within the selected safety
-boundary. The same site contains exact phase editing, memory selection, Codex integrations,
-manifest preview, saved parent/child workflow lineage, and detailed run receipts. A saved workflow
+boundary. The main journey contains phase editing, Codex integration selection, saved workflow
+lineage, and run receipts. Exact selected-memory and raw manifest controls remain runtime/API
+capabilities rather than controls exposed in the novice interface. A saved workflow
 can be loaded for another repository and its human-readable goals can be edited manually or sent
 to Codex for a read-only rewrite proposal. One Work phase can contain any number of native Codex
 model/tool iterations.
@@ -44,8 +52,8 @@ The interactive [Codex internals deep dive](http://127.0.0.1:8790/deep-dive.html
 alone and reveals Weave as an optional track-changes layer.
 The [sandbox repository trial dashboard](http://127.0.0.1:8790/sandbox-trials.html) shows three
 real, source-linked runs against pinned Click, Requests, and Express clones.
-The main app's [Field trials tab](http://127.0.0.1:8790/#field-trials) records the newer reuse
-study: one saved workflow family was adapted from Click to Typer, Requests to HTTPX, and Express
+The main app's [Field trials view](http://127.0.0.1:8790/#field-trials) under More records the newer reuse
+study and the four-domain platform study: one saved workflow family was adapted from Click to Typer, Requests to HTTPX, and Express
 to Fastify. All three accepted target runs executed sequentially inside one Runloop sandbox after
 the user completed the official ChatGPT device-login flow; no API key was injected. The page also
 retains two invalid setup attempts and keeps artifact acceptance separate from broad model-quality

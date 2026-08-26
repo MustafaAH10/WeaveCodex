@@ -1,0 +1,59 @@
+{
+  "sourceIds": {
+    "orders": [
+      "ORD-101",
+      "ORD-102",
+      "ORD-103",
+      "ORD-104"
+    ],
+    "accounts": [
+      "ACC-1",
+      "ACC-2",
+      "ACC-3",
+      "ACC-4"
+    ]
+  },
+  "proposedActions": [
+    {
+      "orderId": "ORD-101",
+      "accountId": "ACC-1",
+      "action": "priority_outreach",
+      "requiresApproval": true,
+      "reason": "Delayed 5 days; account ACC-1 is priority.",
+      "sourceRefs": [
+        "ORD-101",
+        "ACC-1"
+      ]
+    },
+    {
+      "orderId": "ORD-102",
+      "accountId": "ACC-2",
+      "action": "draft_refund",
+      "requiresApproval": true,
+      "reason": "Refund requested 18 days after purchase.",
+      "sourceRefs": [
+        "ORD-102",
+        "ACC-2"
+      ]
+    }
+  ],
+  "excludedOrders": [
+    {
+      "orderId": "ORD-103",
+      "accountId": "ACC-3",
+      "reason": "Delayed only 1 day, below the 3-day priority-outreach threshold."
+    },
+    {
+      "orderId": "ORD-104",
+      "accountId": "ACC-4",
+      "reason": "Refund requested 45 days after purchase, outside the 30-day refund window."
+    }
+  ],
+  "safetyBoundary": {
+    "requiresApprovalForEveryProposal": true,
+    "executionPerformed": false,
+    "connectorApplyInvoked": false,
+    "sourceDataMutated": false,
+    "scope": "This phase records a read-only action map only; it does not create proposed_actions.json or execute actions."
+  }
+}

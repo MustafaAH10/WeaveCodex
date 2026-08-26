@@ -55,7 +55,7 @@ class RunSession:
     pending_approval: dict[str, Any] | None = None
     result: dict[str, Any] | None = None
     error: str | None = None
-    _decision: str | None = None
+    _decision: dict[str, str] | None = None
     _condition: threading.Condition = field(default_factory=threading.Condition, repr=False)
 
     def snapshot(self) -> dict[str, Any]:
@@ -100,10 +100,10 @@ class RunSession:
             "item/fileChange/requestApproval",
         }:
             return {"decision": "cancel"}
-        decision = self._wait_for_decision({"method": method, "params": params or {}})
-        return {"decision": decision}
+        resolution = self._wait_for_decision({"method": method, "params": params or {}})
+        return {"decision": resolution["decision"]}
 
-    def request_checkpoint(self, phase_id: str, question: str) -> str:
+    def request_checkpoint(self, phase_id: str, question: str) -> dict[str, str]:
         return self._wait_for_decision(
             {
                 "method": "harness/checkpoint",
@@ -111,7 +111,7 @@ class RunSession:
             }
         )
 
-    def _wait_for_decision(self, pending: dict[str, Any]) -> str:
+    def _wait_for_decision(self, pending: dict[str, Any]) -> dict[str, str]:
         with self._condition:
             self.pending_approval = pending
             self.status = "waitingForApproval"
@@ -119,19 +119,29 @@ class RunSession:
             deadline = time.monotonic() + 300
             while self._decision is None and time.monotonic() < deadline:
                 self._condition.wait(timeout=1)
-            decision = self._decision or "decline"
+            resolution = self._decision or {"decision": "decline"}
             self._decision = None
             self.pending_approval = None
             self.status = "running"
-            return decision
+            return resolution
 
-    def decide(self, decision: str) -> None:
+    def decide(self, decision: str, feedback: str = "") -> None:
         if decision not in {"accept", "acceptForSession", "decline", "cancel"}:
             raise ValueError("unsupported approval decision")
+        if not isinstance(feedback, str):
+            raise ValueError("checkpoint feedback must be text")
+        feedback = feedback.strip()
+        if len(feedback) > 2_000:
+            raise ValueError("checkpoint feedback must contain at most 2000 characters")
         with self._condition:
             if self.pending_approval is None:
                 raise ValueError("this run has no pending approval")
-            self._decision = decision
+            is_checkpoint = self.pending_approval.get("method") == "harness/checkpoint"
+            if feedback and not is_checkpoint:
+                raise ValueError("feedback is supported only at a harness checkpoint")
+            self._decision = {"decision": decision}
+            if feedback:
+                self._decision["feedback"] = feedback
             self._condition.notify_all()
 
 

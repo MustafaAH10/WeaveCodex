@@ -98,7 +98,7 @@ def compile_phase_program(program: PhaseProgram) -> dict[str, object]:
             detail = "One Codex turn · internal tool loop is Codex-managed"
             turn_cost = 1
         elif phase.kind == "checkpoint":
-            detail = "Human continue or stop decision · no model call"
+            detail = "Human continue, redirect with feedback, or stop · no model call"
             turn_cost = 0
         else:
             detail = f"One verifier turn · up to {phase.max_repairs} repair turn(s)"

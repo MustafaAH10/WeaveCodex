@@ -1,0 +1,54 @@
+{
+  "observations": [
+    {
+      "statement": "INC-42 started at 2026-08-26T09:10:00Z.",
+      "source": "[incident_log.json#INC-42]"
+    },
+    {
+      "statement": "The affected service is media-rendering in ap-southeast-1.",
+      "source": "[incident_log.json#INC-42]"
+    },
+    {
+      "statement": "Render jobs remain queued longer than 15 minutes.",
+      "source": "[incident_log.json#INC-42]"
+    },
+    {
+      "statement": "The incident status is investigating, and the on-call team confirmed elevated queue depth in ap-southeast-1 at 09:30Z.",
+      "source": "[incident_log.json#INC-42]; [status_history.md#09-30Z]"
+    },
+    {
+      "statement": "Existing jobs are retained, and no data loss has been observed.",
+      "source": "[status_history.md#09-30Z]"
+    },
+    {
+      "statement": "The latest published customer update was at 09:30Z.",
+      "source": "[status_history.md#09-30Z]"
+    }
+  ],
+  "inferences": [
+    {
+      "statement": "Inference: the observed elevated queue depth is consistent with the reported prolonged render-job queuing, but the sources do not establish causation.",
+      "basis": "[incident_log.json#INC-42]; [status_history.md#09-30Z]"
+    }
+  ],
+  "unknowns": [
+    {
+      "statement": "Root cause is unknown; the incident record lists rootCause as null.",
+      "source": "[incident_log.json#INC-42]"
+    },
+    {
+      "statement": "No recovery time or confirmed recovery estimate is documented.",
+      "source": "[incident_log.json#INC-42]; [status_history.md#09-30Z]"
+    },
+    {
+      "statement": "No scope outside media-rendering in ap-southeast-1 is documented as affected or unaffected.",
+      "source": "[incident_log.json#INC-42]"
+    }
+  ],
+  "requiredCitations": [
+    "[incident_log.json#INC-42]",
+    "[status_history.md#09-30Z]",
+    "[runbook.md#customer-update-runbook]"
+  ],
+  "nextUpdateAt": "2026-08-26T10:00:00Z"
+}

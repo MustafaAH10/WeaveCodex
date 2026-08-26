@@ -1,0 +1,52 @@
+{
+  "trialId": "incident-support-brief",
+  "domain": "support-research-simulation",
+  "title": "Ground a customer update in incident evidence",
+  "arm": "ordinary",
+  "runStatus": "completed",
+  "artifactPassed": true,
+  "grade": {
+    "checks": {
+      "outputsExist": true,
+      "incidentFacts": true,
+      "nextUpdate": true,
+      "citations": true,
+      "uncertainty": true,
+      "noRecoveryPromise": true
+    },
+    "inputIntegrity": {
+      "passed": true,
+      "before": {
+        "incident_log.json": "sha256:f7d6f9f9ec9b2a4f156fa1d3d800e92aa089c7e46a85fd3d2d687d8dd8b906e9",
+        "runbook.md": "sha256:5cbc6db8b5270d23d78f733292c8de0b75552bae2ac1cee2beca015d5e59e8ef",
+        "status_history.md": "sha256:4c00c80b3ab52937173da07121884fa851b8dcb7f89b18f72733b8fcf3fd50e1"
+      },
+      "after": {
+        "incident_log.json": "sha256:f7d6f9f9ec9b2a4f156fa1d3d800e92aa089c7e46a85fd3d2d687d8dd8b906e9",
+        "runbook.md": "sha256:5cbc6db8b5270d23d78f733292c8de0b75552bae2ac1cee2beca015d5e59e8ef",
+        "status_history.md": "sha256:4c00c80b3ab52937173da07121884fa851b8dcb7f89b18f72733b8fcf3fd50e1"
+      }
+    },
+    "passed": true,
+    "artifacts": {
+      "support_brief.json": "sha256:6ef61867dde14fdfdcf84f222a1a546aba69e330e1f47f8d7cb95c7476c0c05f",
+      "customer_update.md": "sha256:a0a8a4040acad795fe7ae16c6151dcb6a3fe6aa2b4d0baf12780831a7ff10420"
+    }
+  },
+  "manifestHash": "sha256:9315707ce4a0ccda65401799ff56a5bdb99b135a6924e15044a05a578b17fe58",
+  "receiptId": "sha256:59c9d6d84da42d8dde80f5dd2cb83d491c57d97aeadf9a899908c9154ea566f4",
+  "completionStatus": "completed",
+  "checkpointDecisions": [],
+  "phaseExecutions": [],
+  "finalResponseExcerpt": "Created and source-anchored: - [support_brief.json](/workspace/trial-results/workspaces/incident-support-brief/ordinary/support_brief.json) - [customer_update.md](/workspace/trial-results/workspaces/incident-support-brief/ordinary/customer_update.md) Validated the JSON with Node. Both artifacts preserve timestamps and affected scope, distinguish observations from inference, state the root cause is unknown, set the next update for 10:00Z, and make no recovery promise. Remaining uncertainty is explicitly recorded.",
+  "elapsedSeconds": 48.815,
+  "childProcess": {
+    "exitCode": 0,
+    "elapsedSeconds": 48.802,
+    "stdoutSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderrSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "rawReceipt": "/workspace/trial-results/raw/incident-support-brief-ordinary.json",
+  "workspace": "/workspace/trial-results/workspaces/incident-support-brief/ordinary",
+  "observedControllerTurns": 1
+}

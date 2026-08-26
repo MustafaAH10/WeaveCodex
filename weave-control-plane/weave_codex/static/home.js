@@ -3,7 +3,7 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
 
 let securitySession = null;
-let runMode = "ordinary";
+let runMode = "weave";
 let activeRun = null;
 let pollTimer = null;
 let activeSavedWorkflow = null;
@@ -14,6 +14,10 @@ let adaptationMethod = null;
 let integrationInventory = null;
 let selectedIntegrations = [];
 let selectedRunId = null;
+let voiceRecognition = null;
+let voiceListening = false;
+let voiceBaseText = "";
+let pendingIsCheckpoint = false;
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -34,48 +38,61 @@ async function request(path, options = {}) {
 
 function phaseProgram(kind) {
   const workflows = {
-    ordinary: [{ id: "work", kind: "work", name: "Codex task", goal: "Complete the user's task autonomously. Inspect, edit, test, and adapt as needed." }],
     direct: [
-      { id: "implement", kind: "work", name: "Implement", goal: "Implement the requested outcome and run relevant checks." },
-      { id: "verify", kind: "verify", name: "Verify", criteria: "The requested outcome is complete and relevant checks pass.", maxRepairs: 1 },
+      { id: "implement", kind: "work", name: "Complete the goal", goal: "Produce the requested outcome. Gather context and use any relevant tools or integrations along the way." },
+      { id: "verify", kind: "verify", name: "Prove it works", criteria: "The requested outcome is complete, accurate, and supported by relevant evidence or checks.", maxRepairs: 1 },
     ],
     review: [
-      { id: "inspect", kind: "work", name: "Inspect", goal: "Inspect the repository and produce a concise implementation direction without changing files." },
-      { id: "approve", kind: "checkpoint", name: "Approve direction", question: "Continue with this implementation direction?" },
-      { id: "implement", kind: "work", name: "Implement", goal: "Implement the approved direction and run the relevant checks." },
-      { id: "verify", kind: "verify", name: "Verify", criteria: "The requested outcome is complete, focused, and supported by passing checks.", maxRepairs: 1 },
+      { id: "inspect", kind: "work", name: "Understand and propose", goal: "Understand the available context and present a concise direction. Do not make consequential changes yet." },
+      { id: "approve", kind: "checkpoint", name: "Check with me", question: "Does this direction look right, and should Codex continue?" },
+      { id: "implement", kind: "work", name: "Complete the goal", goal: "Follow the approved direction and produce the requested outcome using any relevant tools or integrations." },
+      { id: "verify", kind: "verify", name: "Prove the result", criteria: "The requested outcome is complete, accurate, and supported by relevant evidence or checks.", maxRepairs: 1 },
     ],
     audit: [
-      { id: "map", kind: "work", name: "Map risk", goal: "Map the relevant architecture, tests, and likely failure modes before editing." },
-      { id: "implement", kind: "work", name: "Implement", goal: "Implement the smallest robust change and run focused tests." },
-      { id: "verify", kind: "verify", name: "Adversarial verify", criteria: "Challenge the change for regressions and edge cases; pass only when focused tests and evidence support it.", maxRepairs: 1 },
+      { id: "map", kind: "work", name: "Explore the options", goal: "Gather context, compare plausible approaches, and identify assumptions, tradeoffs, and likely failure modes before acting." },
+      { id: "implement", kind: "work", name: "Execute the best path", goal: "Choose the strongest supported approach and produce the requested outcome using any relevant tools or integrations." },
+      { id: "verify", kind: "verify", name: "Challenge the result", criteria: "Actively look for weak assumptions, missing evidence, edge cases, or quality problems; repair once if the result does not hold up.", maxRepairs: 1 },
     ],
   };
   return workflows[kind];
 }
 
 function selectedProgram() {
-  const workflow = runMode === "ordinary" ? "ordinary" : $("#workflow-select").value;
-  if (workflow === "ordinary") return { projectionVersion: 1, phases: phaseProgram("ordinary") };
+  const workflow = $("#workflow-select").value;
   if (designProgram) return clone(designProgram);
   if (activeSavedWorkflow) return clone(activeSavedWorkflow.phaseProgram);
   return { projectionVersion: 1, phases: clone(phaseProgram(workflow)) };
 }
 
-function manifest() {
-  return {
-    schemaVersion: 2,
-    name: runMode === "ordinary" ? "Codex direct" : (activeSavedWorkflow?.name || `Weave ${$("#workflow-select").value}`),
-    cwd: $("#workspace-input").value.trim(),
-    task: { instructions: $("#task-input").value.trim(), contextPaths: [] },
+function buildManifest({ mode, name, cwd, instructions, integrations, agent, program }) {
+  const direct = mode === "ordinary";
+  const requested = clone(integrations?.requested || []).map((item) => direct ? { ...item, phaseIds: [] } : item);
+  const value = {
+    schemaVersion: direct ? 1 : 2,
+    name,
+    cwd,
+    task: { instructions, contextPaths: [] },
     memory: { mode: "off", selectedThreadIds: [] },
-    integrations: { inventoryId: integrationInventory?.inventoryId || null, requested: clone(selectedIntegrations) },
-    agent: { model: null, reasoningEffort: "medium", sandbox: $("#sandbox-select").value, approvalGate: $("#approval-select").value },
-    verification: { enabled: false, criteria: "Phase program owns verification.", maxRetries: 0 },
+    integrations: { inventoryId: integrations?.inventoryId || null, requested },
+    agent,
+    verification: { enabled: false, criteria: direct ? "Codex owns checking inside its native adaptive run." : "Phase program owns verification.", maxRetries: 0 },
     output: { format: "text" },
     observability: { traceRoot: ".weave-codex/traces" },
-    phaseProgram: selectedProgram(),
   };
+  if (!direct) value.phaseProgram = clone(program);
+  return value;
+}
+
+function manifest() {
+  return buildManifest({
+    mode: runMode,
+    name: runMode === "ordinary" ? "Codex direct" : (activeSavedWorkflow?.name || `Weave ${$("#workflow-select").value}`),
+    cwd: $("#workspace-input").value.trim(),
+    instructions: $("#task-input").value.trim(),
+    integrations: { inventoryId: integrationInventory?.inventoryId || null, requested: selectedIntegrations },
+    agent: { model: null, reasoningEffort: "medium", sandbox: $("#sandbox-select").value, approvalGate: $("#approval-select").value },
+    program: selectedProgram(),
+  });
 }
 
 function setView(view, { updateHash = true } = {}) {
@@ -92,6 +109,7 @@ function setView(view, { updateHash = true } = {}) {
     if (selected) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current");
   });
   if (updateHash) history.pushState(null, "", `#${active}`);
+  $(".more-menu")?.removeAttribute("open");
   window.scrollTo(0, 0);
   if (active === "workflows") {
     if (runMode === "ordinary") setMode("weave");
@@ -113,11 +131,15 @@ function setMode(mode) {
     button.classList.toggle("active", active);
     button.setAttribute("aria-checked", String(active));
   });
-  $("#workflow-choice").classList.toggle("hidden", mode !== "weave");
+  const loopAuthoring = $("#loop-authoring");
+  loopAuthoring.classList.toggle("hidden", mode !== "weave");
+  loopAuthoring.setAttribute("aria-hidden", String(mode !== "weave"));
   if (mode === "weave" && !designProgram) {
     designProgram = { projectionVersion: 1, phases: clone(phaseProgram($("#workflow-select").value)) };
   }
   renderWorkflowPreview();
+  const runButton = $("#run-task");
+  if (runButton && !runButton.disabled) runButton.innerHTML = mode === "weave" ? "Run my loop <span>→</span>" : "Run with Codex <span>→</span>";
 }
 
 function programNodes(program, { compact = false } = {}) {
@@ -125,13 +147,29 @@ function programNodes(program, { compact = false } = {}) {
   return phases.map((phase, index) => `<article class="phase-node ${escapeHtml(phase.kind)}"><small>${index + 1} · ${escapeHtml(phase.kind)}</small><b>${escapeHtml(phase.name)}</b></article>${index < phases.length - 1 ? '<i aria-hidden="true">→</i>' : ""}`).join("") || (compact ? "" : "<p>No phases.</p>");
 }
 
+function phasePlainCopy(phase) {
+  if (phase.kind === "checkpoint") return { actor: "Your decision", copy: phase.question, note: "Codex waits here until you continue or stop." };
+  if (phase.kind === "verify") return { actor: "Evidence check", copy: phase.criteria, note: `Codex can repair up to ${phase.maxRepairs || 0} time${phase.maxRepairs === 1 ? "" : "s"}.` };
+  return { actor: "Codex goal", copy: phase.goal, note: "Inside this goal Codex may reason, inspect, use tools, create, edit, test, and retry." };
+}
+
+function renderRunLoop(program) {
+  const preview = $("#run-loop-preview");
+  if (!preview) return;
+  preview.innerHTML = (program?.phases || []).map((phase, index) => {
+    const plain = phasePlainCopy(phase);
+    return `<article class="run-loop-step ${escapeHtml(phase.kind)}"><span>${index + 1}</span><div><small>${escapeHtml(plain.actor)}</small><b>${escapeHtml(phase.name)}</b><p>${escapeHtml(plain.note)}</p></div></article>`;
+  }).join("");
+}
+
 function renderWorkflowPreview() {
   const program = selectedProgram();
   $("#workflow-preview").innerHTML = programNodes(program);
+  renderRunLoop(program);
   if (activeSavedWorkflow) {
     $("#active-workflow").innerHTML = `<span>Saved workflow · task not included</span><code>${escapeHtml(activeSavedWorkflow.programHash.slice(0, 22))}…</code>`;
   } else {
-    $("#active-workflow").innerHTML = "<span>Built-in starting shape</span><code>not saved</code>";
+    $("#active-workflow").innerHTML = "<span>Starting template · edit anything later</span><code>not saved</code>";
   }
 }
 
@@ -139,13 +177,107 @@ function updateWorkflowExplanation() {
   activeSavedWorkflow = null;
   adaptationMethod = null;
   const copy = {
-    review: "Pause after inspection so you can approve the direction before files change.",
-    audit: "Require an architectural risk map before implementation, then challenge the result.",
-    direct: "Keep the workflow short while retaining a separate verification and repair bound.",
+    review: "Codex first explains its direction. You decide whether it continues.",
+    audit: "Codex compares approaches, takes the best-supported path, then tries to break its own result.",
+    direct: "Codex completes the goal without a midpoint pause, then checks and repairs the result once.",
   };
   $("#workflow-explanation").textContent = copy[$("#workflow-select").value];
   designProgram = { projectionVersion: 1, phases: clone(phaseProgram($("#workflow-select").value)) };
   renderWorkflowPreview();
+  if (!$("#design-view").hidden) renderPhaseEditor();
+}
+
+function selectLoopTemplate(template) {
+  if (!["review", "direct", "audit"].includes(template)) return;
+  activeSavedWorkflow = null;
+  adaptationMethod = null;
+  $("#workflow-select").value = template;
+  setMode("weave");
+  updateWorkflowExplanation();
+  $$('[data-loop-template]').forEach((button) => {
+    const active = button.dataset.loopTemplate === template;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-checked", String(active));
+  });
+}
+
+const exampleCases = {
+  design: {
+    goal: "Create a calm visual direction for a financial planning app.",
+    codex: ["Final answer", "One visual direction, rationale, component guidance, and a finished design brief."],
+    weave: ["Proposal · 3 directions compared", "Your decision · Direction B approved", "Delivery · Brief and assets created", "Proof · Contrast and consistency checked"],
+  },
+  operations: {
+    goal: "Turn support trends into an approved action plan.",
+    codex: ["Final answer", "A prioritized support plan based on the available notes and connected sources."],
+    weave: ["Analysis · Themes linked to source evidence", "Your decision · Priorities 1 and 3 approved", "Delivery · Owners and actions drafted", "Proof · Every claim traced back to a source"],
+  },
+  simulation: {
+    goal: "Simulate a café queue and explain the best staffing choice.",
+    codex: ["Final answer", "A simulation, three scenarios, and a staffing recommendation."],
+    weave: ["Assumptions · Arrival and service rates shown", "Your decision · Lunch spike adjusted", "Execution · Three scenarios run", "Proof · Sensitivity and limitations reported"],
+  },
+};
+
+function renderExample(caseId = "design") {
+  const example = exampleCases[caseId] || exampleCases.design;
+  $("#example-goal").innerHTML = `<span>Goal</span>${escapeHtml(example.goal)}`;
+  $("#codex-example-output").innerHTML = example.codex.map((line, index) => `<p class="${index === 0 ? "result-line" : ""}"><span>${index === 0 ? "✓" : ""}</span>${escapeHtml(line)}</p>`).join("");
+  $("#weave-example-output").innerHTML = example.weave.map((line, index) => {
+    const [label, copy] = line.split(" · ");
+    return `<p><span>${index + 1}</span><b>${escapeHtml(label)}</b><small>${escapeHtml(copy)}</small></p>`;
+  }).join("");
+  $$('[data-example-case]').forEach((button) => button.classList.toggle("active", button.dataset.exampleCase === caseId));
+}
+
+function setVoiceState(listening, message) {
+  voiceListening = listening;
+  const button = $("#voice-input");
+  button.classList.toggle("listening", listening);
+  button.setAttribute("aria-pressed", String(listening));
+  button.querySelector("b").textContent = listening ? "Stop" : "Speak";
+  $("#voice-status").textContent = message;
+}
+
+function configureVoiceInput() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    $("#voice-input").disabled = true;
+    $("#voice-status").textContent = "Browser dictation is unavailable here. You can still type or paste your goal; Weave does not record audio.";
+    return;
+  }
+  voiceRecognition = new Recognition();
+  voiceRecognition.continuous = true;
+  voiceRecognition.interimResults = true;
+  voiceRecognition.lang = navigator.language || "en-US";
+  voiceRecognition.onstart = () => setVoiceState(true, "Listening… speak naturally. Select Stop when you are finished.");
+  voiceRecognition.onresult = (event) => {
+    let transcript = "";
+    for (let index = 0; index < event.results.length; index += 1) transcript += event.results[index][0].transcript;
+    $("#task-input").value = `${voiceBaseText}${voiceBaseText && transcript ? " " : ""}${transcript}`.trim();
+    $("#design-task").value = $("#task-input").value;
+  };
+  voiceRecognition.onerror = (event) => {
+    const denied = event.error === "not-allowed" || event.error === "service-not-allowed";
+    setVoiceState(false, denied ? "Microphone access was not allowed. You can enable it in browser settings or keep typing." : "Voice input stopped. Your transcript is still here; you can continue typing.");
+  };
+  voiceRecognition.onend = () => {
+    if (voiceListening) setVoiceState(false, "Voice input stopped. Review or edit your goal before running.");
+  };
+}
+
+function toggleVoiceInput() {
+  if (!voiceRecognition) return;
+  if (voiceListening) {
+    voiceRecognition.stop();
+    return;
+  }
+  voiceBaseText = $("#task-input").value.trim();
+  try {
+    voiceRecognition.start();
+  } catch (_) {
+    setVoiceState(false, "Voice input is already starting. Please try again in a moment.");
+  }
 }
 
 function applyWorkflow(workflow, { customize = false } = {}) {
@@ -155,6 +287,7 @@ function applyWorkflow(workflow, { customize = false } = {}) {
   $("#workflow-select").value = "saved";
   $("#workflow-select").selectedOptions[0].textContent = workflow.name;
   $("#workflow-explanation").textContent = "Loaded from your local library. The new task and repository are not inherited.";
+  $$("[data-loop-template]").forEach((button) => { button.classList.remove("active"); button.setAttribute("aria-checked", "false"); });
   setMode("weave");
   $("#task-input").value = "";
   if (customize) {
@@ -225,7 +358,16 @@ function renderSteps(phases, state = {}) {
   const activePhase = state.pendingApproval?.params?.phaseId || state.result?.phaseProgram?.activePhaseId || "";
   const executions = state.result?.phaseProgram?.executions || [];
   const completed = new Set(executions.filter((item) => item.status === "completed").map((item) => item.phaseId));
-  $("#run-steps").innerHTML = phases.map((phase, index) => `<article class="${completed.has(phase.id) ? "done" : activePhase === phase.id ? "active" : ""}"><small>${String(index + 1).padStart(2, "0")} · ${escapeHtml(phase.kind)}</small><b>${escapeHtml(phase.name)}</b></article>`).join("");
+  $("#run-steps").innerHTML = phases.map((phase, index) => {
+    const nativeDone = phase.kind === "native" && state.status === "completed";
+    const nativeActive = phase.kind === "native" && !["completed", "failed"].includes(state.status);
+    const className = completed.has(phase.id) || nativeDone ? "done" : activePhase === phase.id || nativeActive ? "active" : "";
+    return `<article class="${className}"><small>${String(index + 1).padStart(2, "0")} · ${escapeHtml(phase.kind)}</small><b>${escapeHtml(phase.name)}</b></article>`;
+  }).join("");
+}
+
+function displaySteps(value) {
+  return value.phaseProgram?.phases || [{ id: "native-codex-run", kind: "native", name: "One native adaptive Codex run" }];
 }
 
 async function startRun() {
@@ -238,7 +380,8 @@ async function startRun() {
   button.textContent = "Checking run…";
   try {
     const compiled = await request("/api/compile", { method: "POST", body: JSON.stringify(value) });
-    renderSteps(value.phaseProgram.phases);
+    const phases = displaySteps(value);
+    renderSteps(phases, { status: "starting" });
     $("#live-run").classList.remove("hidden");
     $("#live-run-title").textContent = value.name;
     $("#run-status").textContent = `≤ ${compiled.maximumTurns} controller turns`;
@@ -248,10 +391,10 @@ async function startRun() {
     const result = await request("/api/runs", { method: "POST", body: JSON.stringify(value) });
     activeRun = result.runId;
     button.textContent = "Run in progress";
-    pollRun(value.phaseProgram.phases);
+    pollRun(phases);
   } catch (error) {
     button.disabled = false;
-    button.innerHTML = "Run with Codex <span>→</span>";
+    button.innerHTML = runMode === "weave" ? "Run my loop <span>→</span>" : "Run with Codex <span>→</span>";
     $("#live-run").classList.remove("hidden");
     $("#live-run-title").textContent = "Run could not start";
     $("#run-status").textContent = "Needs attention";
@@ -268,10 +411,16 @@ async function pollRun(phases) {
     $("#run-status").textContent = String(state.status || "running").replace(/([A-Z])/g, " $1").trim();
     if (state.pendingApproval) {
       const checkpoint = state.pendingApproval.method === "harness/checkpoint";
+      pendingIsCheckpoint = checkpoint;
       $("#approval-title").textContent = checkpoint ? "Approve the next phase?" : "Codex requested a protected action";
       $("#approval-detail").textContent = checkpoint ? (state.pendingApproval.params?.question || "Continue this run?") : "Review this protected action before allowing it.";
+      $("#checkpoint-feedback-wrap").classList.toggle("hidden", !checkpoint);
+      $("#continue-run").textContent = checkpoint ? "Continue / redirect" : "Allow";
       $("#approval-card").classList.remove("hidden");
-    } else $("#approval-card").classList.add("hidden");
+    } else {
+      pendingIsCheckpoint = false;
+      $("#approval-card").classList.add("hidden");
+    }
     if (["completed", "failed"].includes(state.status)) {
       const result = state.result || {};
       $("#run-output").textContent = result.finalResponse || state.error || "Run ended without a final response.";
@@ -291,7 +440,10 @@ async function pollRun(phases) {
 
 async function decide(decision) {
   if (!activeRun) return;
-  await request(`/api/runs/${encodeURIComponent(activeRun)}/approval`, { method: "POST", body: JSON.stringify({ decision }) });
+  const feedback = pendingIsCheckpoint && decision === "accept" ? $("#checkpoint-feedback").value.trim() : "";
+  await request(`/api/runs/${encodeURIComponent(activeRun)}/approval`, { method: "POST", body: JSON.stringify({ decision, feedback }) });
+  $("#checkpoint-feedback").value = "";
+  pendingIsCheckpoint = false;
   $("#approval-card").classList.add("hidden");
 }
 
@@ -349,7 +501,7 @@ function phaseCopyKey(phase) {
 }
 
 function phaseCopyLabel(phase) {
-  return phase.kind === "work" ? "Complete goal for this Codex turn" : phase.kind === "checkpoint" ? "Question shown to the human" : "Pass criteria";
+  return phase.kind === "work" ? "What Codex must accomplish" : phase.kind === "checkpoint" ? "Question shown to you" : "What counts as proven";
 }
 
 function renderPhaseEditor() {
@@ -357,7 +509,8 @@ function renderPhaseEditor() {
   $("#design-cwd").value ||= $("#workspace-input").value;
   $("#phase-editor").innerHTML = program.phases.map((phase, index) => {
     const key = phaseCopyKey(phase);
-    return `<article class="phase-card" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}"><span class="phase-number">${String(index + 1).padStart(2, "0")}</span><div class="phase-fields"><label class="phase-field">Type<select data-phase-field="kind" disabled><option>${escapeHtml(phase.kind)}</option></select></label><label class="phase-field">Name<input data-phase-field="name" value="${escapeHtml(phase.name)}" maxlength="80"></label><label class="phase-field copy">${phaseCopyLabel(phase)}<textarea data-phase-field="${key}" maxlength="${phase.kind === "work" ? 4000 : 2000}">${escapeHtml(phase[key])}</textarea></label>${phase.kind === "verify" ? `<label class="phase-field">Repair turns<select data-phase-field="maxRepairs"><option value="0" ${phase.maxRepairs === 0 ? "selected" : ""}>0</option><option value="1" ${phase.maxRepairs === 1 ? "selected" : ""}>1</option><option value="2" ${phase.maxRepairs === 2 ? "selected" : ""}>2</option></select></label>` : ""}</div><div class="phase-card-actions"><button type="button" data-phase-move="up" aria-label="Move up">↑</button><button type="button" data-phase-move="down" aria-label="Move down">↓</button><button class="danger" type="button" data-phase-delete aria-label="Delete phase">Delete</button></div></article>`;
+    const plain = phasePlainCopy(phase);
+    return `<article class="phase-card" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}"><span class="phase-number">${String(index + 1).padStart(2, "0")}</span><div class="phase-card-body"><small class="phase-actor">${escapeHtml(plain.actor)}</small><h3>${escapeHtml(phase.name)}</h3><p>${escapeHtml(plain.copy)}</p><aside>${escapeHtml(plain.note)}</aside><details class="phase-advanced"><summary>Edit instructions</summary><div class="phase-fields"><label class="phase-field">Card name<input data-phase-field="name" value="${escapeHtml(phase.name)}" maxlength="80"></label><label class="phase-field copy">${phaseCopyLabel(phase)}<textarea data-phase-field="${key}" maxlength="${phase.kind === "work" ? 4000 : 2000}">${escapeHtml(phase[key])}</textarea></label>${phase.kind === "verify" ? `<label class="phase-field">Repair attempts<select data-phase-field="maxRepairs"><option value="0" ${phase.maxRepairs === 0 ? "selected" : ""}>0</option><option value="1" ${phase.maxRepairs === 1 ? "selected" : ""}>1</option><option value="2" ${phase.maxRepairs === 2 ? "selected" : ""}>2</option></select></label>` : ""}</div></details></div><div class="phase-card-actions"><button type="button" data-phase-move="up" aria-label="Move up">↑</button><button type="button" data-phase-move="down" aria-label="Move down">↓</button><button class="danger" type="button" data-phase-delete aria-label="Delete phase">Delete</button></div></article>`;
   }).join("");
   $$("[data-phase-field]", $("#phase-editor")).forEach((field) => field.addEventListener("input", () => {
     const card = field.closest("[data-phase-index]");
@@ -366,6 +519,9 @@ function renderPhaseEditor() {
     phase[key] = key === "maxRepairs" ? Number(field.value) : field.value;
     adaptationMethod ||= "manual";
     renderWorkflowPreview();
+    if (key === "name") card.querySelector("h3").textContent = field.value;
+    if (key === phaseCopyKey(phase)) card.querySelector(".phase-card-body>p").textContent = field.value;
+    if (key === "maxRepairs") card.querySelector(".phase-card-body>aside").textContent = phasePlainCopy(phase).note;
   }));
   $$("[data-phase-move]", $("#phase-editor")).forEach((button) => button.addEventListener("click", () => {
     const index = Number(button.closest("[data-phase-index]").dataset.phaseIndex);
@@ -488,7 +644,8 @@ async function showRun(runId) {
       const activity = timeline.filter((item) => item.phase === execution.phaseId);
       const counts = activity.reduce((acc, item) => { acc[item.kind] = (acc[item.kind] || 0) + 1; return acc; }, {});
       const chips = Object.entries(counts).map(([kind, count]) => `<span>${escapeHtml(kind)} · ${count}</span>`).join("") || "<span>No projected activity</span>";
-      return `<article class="receipt-phase"><header><div><small>${String(index + 1).padStart(2, "0")} · ${escapeHtml(execution.kind || "phase")}</small><b>${escapeHtml(execution.name || execution.phaseId)}</b></div><small>${escapeHtml(execution.status || "observed")}</small></header><div class="activity-chips">${chips}</div></article>`;
+      const intervention = execution.kind === "checkpoint" ? `<div class="human-intervention"><small>YOUR DECISION</small><b>${escapeHtml(execution.decision === "accept" || execution.decision === "acceptForSession" ? "Continued" : "Stopped")}</b>${execution.feedback ? `<p>${escapeHtml(execution.feedback)}</p>` : "<p>No redirect was added.</p>"}</div>` : "";
+      return `<article class="receipt-phase"><header><div><small>${String(index + 1).padStart(2, "0")} · ${escapeHtml(execution.kind || "phase")}</small><b>${escapeHtml(execution.name || execution.phaseId)}</b></div><small>${escapeHtml(execution.status || "observed")}</small></header>${intervention}<div class="activity-chips">${chips}</div></article>`;
     }).join("");
     detail.innerHTML = `<header class="receipt-head"><div><p class="kicker">LOCAL RECEIPT</p><h2>${escapeHtml(result.completionStatus || state.status)}</h2><code>${escapeHtml(result.manifestHash || runId)}</code></div><div><b>${result.observed?.modelCompletions ?? "—"}</b><small> observed model completions</small></div></header>${phaseCards || "<p>This older run has no authored phase executions.</p>"}<pre class="receipt-output">${escapeHtml(result.finalResponse || state.error || "No final response.")}</pre>`;
   } catch (error) { detail.innerHTML = `<p>Could not load receipt: ${escapeHtml(error.message)}</p>`; }
@@ -521,6 +678,7 @@ async function loadIntegrations() {
 }
 
 async function loadFieldTrials() {
+  void loadPlatformTrials();
   const grid = $("#field-trials-grid");
   try {
     const evidence = await request("/reusable-workflow-trials.json");
@@ -541,6 +699,41 @@ async function loadFieldTrials() {
   } catch (error) {
     grid.innerHTML = `<p>Trial evidence is not available yet: ${escapeHtml(error.message)}</p>`;
     $("#field-trials-summary").innerHTML = "<article><b>Pending</b><small>frozen evidence</small></article>";
+  }
+}
+
+const trialLabels = {
+  "forecast-zero-override": "Forecast repair",
+  "night-bloom-poster": "Event poster",
+  "connector-action-draft": "Operations draft",
+  "incident-support-brief": "Incident brief",
+};
+
+function cleanTrialExcerpt(value) {
+  return String(value || "No response excerpt recorded.")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\/workspace\/trial-results\/[^\s)]+/g, "the trial workspace");
+}
+
+function platformArm(arm, label) {
+  const files = Object.keys(arm.artifactHashes || {});
+  const checkpoint = (arm.checkpointDecisions || [])[0];
+  const root = arm.publicArtifactRoot || "";
+  const links = files.map((file) => `<a href="https://github.com/MustafaAH10/WeaveCodex/blob/main/experiments/platform-workflow-trials/results-v2/${escapeHtml(root)}/${escapeHtml(file)}" target="_blank" rel="noreferrer">${escapeHtml(file)}</a>`).join(" · ");
+  return `<article class="platform-arm ${label === "WEAVECODEX" ? "weave-arm" : ""}"><header><span>${label}</span><b>${arm.artifactPassed ? "Artifact accepted" : "Artifact rejected"}</b></header><p>${escapeHtml(cleanTrialExcerpt(arm.finalResponseExcerpt))}</p><footer><span>${arm.observedControllerTurns || 0} controller turn(s)</span>${checkpoint ? `<span>Plan gate · ${escapeHtml(checkpoint.decision)}</span>` : "<span>No authored handoff</span>"}<span>${links || "No public artifact"}</span></footer></article>`;
+}
+
+async function loadPlatformTrials() {
+  const grid = $("#platform-trials-grid");
+  try {
+    const evidence = await request("/api/platform-trials");
+    const totals = evidence.totals || {};
+    $("#platform-trials-summary").innerHTML = `<article><b>${totals.arms || 0}</b><small>executed arms</small></article><article><b>${totals.artifactsAccepted || 0}</b><small>contract-valid artifacts</small></article><article><b>${totals.weaveCheckpointsAccepted || 0}</b><small>Weave gates accepted</small></article><article><b>${totals.observedControllerTurns || 0}</b><small>controller turns observed</small></article>`;
+    grid.innerHTML = (evidence.results || []).map((trial) => `<section class="platform-pair"><header><p class="kicker">MATCHED TASK</p><h3>${escapeHtml(trialLabels[trial.trialId] || trial.trialId)}</h3><code>${escapeHtml(trial.trialId)}</code></header><div>${platformArm(trial.ordinaryCodex || {}, "CODEX BASELINE")}${platformArm(trial.weaveCodex || {}, "WEAVECODEX")}</div></section>`).join("");
+    $("#platform-trials-limits").innerHTML = `<b>What this does—and does not—show</b><p>Both control styles produced accepted artifacts in one rollout per arm. Weave exposed four pre-production gates; a deterministic evaluator stood in for the person clicking Continue. It did not test typed redirect feedback, estimate variance, or show that Weave makes Codex smarter. The first container attempt is retained as a zero-sample environment incident.</p><p><a href="https://github.com/MustafaAH10/WeaveCodex/blob/main/experiments/platform-workflow-trials/results-v2/RESULTS.md" target="_blank" rel="noreferrer">Read methods and hashes →</a></p>`;
+  } catch (error) {
+    grid.innerHTML = `<p>Platform evidence is unavailable: ${escapeHtml(error.message)}</p>`;
+    $("#platform-trials-summary").innerHTML = "<article><b>Unavailable</b><small>tracked evidence</small></article>";
   }
 }
 
@@ -569,11 +762,17 @@ async function init() {
   $("#integrations-cwd").value = $("#workspace-input").value;
   await checkAccount();
   renderWorkflowPreview();
+  renderExample();
+  configureVoiceInput();
   await loadWorkflows();
 
   $$("[data-view]").forEach((link) => link.addEventListener("click", (event) => { event.preventDefault(); setView(link.dataset.view); }));
   $$(".mode").forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
+  $$("[data-loop-template]").forEach((button) => button.addEventListener("click", () => selectLoopTemplate(button.dataset.loopTemplate)));
+  $$("[data-example-case]").forEach((button) => button.addEventListener("click", () => renderExample(button.dataset.exampleCase)));
   $$("[data-prompt]").forEach((button) => button.addEventListener("click", () => { $("#task-input").value = button.dataset.prompt; $("#design-task").value = button.dataset.prompt; $("#task-input").focus(); }));
+  $("#task-input").addEventListener("input", () => { $("#design-task").value = $("#task-input").value; });
+  $("#voice-input").addEventListener("click", toggleVoiceInput);
   $("#workflow-select").addEventListener("change", updateWorkflowExplanation);
   $("#sandbox-select").addEventListener("change", updateSettingsSummary);
   $("#approval-select").addEventListener("change", updateSettingsSummary);
@@ -605,4 +804,8 @@ function updateSettingsSummary() {
   $("#settings-summary").textContent = `${$("#sandbox-select").selectedOptions[0].textContent} · ${$("#approval-select").selectedOptions[0].textContent.toLowerCase()} protected actions`;
 }
 
-void init();
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { buildManifest, displaySteps };
+} else {
+  void init();
+}

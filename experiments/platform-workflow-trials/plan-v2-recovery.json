@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 2,
+  "planId": "sha256:cb61b2f65745b67801c54e38c623a1dbb06004c0bde606469ebb9e037f5d643e",
+  "frozenAtUtc": "2026-08-26T02:46:36Z",
+  "study": "Codex platform workflow acceptance trials — environment recovery",
+  "basePlan": {
+    "path": "plan.json",
+    "planId": "sha256:c4b3c1d3ee060472f0e72a623f52c903e24e4935f7e80b16c46700f4cbdf6457"
+  },
+  "invalidAttempt": {
+    "summaryId": "sha256:5b4abb1f92b61a486289c9aca95a899ad3beb4c716d69a89a8408aa47415bde7",
+    "evidencePath": "reports/platform-workflow-trials/summary.json",
+    "validSamples": 0,
+    "reason": "Every arm was blocked before fixture inspection because the first container could not create the user namespace required by Codex's bwrap sandbox.",
+    "promptExposure": "All four task prompts were exposed to the same model/account during the invalid environment attempt. Recovery results are product acceptance evidence, not unseen-task or benchmark evidence."
+  },
+  "authentication": {
+    "method": "chatgpt-device-code",
+    "accountMode": "chatgpt",
+    "apiKeyInjected": false,
+    "sandboxCount": 1,
+    "credentialReuse": "Reuse the persistent auth volume created by the user's official device flow; never copy or inspect token material."
+  },
+  "execution": {
+    "samplesPerArm": 1,
+    "armsPerTrial": 2,
+    "plannedTrials": 4,
+    "plannedRuns": 8,
+    "sequence": "sequential",
+    "memory": "off",
+    "model": "gpt-5.6-terra",
+    "reasoningEffort": "low",
+    "ordinaryMaximumControllerTurns": 1,
+    "weaveMaximumControllerTurns": 3,
+    "maximumTotalControllerTurns": 16,
+    "maximumWallMinutesPerRun": 20,
+    "nativeProtectedActions": "deny",
+    "networkUse": "Codex service only; task fixtures and simulated connectors are local"
+  },
+  "environmentRequirements": {
+    "container": "one fresh recovery container",
+    "userNamespaces": "required; preflight must run the bundled bwrap successfully",
+    "privilege": "Docker privileged mode solely to permit nested Codex sandbox namespaces",
+    "sourceMount": "/workspace/WeaveCodex read-only",
+    "resultMount": "/workspace/trial-results fresh writable named volume",
+    "authMount": "/root/.codex existing device-auth volume",
+    "hardTimeout": "Each arm runs in its own process group; parent sends SIGTERM then SIGKILL at the frozen cap."
+  },
+  "claimLimits": [
+    "The recovery tasks are not unseen: their prompts were exposed during the invalid environment attempt.",
+    "The first dispatch is preserved as an infrastructure incident and contributes zero valid samples.",
+    "Privileged mode enables Codex's nested bwrap sandbox; the host source repository remains mounted read-only and only a fresh result volume is writable."
+  ]
+}

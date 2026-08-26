@@ -1,0 +1,55 @@
+{
+  "trialId": "forecast-zero-override",
+  "domain": "coding",
+  "title": "Repair an explicit-zero forecasting bug",
+  "arm": "ordinary",
+  "runStatus": "completed",
+  "artifactPassed": true,
+  "grade": {
+    "checks": {
+      "unittest": true,
+      "regressionRemoved": true
+    },
+    "verification": {
+      "command": [
+        "/opt/weave/bin/python",
+        "-m",
+        "unittest",
+        "-v"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.061,
+      "outputSha256": "sha256:2c62a12e03ca80fb2c5c88cc2cab69534a5fcd65c26cf76a97eae82e1d455f96",
+      "outputExcerpt": "test_blank_override_uses_baseline (test_forecast.ForecastRowsTests.test_blank_override_uses_baseline) ... ok test_explicit_zero_override_is_preserved (test_forecast.ForecastRowsTests.test_explicit_zero_override_is_preserved) ... ok test_invalid_override_names_the_row (test_forecast.ForecastRowsTests.test_invalid_override_names_the_row) ... ok ---------------------------------------------------------------------- Ran 3 tests in 0.000s OK"
+    },
+    "inputIntegrity": {
+      "passed": true,
+      "before": {
+        "test_forecast.py": "sha256:6e67a1462830a66f0ecf81f031ea935ff8af2160bd10f54c7b32a71f1d6bc3a8"
+      },
+      "after": {
+        "test_forecast.py": "sha256:6e67a1462830a66f0ecf81f031ea935ff8af2160bd10f54c7b32a71f1d6bc3a8"
+      }
+    },
+    "passed": true,
+    "artifacts": {
+      "forecast.py": "sha256:4900aec0a22d4bc1ca8f1022fee3ac1ae2090b8763b59bd3f6e11adfd13c3821"
+    }
+  },
+  "manifestHash": "sha256:3ebc0cb9fd4f993c8930a014d286b76550fb8be43e96c83a6975bea14dbc168f",
+  "receiptId": "sha256:d536129c85d86bb6c0330a9e428eb883e84da2d71a91225cf5757b87879bce64",
+  "completionStatus": "completed",
+  "checkpointDecisions": [],
+  "phaseExecutions": [],
+  "finalResponseExcerpt": "Updated [forecast.py](/workspace/trial-results/workspaces/forecast-zero-override/ordinary/forecast.py) so: - `0` is preserved as an explicit override. - Blank or missing overrides use `baseline_growth`. - Invalid overrides raise `ValueError` including the row ID. Verification: `python3 -m unittest -v` \u2014 3 tests run, all passed.",
+  "elapsedSeconds": 31.423,
+  "childProcess": {
+    "exitCode": 0,
+    "elapsedSeconds": 31.362,
+    "stdoutSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderrSha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "rawReceipt": "/workspace/trial-results/raw/forecast-zero-override-ordinary.json",
+  "workspace": "/workspace/trial-results/workspaces/forecast-zero-override/ordinary",
+  "observedControllerTurns": 1
+}

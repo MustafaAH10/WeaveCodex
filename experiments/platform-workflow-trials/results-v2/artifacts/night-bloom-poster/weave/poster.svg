@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600" width="1200" height="1600" role="img" aria-labelledby="poster-title poster-description">
+  <title id="poster-title">Night Bloom — 17 October at Riverside Makers Hall</title>
+  <desc id="poster-description">A quiet editorial poster for Night Bloom on 17 October at Riverside Makers Hall. Free entry. Moon-coloured typography sits on an ink background, framed by an abstract botanical arrangement of orchid-purple petals and leaf-green stems.</desc>
+
+  <rect width="1200" height="1600" fill="#101828"/>
+
+  <!-- Decorative nocturnal botanical field -->
+  <g aria-hidden="true">
+    <circle cx="970" cy="204" r="116" fill="#F8F5EC" opacity=".08"/>
+    <circle cx="970" cy="204" r="83" fill="none" stroke="#F8F5EC" stroke-width="2" opacity=".35"/>
+    <path d="M-74 1421C177 1301 163 1083 408 1012C609 954 646 1115 836 1068C1001 1028 1000 887 1275 758" fill="none" stroke="#2E7D5B" stroke-width="15" stroke-linecap="round" opacity=".9"/>
+    <path d="M92 1608C155 1323 433 1293 500 1080C563 880 420 777 557 554" fill="none" stroke="#2E7D5B" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+    <path d="M838 1609C856 1388 1019 1271 941 1081C895 969 747 950 739 777" fill="none" stroke="#2E7D5B" stroke-width="9" stroke-linecap="round" opacity=".72"/>
+
+    <path d="M210 1308C117 1284 71 1195 108 1111C198 1138 243 1214 210 1308Z" fill="#2E7D5B"/>
+    <path d="M311 1199C237 1136 249 1038 320 979C383 1058 379 1150 311 1199Z" fill="#2E7D5B" opacity=".88"/>
+    <path d="M445 1111C502 1028 592 1014 659 1064C602 1148 512 1167 445 1111Z" fill="#2E7D5B" opacity=".86"/>
+    <path d="M923 1219C1003 1149 1104 1164 1156 1249C1073 1315 978 1306 923 1219Z" fill="#2E7D5B"/>
+    <path d="M924 1066C986 983 1084 965 1150 1018C1088 1106 995 1121 924 1066Z" fill="#2E7D5B" opacity=".8"/>
+    <path d="M819 964C762 889 786 797 868 750C928 834 908 926 819 964Z" fill="#2E7D5B" opacity=".82"/>
+
+    <g transform="translate(754 1068)">
+      <path d="M0 0C-155-121-159-294-56-350C51-290 91-139 0 0Z" fill="#8B5CF6" opacity=".96"/>
+      <path d="M0 0C-117 164-269 176-323 69C-255-37-116-84 0 0Z" fill="#8B5CF6" opacity=".87"/>
+      <path d="M0 0C130 139 273 106 298-11C202-92 58-72 0 0Z" fill="#8B5CF6" opacity=".92"/>
+      <path d="M0 0C124-150 70-287-51-303C-121-206-95-60 0 0Z" fill="#8B5CF6" opacity=".82"/>
+      <circle r="42" fill="#F8F5EC"/>
+      <circle r="15" fill="#101828"/>
+    </g>
+    <path d="M-53 1487C165 1402 251 1433 430 1561" fill="none" stroke="#F8F5EC" stroke-width="2" opacity=".45"/>
+    <path d="M879 1445C990 1366 1134 1375 1241 1432" fill="none" stroke="#F8F5EC" stroke-width="2" opacity=".42"/>
+  </g>
+
+  <!-- Editorial information -->
+  <g fill="#F8F5EC" font-family="serif">
+    <text x="92" y="157" font-size="23" letter-spacing="5">AN EVENING IN THE GARDEN</text>
+    <line x1="92" y1="190" x2="394" y2="190" stroke="#8B5CF6" stroke-width="6"/>
+    <text x="86" y="526" font-size="214" letter-spacing="-13">Night</text>
+    <text x="80" y="709" font-size="214" letter-spacing="-13">Bloom</text>
+    <text x="94" y="786" font-size="46" letter-spacing="3">17 October</text>
+  </g>
+  <g fill="#F8F5EC" font-family="sans-serif">
+    <text x="94" y="1370" font-size="28" letter-spacing="3">Riverside Makers Hall</text>
+    <text x="94" y="1420" font-size="22" letter-spacing="4">Free entry</text>
+    <text x="94" y="1510" font-size="17" letter-spacing="2" opacity=".72">COME AS THE DAY FOLDS INTO NIGHT</text>
+  </g>
+  <rect x="92" y="1450" width="1015" height="2" fill="#F8F5EC" opacity=".5"/>
+</svg>

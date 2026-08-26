@@ -371,6 +371,24 @@ def test_manual_approval_blocks_until_human_decision() -> None:
     assert answer == [{"decision": "accept"}]
 
 
+def test_native_action_approval_rejects_checkpoint_feedback() -> None:
+    session = RunSession(run_id="approval-feedback")
+    worker = threading.Thread(
+        target=lambda: session.request_approval(
+            "item/commandExecution/requestApproval",
+            {"command": "pytest", "cwd": "/tmp/project"},
+        )
+    )
+    worker.start()
+    deadline = time.monotonic() + 2
+    while session.pending_approval is None and time.monotonic() < deadline:
+        time.sleep(0.01)
+    with pytest.raises(ValueError, match="only at a harness checkpoint"):
+        session.decide("accept", "Change the implementation first.")
+    session.decide("decline")
+    worker.join(timeout=2)
+
+
 def test_ui_contains_phase_canvas_thread_projection_and_receipt_surfaces() -> None:
     html = (Path(__file__).parents[1] / "weave_codex/static/studio.html").read_text()
     for element_id in (
@@ -492,11 +510,16 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert 'id="runs-view"' in html
     assert 'id="integrations-view"' in html
     assert 'id="field-trials-view"' in html
+    assert 'id="platform-trials-grid"' in html
     assert 'href="/studio.html#design"' not in html
     assert "phaseProgram(kind)" in javascript
     assert 'request("/api/compile"' in javascript
     assert 'request("/api/runs"' in javascript
     assert "one or one hundred native Codex tool calls" in html
+    assert 'id="checkpoint-feedback"' in html
+    assert "YOUR DECISION" in javascript
+    assert "execution.feedback" in javascript
+    assert 'request("/api/platform-trials"' in javascript
     assert 'data-view="workflows"' in html
     assert 'data-view="architecture"' in html
     assert 'data-view="setup"' in html

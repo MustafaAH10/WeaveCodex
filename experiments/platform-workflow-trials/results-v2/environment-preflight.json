@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "verifiedAtUtc": "2026-08-26T03:08:45Z",
+  "containerName": "weavecodex-platform-trials-v2b-20260826",
+  "containerId": "db058f20639f68162592fbc9af3ebff5a00cb81bcae120a81d78c62b3d3ff29f",
+  "imageId": "sha256:0f1ff6a924a5747020db0bef0b5a4f183e20d1ed1d988577e6acf84bfc9007ed",
+  "privileged": true,
+  "mounts": [
+    {
+      "destination": "/workspace/WeaveCodex",
+      "type": "bind",
+      "writable": false,
+      "writeProbe": "denied"
+    },
+    {
+      "destination": "/workspace/trial-results",
+      "type": "fresh-named-volume",
+      "writable": true,
+      "writeProbe": "passed"
+    },
+    {
+      "destination": "/root/.codex",
+      "type": "persistent-auth-volume",
+      "writable": true,
+      "tokenMaterialInspectedOrCopied": false
+    }
+  ],
+  "authentication": {
+    "status": "Logged in using ChatGPT",
+    "method": "official Codex device authorization",
+    "openAiApiKeyPresent": false
+  },
+  "nestedSandboxProbe": {
+    "binary": "Codex bundled bwrap",
+    "arguments": "--unshare-user --uid 0 --gid 0 --ro-bind / / --proc /proc --dev /dev /bin/true",
+    "exitCode": 0,
+    "result": "bwrap_namespace_ok"
+  },
+  "frozenPlanId": "sha256:cb61b2f65745b67801c54e38c623a1dbb06004c0bde606469ebb9e037f5d643e",
+  "redTeamDisposition": "GO after independent plan, mount, auth, namespace, parser, and timeout checks"
+}

@@ -14,8 +14,9 @@ Authentication remains owned by the official Codex app-server. WeaveCodex:
 
 - inherits the user's configured `CODEX_HOME` when it starts Codex;
 - reads only a redacted account status through `account/read`;
-- never copies or persists `auth.json`, OAuth tokens, API keys, login URLs, or
-  user email addresses; and
+- never reads or copies `auth.json`, OAuth tokens, API keys, or user email
+  addresses; relays a short-lived login URL once to the initiating local UI but
+  never logs or persists that URL; and
 - uses the official ChatGPT browser/device flow when a login is required.
 
 For a cloud demonstration, expose only a sanitized static results site. Keep

@@ -1,0 +1,58 @@
+{
+  "incident_id": "INC-42",
+  "brief_type": "internal_support_brief",
+  "status": {
+    "value": "investigating",
+    "classification": "observation",
+    "source_anchor": "[incident_log.json#INC-42]"
+  },
+  "timeline": [
+    {
+      "timestamp": "2026-08-26T09:10:00Z",
+      "event": "Incident start time recorded.",
+      "classification": "observation",
+      "source_anchor": "[incident_log.json#INC-42]"
+    },
+    {
+      "timestamp": "2026-08-26T09:30:00Z",
+      "event": "On-call confirmed elevated queue depth in ap-southeast-1; existing jobs are retained and no data loss has been observed. Investigation remains active.",
+      "classification": "observation",
+      "source_anchor": "[status_history.md#09-30Z]"
+    }
+  ],
+  "affected_scope": {
+    "service": "media-rendering",
+    "region": "ap-southeast-1",
+    "symptom": "render jobs remain queued longer than 15 minutes",
+    "classification": "observation",
+    "source_anchor": "[incident_log.json#INC-42]"
+  },
+  "root_cause": {
+    "value": "unknown",
+    "classification": "observation",
+    "basis": "The incident record has no confirmed root cause.",
+    "source_anchor": "[incident_log.json#INC-42]"
+  },
+  "data_integrity": {
+    "observation": "Existing jobs are retained; no data loss has been observed.",
+    "source_anchor": "[status_history.md#09-30Z]"
+  },
+  "next_customer_update": {
+    "due_at": "2026-08-26T10:00:00Z",
+    "classification": "observation",
+    "source_anchor": "[status_history.md#09-30Z]",
+    "cadence_requirement": "Publish every 30 minutes from the latest published update.",
+    "cadence_source_anchor": "[runbook.md#customer-update-runbook]"
+  },
+  "inferences": [],
+  "remaining_uncertainty": [
+    {
+      "item": "Root cause is unknown.",
+      "source_anchor": "[incident_log.json#INC-42]"
+    },
+    {
+      "item": "No confirmed recovery estimate is recorded; do not promise a recovery time.",
+      "source_anchor": "[runbook.md#customer-update-runbook]"
+    }
+  ]
+}
