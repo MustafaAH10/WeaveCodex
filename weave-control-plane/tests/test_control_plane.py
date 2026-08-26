@@ -523,12 +523,16 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert "phaseProgram(kind)" in javascript
     assert 'request("/api/compile"' in javascript
     assert 'request("/api/runs"' in javascript
-    assert "dozens of tools inside it" in html
+    assert "one Codex node means one turn—not one tool" in html
+    assert "connect ports" in html
+    assert 'data-graph-template="fullstack"' in html
+    assert 'data-graph-template="poster"' in html
     assert 'data-add-phase="work" data-step-option="adaptive"' in html
-    assert 'data-add-phase="work" data-step-option="focused"' in html
-    assert 'data-add-phase="command" data-step-option="function"' in html
     assert 'data-add-phase="command" data-step-option="test"' in html
-    assert 'data-add-phase="command" data-step-option="checker"' in html
+    assert "Adaptive · Codex chooses the route" in javascript
+    assert "Bounded · do only this instruction" in javascript
+    assert "Function call" in javascript
+    assert "Checker" in javascript
     assert 'id="cancel-active-run"' in html
     assert '/stop`, { method: "POST"' in javascript
     assert 'id="checkpoint-feedback"' in html

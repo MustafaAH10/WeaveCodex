@@ -71,9 +71,12 @@ Open `http://127.0.0.1:8790`. The default journey is deliberately short:
 
 1. **Describe the outcome** by speaking or typing. Voice entry uses the browser's dictation
    capability, so availability and audio handling depend on the browser; text remains the fallback.
-2. **Choose a control style:** direct Codex, plan with me, finish and check, or explore and
-   challenge.
-3. **Run it** or open Customize steps when the task genuinely needs finer coordination.
+2. **Draw the control loop:** start blank or load an example, place nodes freely, connect them with
+   arrows, and decide the meaning and resolution of every node. A Codex-turn node may own an entire
+   subsystem or one narrow operation; exact-command and verifier nodes provide finer-grained gates.
+3. **Run it.** Codex follows the dependency order drawn on the canvas. One Codex-turn node may still
+   contain many native model and tool iterations; arrows coordinate turns rather than individual
+   tool calls.
 4. **Save the process in Library** without the original task or repository, then reuse or visibly
    adapt it for another task. Library also contains Codex skills, connectors, and account setup.
 5. **Review Activity** starting from the goals and human decisions—not internal IDs or protocol

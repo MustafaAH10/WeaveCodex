@@ -11,6 +11,8 @@ from .manifest import VERIFIER_SCHEMA, HarnessManifest, integration_prompt
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+from .phase_program import ordered_phases
+
 
 class _Turn(Protocol):
     turn_id: str
@@ -163,8 +165,9 @@ def _work_prompt(
     )
     feedback = human_feedback or "No new human direction was supplied at the preceding checkpoint."
     scope_contract = (
-        "This is a broad adaptive goal. Choose the necessary internal sequence and use as many "
-        "native tools as the outcome legitimately requires."
+        "This is a broad adaptive goal within this node. Choose the necessary internal sequence "
+        "and use as many native tools as this node's outcome legitimately requires, but do not "
+        "take over responsibilities assigned to later workflow nodes."
         if phase_scope == "adaptive"
         else (
             "This is a deliberately focused goal. Complete only the stated instruction; do not "
@@ -195,6 +198,8 @@ def _work_prompt(
 
 {continuity}
 {scope_contract}
+Stop this turn as soon as the phase outcome is complete. Hand the result to the next workflow
+node instead of continuing the overall task on its behalf.
 When checkpoint feedback is present, treat it as the user's latest instruction for this phase.
 One phase is one controller turn, not one tool call. Use as many native Codex reasoning and tool
 steps as the goal legitimately requires. Report the phase outcome and the evidence actually used."""
@@ -222,7 +227,7 @@ def execute_phase_program(
     result = PhaseRunResult()
     work_count = 0
     pending_human_feedback = ""
-    for phase in program.phases:
+    for phase in ordered_phases(program):
         if phase.kind == "checkpoint":
             session.stage(phase.id, phase.name, phase.question)
             resolution = session.request_checkpoint(phase.id, phase.question)

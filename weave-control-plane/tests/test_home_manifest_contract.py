@@ -72,3 +72,56 @@ def test_weave_browser_manifest_remains_schema_v2_with_phase_program() -> None:
     compiled = compile_manifest(HarnessManifest.model_validate(weave))
     assert compiled["schemaVersion"] == 2
     assert compiled["executionOrder"] == ["work"]
+
+
+def test_visual_examples_are_real_executable_graphs_at_different_granularities() -> None:
+    script = r"""
+const { graphProblem, graphTemplate, orderedClientPhases } = require(process.argv[1]);
+const fullstack = graphTemplate("fullstack");
+const poster = graphTemplate("poster");
+process.stdout.write(JSON.stringify({
+  fullstack,
+  poster,
+  fullstackProblem: graphProblem(fullstack),
+  posterProblem: graphProblem(poster),
+  fullstackOrder: orderedClientPhases(fullstack).map((phase) => phase.id),
+  posterOrder: orderedClientPhases(poster).map((phase) => phase.id),
+}));
+"""
+    result = subprocess.run(
+        ["node", "-e", script, str(STATIC_HOME)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    values = json.loads(result.stdout)
+
+    assert values["fullstackProblem"] == ""
+    assert values["posterProblem"] == ""
+    assert len(values["fullstack"]["edges"]) == 6
+    assert len(values["poster"]["edges"]) == 7
+    assert values["fullstackOrder"] == [
+        "shape-product",
+        "build-backend",
+        "build-auth",
+        "build-frontend",
+        "product-checkpoint",
+        "prove-product",
+    ]
+    assert values["posterOrder"][-1] == "final-artwork"
+    assert all("position" in phase for phase in values["poster"]["phases"])
+
+    manifest = HarnessManifest.model_validate(
+        {
+            "schemaVersion": 2,
+            "name": "Full-stack canvas",
+            "cwd": "/tmp/project",
+            "task": {"instructions": "Build the complete product."},
+            "phaseProgram": values["fullstack"],
+        }
+    )
+    compiled = compile_manifest(manifest)
+    assert compiled["executionOrder"] == values["fullstackOrder"]
+    assert {("shape-product", "build-backend"), ("shape-product", "build-auth")} <= {
+        (edge["from"], edge["to"]) for edge in compiled["edges"]
+    }

@@ -12,6 +12,7 @@ from weave_codex.manifest import HarnessManifest
 from weave_codex.phase_program import (
     PhaseProgram,
     compile_phase_program,
+    ordered_phases,
     phase_templates,
     phase_turn_bound,
     safe_phase_id,
@@ -163,6 +164,86 @@ def test_each_work_node_chooses_its_own_granularity() -> None:
     assert "deliberately focused" in compiled["nodes"][2]["detail"]
 
 
+def test_canvas_arrows_define_stable_dependency_order_and_preserve_positions() -> None:
+    value = PhaseProgram.model_validate(
+        {
+            "phases": [
+                {
+                    "id": "frame",
+                    "kind": "work",
+                    "name": "Frame product",
+                    "goal": "Define shared interfaces.",
+                    "position": {"x": 40, "y": 220},
+                },
+                {
+                    "id": "backend",
+                    "kind": "work",
+                    "name": "Backend",
+                    "goal": "Build backend services.",
+                    "position": {"x": 360, "y": 80},
+                },
+                {
+                    "id": "auth",
+                    "kind": "work",
+                    "name": "Auth",
+                    "goal": "Build authentication.",
+                    "position": {"x": 360, "y": 380},
+                },
+                {
+                    "id": "frontend",
+                    "kind": "work",
+                    "name": "Frontend",
+                    "goal": "Build against both contracts.",
+                    "position": {"x": 700, "y": 220},
+                },
+            ],
+            "edges": [
+                {"from": "frame", "to": "backend"},
+                {"from": "frame", "to": "auth"},
+                {"from": "backend", "to": "frontend"},
+                {"from": "auth", "to": "frontend"},
+            ],
+        }
+    )
+
+    assert [phase.id for phase in ordered_phases(value)] == [
+        "frame",
+        "backend",
+        "auth",
+        "frontend",
+    ]
+    compiled = compile_phase_program(value)
+    assert compiled["executionOrder"] == ["frame", "backend", "auth", "frontend"]
+    assert {(edge["from"], edge["to"]) for edge in compiled["edges"]} >= {
+        ("frame", "backend"),
+        ("frame", "auth"),
+        ("backend", "frontend"),
+        ("auth", "frontend"),
+    }
+    assert compiled["nodes"][2]["position"] == {"x": 360, "y": 80}
+
+
+def test_canvas_graph_fails_closed_on_cycles_or_multiple_starting_nodes() -> None:
+    base = [
+        {"id": "one", "kind": "work", "name": "One", "goal": "Do one thing."},
+        {"id": "two", "kind": "work", "name": "Two", "goal": "Do another thing."},
+        {"id": "three", "kind": "work", "name": "Three", "goal": "Do a third thing."},
+    ]
+    with pytest.raises(ValidationError, match="exactly one starting node"):
+        PhaseProgram.model_validate({"phases": base, "edges": [{"from": "one", "to": "two"}]})
+    with pytest.raises(ValidationError, match="exactly one starting node|acyclic"):
+        PhaseProgram.model_validate(
+            {
+                "phases": base,
+                "edges": [
+                    {"from": "one", "to": "two"},
+                    {"from": "two", "to": "one"},
+                    {"from": "one", "to": "three"},
+                ],
+            }
+        )
+
+
 class PhaseGatewayFake:
     def __init__(self) -> None:
         self.outputs = [
@@ -274,6 +355,8 @@ def test_phase_program_executes_controller_turns_and_real_human_checkpoint() -> 
     assert session.result["traceProjection"]["counts"]["toolCalls"] == 3
     assert "many native Codex reasoning and tool" in fake.prompts[0]
     assert "<granularity>adaptive</granularity>" in fake.prompts[0]
+    assert "do not take over responsibilities assigned to later workflow nodes" in fake.prompts[0]
+    assert "Stop this turn as soon as the phase outcome is complete" in fake.prompts[0]
     assert "Use direction B and reduce visual noise." in fake.prompts[1]
     assert "latest instruction for this phase" in fake.prompts[1]
 

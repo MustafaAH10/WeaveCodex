@@ -19,7 +19,9 @@ let voiceListening = false;
 let voiceBaseText = "";
 let pendingIsCheckpoint = false;
 let selectedPhaseIndex = 0;
-let draggedPhaseIndex = null;
+let selectedEdgeIndex = null;
+let canvasDrag = null;
+let connectionDraft = null;
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -58,7 +60,7 @@ function phaseProgram(kind) {
     precision: [
       { id: "inspect", kind: "work", scope: "focused", name: "Find the cause", goal: "Inspect the relevant implementation and focused tests. Explain the smallest supported change.", reasoningEffort: "low" },
       { id: "implement", kind: "work", scope: "focused", name: "Make the focused change", goal: "Implement only the supported change. Do not broaden the task.", reasoningEffort: "inherit" },
-      { id: "focused-test", kind: "command", stepType: "test", name: "Run the focused test", command: "python -m pytest -q", expectedExitCode: 0, stopOnFailure: true },
+      { id: "focused-test", kind: "command", stepType: "test", name: "Run the focused test", command: "python3 -m pytest -q", expectedExitCode: 0, stopOnFailure: true },
       { id: "static-check", kind: "command", stepType: "checker", name: "Check the changed files", command: "git diff --check", expectedExitCode: 0, stopOnFailure: true },
       { id: "review", kind: "verify", name: "Review the evidence", criteria: "The change is narrow, the requested behavior is complete, and every exact check passed.", maxRepairs: 0 },
     ],
@@ -66,11 +68,67 @@ function phaseProgram(kind) {
   return workflows[kind];
 }
 
+function linearGraph(kind) {
+  const phases = clone(phaseProgram(kind));
+  phases.forEach((phase, index) => { phase.position = { x: 90 + (index * 300), y: 230 }; });
+  return {
+    projectionVersion: 1,
+    phases,
+    edges: phases.slice(1).map((phase, index) => ({ from: phases[index].id, to: phase.id })),
+  };
+}
+
+function graphTemplate(kind) {
+  if (["review", "direct", "audit", "precision"].includes(kind)) return linearGraph(kind);
+  if (kind === "blank") {
+    return { projectionVersion: 1, phases: [{ id: "first-step", kind: "work", scope: "adaptive", name: "First Codex turn", goal: "Describe what Codex should accomplish before handing work to the next node.", reasoningEffort: "inherit", position: { x: 170, y: 250 } }], edges: [] };
+  }
+  if (kind === "fullstack") {
+    return {
+      projectionVersion: 1,
+      phases: [
+        { id: "shape-product", kind: "work", scope: "adaptive", name: "Shape the product", goal: "Inspect the repository and turn the overall request into a coherent product architecture. Record the interfaces that the implementation nodes must share.", reasoningEffort: "inherit", position: { x: 80, y: 300 } },
+        { id: "build-backend", kind: "work", scope: "adaptive", name: "Build the backend", goal: "Implement the backend data model, API, validation, and error handling against the agreed product interfaces. Run the checks needed for this area.", reasoningEffort: "inherit", position: { x: 410, y: 120 } },
+        { id: "build-auth", kind: "work", scope: "adaptive", name: "Build authentication", goal: "Implement the authentication and authorization boundary, including safe session behavior and focused security checks. Keep the shared interfaces compatible.", reasoningEffort: "inherit", position: { x: 410, y: 480 } },
+        { id: "build-frontend", kind: "work", scope: "adaptive", name: "Build the frontend", goal: "Implement the user-facing experience against the completed backend and auth contracts. Inspect the running result and iterate until the core flow works.", reasoningEffort: "inherit", position: { x: 760, y: 300 } },
+        { id: "product-checkpoint", kind: "checkpoint", name: "Review the working product", question: "Does the working product match the intended experience? Continue, redirect the final polish, or stop.", position: { x: 1080, y: 300 } },
+        { id: "prove-product", kind: "verify", name: "Prove the whole flow", criteria: "The backend, authentication, and frontend work together; critical checks pass; the final result matches the approved product direction.", maxRepairs: 1, position: { x: 1400, y: 300 } },
+      ],
+      edges: [
+        { from: "shape-product", to: "build-backend" }, { from: "shape-product", to: "build-auth" },
+        { from: "build-backend", to: "build-frontend" }, { from: "build-auth", to: "build-frontend" },
+        { from: "build-frontend", to: "product-checkpoint" }, { from: "product-checkpoint", to: "prove-product" },
+      ],
+    };
+  }
+  if (kind === "poster") {
+    return {
+      projectionVersion: 1,
+      phases: [
+        { id: "art-direction", kind: "work", scope: "adaptive", name: "Choose the visual world", goal: "Interpret the brief, gather relevant visual references available in the workspace, and define a distinctive art direction with palette, type, composition, and mood.", reasoningEffort: "inherit", position: { x: 70, y: 300 } },
+        { id: "three-concepts", kind: "work", scope: "adaptive", name: "Create three concepts", goal: "Produce three genuinely different poster concepts as inspectable artifacts or detailed compositions. Explain the tradeoff of each without choosing for the user.", reasoningEffort: "inherit", position: { x: 390, y: 300 } },
+        { id: "choose-concept", kind: "checkpoint", name: "Choose a concept", question: "Which concept should Codex develop? Add any changes to tone, palette, or composition before continuing.", position: { x: 710, y: 300 } },
+        { id: "produce-poster", kind: "work", scope: "adaptive", name: "Produce the poster", goal: "Develop the selected concept into a polished final poster in the requested format. Respect the user's latest art direction and create a viewable artifact.", reasoningEffort: "inherit", position: { x: 1030, y: 300 } },
+        { id: "type-critique", kind: "work", scope: "focused", name: "Critique typography", goal: "Review only hierarchy, type choice, legibility, spacing, and copy treatment. Return concrete corrections for the final pass.", reasoningEffort: "low", position: { x: 1360, y: 120 } },
+        { id: "composition-critique", kind: "work", scope: "focused", name: "Critique composition", goal: "Review only balance, focal point, color contrast, negative space, and visual rhythm. Return concrete corrections for the final pass.", reasoningEffort: "low", position: { x: 1360, y: 480 } },
+        { id: "final-artwork", kind: "work", scope: "adaptive", name: "Refine final artwork", goal: "Apply the supported typography and composition corrections, preserve the chosen direction, and export the final viewable poster artifact.", reasoningEffort: "inherit", position: { x: 1700, y: 300 } },
+      ],
+      edges: [
+        { from: "art-direction", to: "three-concepts" }, { from: "three-concepts", to: "choose-concept" },
+        { from: "choose-concept", to: "produce-poster" }, { from: "produce-poster", to: "type-critique" },
+        { from: "produce-poster", to: "composition-critique" }, { from: "type-critique", to: "final-artwork" },
+        { from: "composition-critique", to: "final-artwork" },
+      ],
+    };
+  }
+  return linearGraph("review");
+}
+
 function selectedProgram() {
   const workflow = $("#workflow-select").value;
   if (designProgram) return clone(designProgram);
   if (activeSavedWorkflow) return clone(activeSavedWorkflow.phaseProgram);
-  return { projectionVersion: 1, phases: clone(phaseProgram(workflow)) };
+  return graphTemplate(workflow);
 }
 
 function buildManifest({ mode, name, cwd, instructions, integrations, agent, program }) {
@@ -151,7 +209,7 @@ function setMode(mode) {
   loopAuthoring.classList.toggle("hidden", mode !== "weave");
   loopAuthoring.setAttribute("aria-hidden", String(mode !== "weave"));
   if (mode === "weave" && !designProgram) {
-    designProgram = { projectionVersion: 1, phases: clone(phaseProgram($("#workflow-select").value)) };
+    designProgram = graphTemplate($("#workflow-select").value);
   }
   renderWorkflowPreview();
   const runButton = $("#run-task");
@@ -159,7 +217,7 @@ function setMode(mode) {
 }
 
 function programNodes(program, { compact = false } = {}) {
-  const phases = program?.phases || [];
+  const phases = orderedClientPhases(program || { phases: [], edges: [] });
   return phases.map((phase, index) => `<article class="phase-node ${escapeHtml(phase.kind)}"><small>${index + 1} · ${escapeHtml(phaseKindLabel(phase))}</small><b>${escapeHtml(phase.name)}</b></article>${index < phases.length - 1 ? '<i aria-hidden="true">→</i>' : ""}`).join("") || (compact ? "" : "<p>No steps yet.</p>");
 }
 
@@ -190,7 +248,7 @@ function phasePlainCopy(phase) {
 function renderRunLoop(program) {
   const preview = $("#run-loop-preview");
   if (!preview) return;
-  preview.innerHTML = (program?.phases || []).map((phase, index) => {
+  preview.innerHTML = orderedClientPhases(program || { phases: [], edges: [] }).map((phase, index) => {
     const plain = phasePlainCopy(phase);
     return `<article class="run-loop-step ${escapeHtml(phase.kind)}"><span>${index + 1}</span><div><small>${escapeHtml(plain.actor)}</small><b>${escapeHtml(phase.name)}</b><p>${escapeHtml(plain.note)}</p></div></article>`;
   }).join("");
@@ -218,7 +276,7 @@ function updateWorkflowExplanation() {
   };
   $("#workflow-explanation").textContent = copy[$("#workflow-select").value];
   $("#design-save-name").value = $("#workflow-select").selectedOptions[0].textContent;
-  designProgram = { projectionVersion: 1, phases: clone(phaseProgram($("#workflow-select").value)) };
+  designProgram = graphTemplate($("#workflow-select").value);
   selectedPhaseIndex = 0;
   renderWorkflowPreview();
   renderPhaseEditor();
@@ -413,7 +471,7 @@ function renderSteps(phases, state = {}) {
 }
 
 function displaySteps(value) {
-  return value.phaseProgram?.phases || [{ id: "native-codex-run", kind: "native", name: "One native adaptive Codex run" }];
+  return value.phaseProgram ? orderedClientPhases(value.phaseProgram) : [{ id: "native-codex-run", kind: "native", name: "One native adaptive Codex run" }];
 }
 
 async function startRun() {
@@ -421,6 +479,15 @@ async function startRun() {
   const value = manifest();
   if (value.task.instructions.length < 4) { $("#task-input").focus(); return; }
   if (!value.cwd.startsWith("/")) { $("#workspace-input").focus(); return; }
+  if (runMode === "weave") {
+    const problem = graphProblem(value.phaseProgram);
+    if (problem) {
+      $("#design-status").textContent = problem;
+      $("#design-status").classList.add("error");
+      $("#customize-loop").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+  }
   const button = $("#run-task");
   button.disabled = true;
   button.textContent = "Checking run…";
@@ -558,8 +625,10 @@ async function startLogin() {
 function ensureDesignProgram() {
   if (!designProgram) {
     const key = $("#workflow-select").value === "saved" ? "review" : $("#workflow-select").value;
-    designProgram = { projectionVersion: 1, phases: clone(phaseProgram(key)) };
+    designProgram = graphTemplate(key);
   }
+  designProgram.edges ||= designProgram.phases.slice(1).map((phase, index) => ({ from: designProgram.phases[index].id, to: phase.id }));
+  designProgram.phases.forEach((phase, index) => { phase.position ||= { x: 90 + (index * 300), y: 250 }; });
   return designProgram;
 }
 
@@ -670,9 +739,281 @@ function addPhase(kind, stepOption = "adaptive") {
   while (ids.has(id)) id = `${stem}-${counter++}`;
   if (kind === "work") program.phases.push({ id, kind, scope: stepOption === "focused" ? "focused" : "adaptive", name: stepOption === "focused" ? "New focused task" : "New broad Codex goal", goal: stepOption === "focused" ? "Describe one narrow outcome Codex must complete without expanding scope." : "Describe a high-level outcome and let Codex choose the internal plan, tools, and retries.", reasoningEffort: "inherit" });
   if (kind === "checkpoint") program.phases.push({ id, kind, name: "My decision", question: "Continue to the next step?" });
-  if (kind === "command") program.phases.push({ id, kind, stepType: commandType, name: commandType === "test" ? "Run one test" : commandType === "checker" ? "Run one checker" : "Run one function", command: commandType === "test" ? "python -m pytest -q path/to/test.py::test_name" : commandType === "checker" ? "git diff --check" : "python -c \"from package import function; function()\"", expectedExitCode: 0, stopOnFailure: true });
+  if (kind === "command") program.phases.push({ id, kind, stepType: commandType, name: commandType === "test" ? "Run one test" : commandType === "checker" ? "Run one checker" : "Run one function", command: commandType === "test" ? "python3 -m pytest -q path/to/test.py::test_name" : commandType === "checker" ? "git diff --check" : "python3 -c \"from package import function; function()\"", expectedExitCode: 0, stopOnFailure: true });
   if (kind === "verify") program.phases.push({ id, kind, name: "Check the result", criteria: "The requested outcome is complete and supported by relevant checks.", maxRepairs: 1 });
   selectedPhaseIndex = program.phases.length - 1;
+  adaptationMethod ||= "manual";
+  renderWorkflowPreview();
+  renderPhaseEditor();
+}
+
+// The graph-native canvas supersedes the earlier list editor above. Keeping the
+// small list implementation in this file lets old static fixtures keep loading,
+// while these declarations become the product runtime used by the current page.
+function clientTopologicalOrder(program) {
+  if (!program?.edges?.length) return program?.phases || [];
+  const byId = new Map(program.phases.map((phase) => [phase.id, phase]));
+  const index = new Map(program.phases.map((phase, order) => [phase.id, order]));
+  const incoming = new Map(program.phases.map((phase) => [phase.id, 0]));
+  const outgoing = new Map(program.phases.map((phase) => [phase.id, []]));
+  for (const edge of program.edges) {
+    if (!byId.has(edge.from) || !byId.has(edge.to)) return program.phases;
+    incoming.set(edge.to, incoming.get(edge.to) + 1);
+    outgoing.get(edge.from).push(edge.to);
+  }
+  const ready = program.phases.filter((phase) => incoming.get(phase.id) === 0).map((phase) => phase.id);
+  const result = [];
+  while (ready.length) {
+    ready.sort((left, right) => index.get(left) - index.get(right));
+    const id = ready.shift();
+    result.push(byId.get(id));
+    for (const target of outgoing.get(id).sort((left, right) => index.get(left) - index.get(right))) {
+      incoming.set(target, incoming.get(target) - 1);
+      if (incoming.get(target) === 0) ready.push(target);
+    }
+  }
+  return result;
+}
+
+function orderedClientPhases(program) {
+  const ordered = clientTopologicalOrder(program);
+  return ordered.length === (program?.phases?.length || 0) ? ordered : (program?.phases || []);
+}
+
+function graphProblem(program) {
+  const ids = new Set(program.phases.map((phase) => phase.id));
+  if (program.edges.some((edge) => !ids.has(edge.from) || !ids.has(edge.to))) return "An arrow points to a missing node.";
+  if (program.edges.some((edge) => edge.from === edge.to)) return "A node cannot point to itself.";
+  const identities = program.edges.map((edge) => `${edge.from}\u0000${edge.to}`);
+  if (new Set(identities).size !== identities.length) return "The same arrow appears twice.";
+  if (program.phases.length > 1 && !program.edges.length) return "Connect the nodes with arrows before running.";
+  const incoming = new Map(program.phases.map((phase) => [phase.id, 0]));
+  for (const edge of program.edges) incoming.set(edge.to, incoming.get(edge.to) + 1);
+  const roots = program.phases.filter((phase) => incoming.get(phase.id) === 0);
+  if (roots.length !== 1) return roots.length ? "Connect every loose node so there is one starting point." : "This graph contains a loop. Remove one arrow.";
+  if (clientTopologicalOrder(program).length !== program.phases.length) return "This graph contains a loop or disconnected nodes.";
+  if (roots[0].kind !== "work") return "The starting node must be a Codex turn.";
+  return "";
+}
+
+function uniquePhaseId(stem, program) {
+  const base = String(stem).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 42) || "node";
+  const ids = new Set(program.phases.map((phase) => phase.id));
+  let id = /^[a-z]/.test(base) ? base : `node-${base}`;
+  let counter = 2;
+  while (ids.has(id)) id = `${base.slice(0, 42)}-${counter++}`;
+  return id;
+}
+
+function phaseInspector(phase) {
+  const key = phaseCopyKey(phase);
+  const scopeSelect = phase.kind === "work" ? `<label>Freedom inside this turn<select data-phase-field="scope"><option value="adaptive" ${phase.scope !== "focused" ? "selected" : ""}>Adaptive · Codex chooses the route</option><option value="focused" ${phase.scope === "focused" ? "selected" : ""}>Bounded · do only this instruction</option></select></label>` : "";
+  const typeSelect = phase.kind === "command" ? `<label>Evidence type<select data-phase-field="stepType"><option value="function" ${phase.stepType === "function" ? "selected" : ""}>Function call</option><option value="test" ${phase.stepType === "test" ? "selected" : ""}>Test</option><option value="checker" ${phase.stepType === "checker" ? "selected" : ""}>Checker</option></select></label>` : "";
+  const commandSettings = phase.kind === "command" ? `<div class="inspector-grid"><label>Passing exit code<input data-phase-field="expectedExitCode" type="number" min="0" max="255" value="${phase.expectedExitCode ?? 0}"></label><label class="switch-field"><input data-phase-field="stopOnFailure" type="checkbox" ${phase.stopOnFailure !== false ? "checked" : ""}><span>Stop if this fails</span></label></div><p class="inspector-proof">Passed only when Codex events contain this exact command and exit code.</p>` : "";
+  const verifySettings = phase.kind === "verify" ? `<label>Repair attempts<select data-phase-field="maxRepairs"><option value="0" ${phase.maxRepairs === 0 ? "selected" : ""}>None</option><option value="1" ${phase.maxRepairs === 1 ? "selected" : ""}>One</option><option value="2" ${phase.maxRepairs === 2 ? "selected" : ""}>Two</option></select></label>` : "";
+  const program = ensureDesignProgram();
+  const incoming = program.edges.filter((edge) => edge.to === phase.id).length;
+  const outgoing = program.edges.filter((edge) => edge.from === phase.id).length;
+  return `<p class="kicker">${escapeHtml(phaseKindLabel(phase).toUpperCase())}</p><h2>${escapeHtml(phase.name)}</h2><div class="inspector-fields"><label>Node name<input data-phase-field="name" value="${escapeHtml(phase.name)}" maxlength="80"></label>${scopeSelect}${typeSelect}<label>${escapeHtml(phaseCopyLabel(phase))}<textarea data-phase-field="${key}" maxlength="${phase.kind === "work" ? 4000 : 2000}" rows="7">${escapeHtml(phase[key])}</textarea></label>${commandSettings}${verifySettings}<p class="connection-summary">${incoming} arrow${incoming === 1 ? "" : "s"} in · ${outgoing} arrow${outgoing === 1 ? "" : "s"} out</p></div><div class="inspector-actions"><button type="button" data-phase-duplicate>Duplicate node</button><button class="danger" type="button" data-phase-delete>Delete node</button></div>`;
+}
+
+function edgeInspector(edge) {
+  const program = ensureDesignProgram();
+  const source = program.phases.find((phase) => phase.id === edge.from);
+  const target = program.phases.find((phase) => phase.id === edge.to);
+  return `<p class="kicker">SELECTED ARROW</p><h2>${escapeHtml(source?.name || edge.from)} → ${escapeHtml(target?.name || edge.to)}</h2><p class="edge-help">The target waits for the source to finish. Weave derives Codex turn order from this dependency.</p><div class="inspector-actions"><button class="danger" type="button" data-edge-delete>Delete arrow</button></div>`;
+}
+
+function canvasPath(source, target) {
+  const startX = source.position.x + 252;
+  const startY = source.position.y + 86;
+  const endX = target.position.x;
+  const endY = target.position.y + 86;
+  const bend = Math.max(80, Math.abs(endX - startX) * .45);
+  return `M ${startX} ${startY} C ${startX + bend} ${startY}, ${endX - bend} ${endY}, ${endX} ${endY}`;
+}
+
+function renderCanvasEdges() {
+  const program = ensureDesignProgram();
+  const byId = new Map(program.phases.map((phase) => [phase.id, phase]));
+  const paths = program.edges.map((edge, index) => {
+    const source = byId.get(edge.from);
+    const target = byId.get(edge.to);
+    if (!source || !target) return "";
+    const path = canvasPath(source, target);
+    return `<path class="edge-hit" data-edge-index="${index}" d="${path}"></path><path class="edge-line ${index === selectedEdgeIndex ? "selected" : ""}" d="${path}" marker-end="url(#arrowhead)"></path>`;
+  }).join("");
+  const draft = connectionDraft?.path ? `<path class="edge-line draft" d="${connectionDraft.path}" marker-end="url(#arrowhead)"></path>` : "";
+  $("#canvas-edges").innerHTML = `<defs><marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z"></path></marker></defs>${paths}${draft}`;
+  $$("[data-edge-index]", $("#canvas-edges")).forEach((path) => path.addEventListener("click", (event) => {
+    event.stopPropagation();
+    selectedEdgeIndex = Number(path.dataset.edgeIndex);
+    selectedPhaseIndex = -1;
+    renderPhaseEditor();
+  }));
+}
+
+function pointerToCanvas(event) {
+  const viewport = $("#canvas-viewport");
+  const rect = viewport.getBoundingClientRect();
+  return { x: event.clientX - rect.left + viewport.scrollLeft, y: event.clientY - rect.top + viewport.scrollTop };
+}
+
+function beginConnection(event, sourceId) {
+  event.preventDefault();
+  event.stopPropagation();
+  const program = ensureDesignProgram();
+  const source = program.phases.find((phase) => phase.id === sourceId);
+  connectionDraft = { sourceId, path: "" };
+  const move = (moveEvent) => {
+    const point = pointerToCanvas(moveEvent);
+    const startX = source.position.x + 252;
+    const startY = source.position.y + 86;
+    const bend = Math.max(70, Math.abs(point.x - startX) * .4);
+    connectionDraft.path = `M ${startX} ${startY} C ${startX + bend} ${startY}, ${point.x - bend} ${point.y}, ${point.x} ${point.y}`;
+    renderCanvasEdges();
+  };
+  const end = (upEvent) => {
+    document.removeEventListener("pointermove", move);
+    const targetPort = document.elementFromPoint(upEvent.clientX, upEvent.clientY)?.closest('[data-port="in"]');
+    const targetId = targetPort?.closest("[data-phase-id]")?.dataset.phaseId;
+    if (targetId && targetId !== sourceId && !program.edges.some((edge) => edge.from === sourceId && edge.to === targetId)) {
+      program.edges.push({ from: sourceId, to: targetId });
+      adaptationMethod ||= "manual";
+    }
+    connectionDraft = null;
+    renderWorkflowPreview();
+    renderPhaseEditor();
+  };
+  document.addEventListener("pointermove", move);
+  document.addEventListener("pointerup", end, { once: true });
+}
+
+function beginNodeDrag(event, phaseIndex) {
+  if (event.target.closest(".node-port")) return;
+  const phase = ensureDesignProgram().phases[phaseIndex];
+  canvasDrag = { phaseIndex, origin: { ...phase.position }, start: pointerToCanvas(event) };
+  event.currentTarget.setPointerCapture(event.pointerId);
+  event.currentTarget.classList.add("dragging");
+}
+
+function moveNode(event) {
+  if (!canvasDrag) return;
+  const phase = ensureDesignProgram().phases[canvasDrag.phaseIndex];
+  const point = pointerToCanvas(event);
+  phase.position.x = Math.max(20, Math.min(2100, Math.round(canvasDrag.origin.x + point.x - canvasDrag.start.x)));
+  phase.position.y = Math.max(20, Math.min(930, Math.round(canvasDrag.origin.y + point.y - canvasDrag.start.y)));
+  const node = $(`[data-phase-id="${CSS.escape(phase.id)}"]`, $("#canvas-nodes"));
+  node.style.left = `${phase.position.x}px`;
+  node.style.top = `${phase.position.y}px`;
+  renderCanvasEdges();
+}
+
+function endNodeDrag(event) {
+  if (!canvasDrag) return;
+  event.currentTarget.classList.remove("dragging");
+  canvasDrag = null;
+  adaptationMethod ||= "manual";
+  renderPhaseEditor();
+}
+
+function renderPhaseEditor() {
+  const program = ensureDesignProgram();
+  $("#design-cwd").value ||= $("#workspace-input").value;
+  if (selectedPhaseIndex >= program.phases.length) selectedPhaseIndex = program.phases.length - 1;
+  $("#canvas-nodes").innerHTML = program.phases.map((phase, index) => {
+    const plain = phasePlainCopy(phase);
+    return `<article class="canvas-node ${escapeHtml(phase.kind)} ${escapeHtml(phase.scope || "")} ${index === selectedPhaseIndex ? "selected" : ""}" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}" data-phase-id="${escapeHtml(phase.id)}" tabindex="0"><button class="node-port input" data-port="in" type="button" aria-label="Connect into ${escapeHtml(phase.name)}"></button><small>${escapeHtml(plain.actor)}</small><b>${escapeHtml(phase.name)}</b><p>${escapeHtml(plain.copy)}</p><em>${phase.kind === "checkpoint" ? "Human pause" : "One Codex turn"}</em><button class="node-port output" data-port="out" type="button" aria-label="Connect from ${escapeHtml(phase.name)}"></button></article>`;
+  }).join("");
+  if (selectedEdgeIndex != null && program.edges[selectedEdgeIndex]) $("#phase-inspector").innerHTML = edgeInspector(program.edges[selectedEdgeIndex]);
+  else if (selectedPhaseIndex >= 0) $("#phase-inspector").innerHTML = phaseInspector(program.phases[selectedPhaseIndex]);
+  else $("#phase-inspector").innerHTML = '<p class="kicker">NODE SETTINGS</p><h2>Select a node</h2><p>Drag it anywhere, edit its instruction, or pull an arrow from its right port.</p>';
+  $$("[data-phase-index]", $("#canvas-nodes")).forEach((node) => {
+    const phase = program.phases[Number(node.dataset.phaseIndex)];
+    node.style.left = `${phase.position.x}px`;
+    node.style.top = `${phase.position.y}px`;
+    node.addEventListener("click", () => { selectedPhaseIndex = Number(node.dataset.phaseIndex); selectedEdgeIndex = null; renderPhaseEditor(); });
+    node.addEventListener("pointerdown", (event) => beginNodeDrag(event, Number(node.dataset.phaseIndex)));
+    node.addEventListener("pointermove", moveNode);
+    node.addEventListener("pointerup", endNodeDrag);
+    $("[data-port=out]", node).addEventListener("pointerdown", (event) => beginConnection(event, node.dataset.phaseId));
+  });
+  renderCanvasEdges();
+  $$("[data-phase-field]", $("#phase-inspector")).forEach((field) => field.addEventListener("input", () => {
+    const phase = program.phases[selectedPhaseIndex];
+    const key = field.dataset.phaseField;
+    if (["maxRepairs", "expectedExitCode"].includes(key)) phase[key] = Number(field.value);
+    else if (key === "stopOnFailure") phase[key] = field.checked;
+    else phase[key] = field.value;
+    adaptationMethod ||= "manual";
+    renderWorkflowPreview();
+    if (["stepType", "scope"].includes(key)) renderPhaseEditor();
+    else {
+      const node = $(`[data-phase-index="${selectedPhaseIndex}"]`, $("#canvas-nodes"));
+      if (key === "name") { node.querySelector("b").textContent = field.value; $("#phase-inspector h2").textContent = field.value; }
+      if (key === phaseCopyKey(phase)) node.querySelector("p").textContent = field.value;
+    }
+  }));
+  $$("[data-phase-duplicate]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
+    const source = program.phases[selectedPhaseIndex];
+    const duplicate = clone(source);
+    duplicate.id = uniquePhaseId(`${source.id}-copy`, program);
+    duplicate.name = `${source.name} copy`.slice(0, 80);
+    duplicate.position = { x: Math.min(2100, source.position.x + 300), y: Math.min(930, source.position.y + 70) };
+    program.phases.push(duplicate);
+    program.edges.push({ from: source.id, to: duplicate.id });
+    selectedPhaseIndex = program.phases.length - 1;
+    selectedEdgeIndex = null;
+    adaptationMethod ||= "manual";
+    renderWorkflowPreview();
+    renderPhaseEditor();
+  }));
+  $$("[data-phase-delete]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
+    const index = selectedPhaseIndex;
+    if (program.phases.length === 1 || (program.phases[index].kind === "work" && program.phases.filter((item) => item.kind === "work").length === 1)) {
+      $("#design-status").textContent = "A workflow needs at least one Codex turn.";
+      return;
+    }
+    const removed = program.phases[index];
+    const incoming = program.edges.filter((edge) => edge.to === removed.id).map((edge) => edge.from);
+    const outgoing = program.edges.filter((edge) => edge.from === removed.id).map((edge) => edge.to);
+    program.edges = program.edges.filter((edge) => edge.from !== removed.id && edge.to !== removed.id);
+    for (const source of incoming) for (const target of outgoing) if (source !== target && !program.edges.some((edge) => edge.from === source && edge.to === target)) program.edges.push({ from: source, to: target });
+    program.phases.splice(index, 1);
+    selectedPhaseIndex = Math.min(index, program.phases.length - 1);
+    selectedEdgeIndex = null;
+    adaptationMethod ||= "manual";
+    renderWorkflowPreview();
+    renderPhaseEditor();
+  }));
+  $$("[data-edge-delete]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
+    program.edges.splice(selectedEdgeIndex, 1);
+    selectedEdgeIndex = null;
+    renderWorkflowPreview();
+    renderPhaseEditor();
+  }));
+  const problem = graphProblem(program);
+  $("#design-status").textContent = problem || "Graph is executable. Arrows determine the turn order.";
+  $("#design-status").classList.toggle("error", Boolean(problem));
+  const origin = activeSavedWorkflow ? adaptationMethod ? `Unsaved changes to “${activeSavedWorkflow.name}”` : `Using saved workflow “${activeSavedWorkflow.name}”` : "Canvas draft · not saved";
+  $("#design-origin").textContent = origin;
+}
+
+function addPhase(kind, stepOption = "adaptive") {
+  const program = ensureDesignProgram();
+  if (program.phases.length >= 16) { $("#design-status").textContent = "A workflow can contain at most sixteen nodes."; return; }
+  const commandType = kind === "command" ? stepOption : "test";
+  const stem = kind === "work" ? "work" : kind === "checkpoint" ? "checkpoint" : kind === "command" ? commandType : "verify";
+  const id = uniquePhaseId(stem, program);
+  const selected = program.phases[selectedPhaseIndex] || program.phases[program.phases.length - 1];
+  const position = selected ? { x: Math.min(2100, selected.position.x + 310), y: selected.position.y } : { x: 120, y: 260 };
+  if (kind === "work") program.phases.push({ id, kind, scope: stepOption === "focused" ? "focused" : "adaptive", name: "New Codex turn", goal: "Describe what Codex should accomplish in this turn. Make it as broad or as precise as this workflow needs.", reasoningEffort: "inherit", position });
+  if (kind === "checkpoint") program.phases.push({ id, kind, name: "My decision", question: "What should Codex show me here before the workflow continues?", position });
+  if (kind === "command") program.phases.push({ id, kind, stepType: commandType, name: "Run one exact command", command: "python3 -m pytest -q path/to/test.py::test_name", expectedExitCode: 0, stopOnFailure: true, position });
+  if (kind === "verify") program.phases.push({ id, kind, name: "Review and repair", criteria: "Describe what must be true before this workflow can finish.", maxRepairs: 1, position });
+  if (selected) program.edges.push({ from: selected.id, to: id });
+  selectedPhaseIndex = program.phases.length - 1;
+  selectedEdgeIndex = null;
   adaptationMethod ||= "manual";
   renderWorkflowPreview();
   renderPhaseEditor();
@@ -884,12 +1225,28 @@ async function copyCommand(button) {
   setTimeout(() => { button.textContent = original; }, 1200);
 }
 
+function loadGraphTemplate(kind) {
+  designProgram = graphTemplate(kind);
+  activeSavedWorkflow = null;
+  adaptationMethod = "manual";
+  selectedPhaseIndex = 0;
+  selectedEdgeIndex = null;
+  const names = { blank: "Untitled workflow", fullstack: "Build a full-stack product", poster: "Create and critique a poster", precision: "Fix, test, prove" };
+  $("#design-save-name").value = names[kind] || "Custom workflow";
+  if (kind === "fullstack" && !$("#task-input").value.trim()) $("#task-input").value = "Build a complete web product in this repository, including the backend, authentication, frontend, and an integrated quality pass.";
+  if (kind === "poster" && !$("#task-input").value.trim()) $("#task-input").value = "Create a distinctive artistic poster from the supplied brief, let me choose the direction, then refine and export the final artwork.";
+  $("#design-task").value = $("#task-input").value;
+  renderWorkflowPreview();
+  renderPhaseEditor();
+  $("#canvas-viewport").scrollTo({ left: 0, top: 0, behavior: "smooth" });
+}
+
 async function init() {
   try {
     securitySession = await request("/api/session");
     $("#workspace-input").value = securitySession.workspaceRoot || "";
   } catch (_) { securitySession = null; }
-  designProgram = { projectionVersion: 1, phases: clone(phaseProgram("review")) };
+  designProgram = graphTemplate("review");
   $("#design-cwd").value = $("#workspace-input").value;
   $("#integrations-cwd").value = $("#workspace-input").value;
   await checkAccount();
@@ -924,6 +1281,21 @@ async function init() {
   });
   $("#refresh-workflows").addEventListener("click", loadWorkflows);
   $$("[data-add-phase]").forEach((button) => button.addEventListener("click", () => addPhase(button.dataset.addPhase, button.dataset.stepOption)));
+  $$("[data-graph-template]").forEach((button) => button.addEventListener("click", () => loadGraphTemplate(button.dataset.graphTemplate)));
+  $("#phase-editor").addEventListener("click", (event) => {
+    if (event.target !== $("#phase-editor") && event.target !== $("#canvas-nodes") && event.target !== $("#canvas-edges")) return;
+    selectedPhaseIndex = -1;
+    selectedEdgeIndex = null;
+    renderPhaseEditor();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (!$("#create-view").hidden && event.key === "Delete" && selectedEdgeIndex != null && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
+      ensureDesignProgram().edges.splice(selectedEdgeIndex, 1);
+      selectedEdgeIndex = null;
+      renderWorkflowPreview();
+      renderPhaseEditor();
+    }
+  });
   $("#adapt-with-codex").addEventListener("click", adaptWithCodex);
   $("#use-design").addEventListener("click", useDesignInRun);
   $("#save-design").addEventListener("click", saveDesign);
@@ -943,7 +1315,7 @@ function updateSettingsSummary() {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { buildManifest, displaySteps };
+  module.exports = { buildManifest, displaySteps, graphProblem, graphTemplate, orderedClientPhases };
 } else {
   void init();
 }

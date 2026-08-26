@@ -62,6 +62,8 @@ def validate_goal_only_adaptation(
 
     if len(source.phases) != len(candidate.phases):
         raise ValueError("adaptation must preserve the number of phases")
+    if source.edges != candidate.edges:
+        raise ValueError("adaptation must preserve workflow arrows")
     changed: list[str] = []
     for before, after in zip(source.phases, candidate.phases, strict=True):
         if before.id != after.id or before.kind != after.kind:
@@ -78,6 +80,7 @@ def validate_goal_only_adaptation(
             "command",
             "expectedExitCode",
             "stopOnFailure",
+            "position",
         }
         for key in structural_keys:
             if before_value.get(key) != after_value.get(key):
@@ -138,8 +141,9 @@ Source phase program:
 {source_json}
 
 Return phaseProgram only. Preserve projectionVersion, phase count, every phase id,
-kind, order, scope, reasoningEffort, maxRepairs, stepType, command, expectedExitCode,
-and stopOnFailure exactly. Rewrite only human-readable name/goal/question/criteria
+kind, order, arrows, canvas positions, scope, reasoningEffort, maxRepairs, stepType,
+command, expectedExitCode, and stopOnFailure exactly. Rewrite only human-readable
+name/goal/question/criteria
 fields so the same workflow structure is useful for
 the new task. Do not solve the task, inspect files, or propose shell commands.
 The user will review the wording before saving or running it.

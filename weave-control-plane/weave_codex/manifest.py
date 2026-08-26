@@ -256,9 +256,13 @@ def _compile_phase_manifest(manifest: HarnessManifest) -> dict[str, Any]:
     }
     nodes = [task_node, memory_node, integration_node, safety_node, *phase_nodes, output_node]
     edges = [
-        {"from": left["id"], "to": right["id"], "condition": "next"}
-        for left, right in zip(nodes, nodes[1:], strict=False)
+        {"from": "task", "to": "memory", "condition": "context"},
+        {"from": "memory", "to": "integrations", "condition": "context"},
+        {"from": "integrations", "to": "safety", "condition": "boundary"},
     ]
+    for edge in phase_graph["edges"]:
+        source = "safety" if edge["from"] == "task" else edge["from"]
+        edges.append({**edge, "from": source})
     memory_action = {
         "off": "disable Codex memory read/generation; inject no prior traces",
         "all": "enable Codex native memory read/generation and mark the thread eligible",
@@ -270,7 +274,8 @@ def _compile_phase_manifest(manifest: HarnessManifest) -> dict[str, Any]:
         *_integration_actions(manifest),
         f"thread/start ({manifest.agent.sandbox}, approvals={manifest.agent.approval_gate})",
     ]
-    for phase in program.phases:
+    for phase_id in phase_graph["executionOrder"]:
+        phase = next(item for item in program.phases if item.id == phase_id)
         if phase.kind == "work":
             actions.append(
                 f"turn/start {phase.scope} work phase '{phase.name}' "

@@ -9,6 +9,7 @@ nodes.
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -16,6 +17,20 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+
+class CanvasPosition(_StrictModel):
+    """Human-authored placement on the visual workflow canvas."""
+
+    x: int = Field(ge=0, le=4_000)
+    y: int = Field(ge=0, le=3_000)
+
+
+class PhaseEdge(_StrictModel):
+    """A directed dependency between two executable nodes."""
+
+    from_id: str = Field(alias="from", min_length=2, max_length=48)
+    to_id: str = Field(alias="to", min_length=2, max_length=48)
 
 
 class WorkPhase(_StrictModel):
@@ -27,6 +42,7 @@ class WorkPhase(_StrictModel):
     reasoning_effort: Literal["inherit", "low", "medium", "high", "xhigh"] = Field(
         default="inherit", alias="reasoningEffort"
     )
+    position: CanvasPosition | None = None
 
 
 class CheckpointPhase(_StrictModel):
@@ -34,6 +50,7 @@ class CheckpointPhase(_StrictModel):
     kind: Literal["checkpoint"] = "checkpoint"
     name: str = Field(min_length=2, max_length=80)
     question: str = Field(min_length=4, max_length=1_000)
+    position: CanvasPosition | None = None
 
 
 class VerifyPhase(_StrictModel):
@@ -42,6 +59,7 @@ class VerifyPhase(_StrictModel):
     name: str = Field(min_length=2, max_length=80)
     criteria: str = Field(min_length=4, max_length=2_000)
     max_repairs: int = Field(default=1, alias="maxRepairs", ge=0, le=2)
+    position: CanvasPosition | None = None
 
 
 class CommandPhase(_StrictModel):
@@ -59,6 +77,7 @@ class CommandPhase(_StrictModel):
     command: str = Field(min_length=2, max_length=2_000)
     expected_exit_code: int = Field(default=0, alias="expectedExitCode", ge=0, le=255)
     stop_on_failure: bool = Field(default=True, alias="stopOnFailure")
+    position: CanvasPosition | None = None
 
 
 Phase = Annotated[
@@ -68,10 +87,16 @@ Phase = Annotated[
 
 
 class PhaseProgram(_StrictModel):
-    """An ordered executable program above Codex's native agent loop."""
+    """A user-authored executable graph above Codex's native agent loop.
+
+    Older saved workflows may omit ``edges``; those retain their original
+    left-to-right list order. Once edges are present they become the source of
+    truth for dependency and turn order.
+    """
 
     projection_version: Literal[1] = Field(default=1, alias="projectionVersion")
     phases: list[Phase] = Field(min_length=1, max_length=16)
+    edges: list[PhaseEdge] = Field(default_factory=list, max_length=40)
 
     @model_validator(mode="after")
     def validate_program(self) -> PhaseProgram:
@@ -80,19 +105,60 @@ class PhaseProgram(_StrictModel):
             raise ValueError("phase ids must be unique")
         if not any(phase.kind == "work" for phase in self.phases):
             raise ValueError("a phase program requires at least one work phase")
-        if self.phases[0].kind != "work":
+        ordered = ordered_phases(self)
+        if ordered[0].kind != "work":
             raise ValueError("the first executable phase must be a work phase")
-        for left, right in zip(self.phases, self.phases[1:], strict=False):
+        for left, right in zip(ordered, ordered[1:], strict=False):
             if left.kind == right.kind == "checkpoint":
                 raise ValueError("adjacent checkpoints are not executable")
         return self
+
+
+def ordered_phases(program: PhaseProgram) -> list[Phase]:
+    """Return stable dependency order, rejecting decorative or cyclic graphs."""
+
+    if not program.edges:
+        return list(program.phases)
+    by_id = {phase.id: phase for phase in program.phases}
+    position = {phase.id: index for index, phase in enumerate(program.phases)}
+    identities = [(edge.from_id, edge.to_id) for edge in program.edges]
+    if len(identities) != len(set(identities)):
+        raise ValueError("phase edges must be unique")
+    unknown = {item for edge in identities for item in edge if item not in by_id}
+    if unknown:
+        raise ValueError("phase edges reference unknown nodes: " + ", ".join(sorted(unknown)))
+    if any(source == target for source, target in identities):
+        raise ValueError("a phase cannot connect to itself")
+
+    incoming = {phase.id: 0 for phase in program.phases}
+    outgoing: dict[str, list[str]] = defaultdict(list)
+    for source, target in identities:
+        incoming[target] += 1
+        outgoing[source].append(target)
+    roots = [phase.id for phase in program.phases if incoming[phase.id] == 0]
+    if len(roots) != 1:
+        raise ValueError("an executable graph requires exactly one starting node")
+
+    ready = roots[:]
+    ordered_ids: list[str] = []
+    while ready:
+        ready.sort(key=position.__getitem__)
+        current = ready.pop(0)
+        ordered_ids.append(current)
+        for target in sorted(outgoing[current], key=position.__getitem__):
+            incoming[target] -= 1
+            if incoming[target] == 0:
+                ready.append(target)
+    if len(ordered_ids) != len(program.phases):
+        raise ValueError("workflow arrows must form one connected acyclic graph")
+    return [by_id[phase_id] for phase_id in ordered_ids]
 
 
 def phase_turn_bound(program: PhaseProgram) -> int:
     """Return controller turns, not internal Codex model/tool iterations."""
 
     total = 0
-    for phase in program.phases:
+    for phase in ordered_phases(program):
         if phase.kind == "work":
             total += 1
         elif phase.kind == "command":
@@ -103,7 +169,7 @@ def phase_turn_bound(program: PhaseProgram) -> int:
 
 
 def compile_phase_program(program: PhaseProgram) -> dict[str, object]:
-    """Compile a phase program to a truthful, UI-ready sequential graph."""
+    """Compile a phase program to a truthful, UI-ready executable graph."""
 
     nodes: list[dict[str, object]] = [
         {
@@ -115,8 +181,8 @@ def compile_phase_program(program: PhaseProgram) -> dict[str, object]:
         }
     ]
     edges: list[dict[str, str]] = []
-    previous = "task"
-    for position, phase in enumerate(program.phases, start=1):
+    ordered = ordered_phases(program)
+    for position, phase in enumerate(ordered, start=1):
         if phase.kind == "work":
             detail = (
                 "One broad adaptive Codex turn · internal tool loop is Codex-managed"
@@ -142,13 +208,34 @@ def compile_phase_program(program: PhaseProgram) -> dict[str, object]:
                 "kind": phase.kind,
                 "label": phase.name,
                 "detail": detail,
-                "position": position,
+                "order": position,
                 "editable": True,
                 "maximumControllerTurns": turn_cost,
+                **(
+                    {"position": phase.position.model_dump(mode="json")}
+                    if phase.position is not None
+                    else {}
+                ),
             }
         )
-        edges.append({"from": previous, "to": phase.id, "condition": "next"})
-        previous = phase.id
+    if program.edges:
+        incoming = {phase.id: 0 for phase in program.phases}
+        outgoing = {phase.id: 0 for phase in program.phases}
+        for edge in program.edges:
+            incoming[edge.to_id] += 1
+            outgoing[edge.from_id] += 1
+            edges.append({"from": edge.from_id, "to": edge.to_id, "condition": "next"})
+        for phase in program.phases:
+            if incoming[phase.id] == 0:
+                edges.append({"from": "task", "to": phase.id, "condition": "start"})
+            if outgoing[phase.id] == 0:
+                edges.append({"from": phase.id, "to": "output", "condition": "finish"})
+    else:
+        previous = "task"
+        for phase in ordered:
+            edges.append({"from": previous, "to": phase.id, "condition": "next"})
+            previous = phase.id
+        edges.append({"from": previous, "to": "output", "condition": "next"})
     nodes.append(
         {
             "id": "output",
@@ -158,7 +245,6 @@ def compile_phase_program(program: PhaseProgram) -> dict[str, object]:
             "editable": False,
         }
     )
-    edges.append({"from": previous, "to": "output", "condition": "next"})
     return {
         "projectionVersion": program.projection_version,
         "nodes": nodes,
@@ -168,7 +254,7 @@ def compile_phase_program(program: PhaseProgram) -> dict[str, object]:
             "Each work phase starts one Codex controller turn. The number of model completions "
             "and native tool calls inside that turn is observed, not authored by this graph."
         ),
-        "executionOrder": [phase.id for phase in program.phases],
+        "executionOrder": [phase.id for phase in ordered],
     }
 
 
@@ -201,7 +287,7 @@ def phase_templates() -> list[dict[str, object]]:
                     id="run-focused-test",
                     stepType="test",
                     name="Run the focused test",
-                    command="python -m pytest -q path/to/test_file.py::test_name",
+                    command="python3 -m pytest -q path/to/test_file.py::test_name",
                 ),
                 CommandPhase(
                     id="run-static-check",

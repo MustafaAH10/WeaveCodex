@@ -41,8 +41,8 @@ uv run python -m weave_codex.server \
 
 Then open <http://127.0.0.1:8790/>. The product has three places:
 
-- **Create** — describe the goal, choose direct Codex or a visible workflow, run it, and optionally
-  customize the steps;
+- **Create** — describe the goal, then draw a workflow by placing nodes and connecting them with
+  arrows; each node can be as broad as “build the backend” or as narrow as one test command;
 - **Library** — reuse saved workflows, choose existing Codex skills/connectors, and manage local
   account setup; and
 - **Activity** — review your runs in plain English and optionally open the bounded product checks.
