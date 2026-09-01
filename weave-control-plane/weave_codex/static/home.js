@@ -1,6 +1,10 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+const CanvasModel = typeof module !== "undefined" && module.exports
+  ? require("./canvas-model.js")
+  : globalThis.WeaveCanvasModel;
+const { clone, linearGraph, orderedClientPhases, graphProblem, wouldCreateCycle, uniquePhaseId } = CanvasModel;
 
 let securitySession = null;
 let runMode = "weave";
@@ -29,8 +33,6 @@ let canvasPanDrag = null;
 let canvasPanMoved = false;
 let canvasNotice = "";
 
-const clone = (value) => JSON.parse(JSON.stringify(value));
-
 async function request(path, options = {}) {
   const method = String(options.method || "GET").toUpperCase();
   const headers = { ...(options.headers || {}) };
@@ -46,44 +48,6 @@ async function request(path, options = {}) {
   return data;
 }
 
-function phaseProgram(kind) {
-  const workflows = {
-    direct: [
-      { id: "implement", kind: "work", name: "Complete the goal", goal: "Produce the requested outcome. Gather context and use any relevant tools or integrations along the way." },
-      { id: "verify", kind: "verify", name: "Prove it works", criteria: "The requested outcome is complete, accurate, and supported by relevant evidence or checks.", maxRepairs: 1 },
-    ],
-    review: [
-      { id: "inspect", kind: "work", name: "Understand and propose", goal: "Understand the available context and present a concise direction. Do not make consequential changes yet." },
-      { id: "approve", kind: "checkpoint", name: "Check with me", question: "Does this direction look right, and should Codex continue?" },
-      { id: "implement", kind: "work", name: "Complete the goal", goal: "Follow the approved direction and produce the requested outcome using any relevant tools or integrations." },
-      { id: "verify", kind: "verify", name: "Prove the result", criteria: "The requested outcome is complete, accurate, and supported by relevant evidence or checks.", maxRepairs: 1 },
-    ],
-    audit: [
-      { id: "map", kind: "work", name: "Explore the options", goal: "Gather context, compare plausible approaches, and identify assumptions, tradeoffs, and likely failure modes before acting." },
-      { id: "implement", kind: "work", name: "Execute the best path", goal: "Choose the strongest supported approach and produce the requested outcome using any relevant tools or integrations." },
-      { id: "verify", kind: "verify", name: "Challenge the result", criteria: "Actively look for weak assumptions, missing evidence, edge cases, or quality problems; repair once if the result does not hold up.", maxRepairs: 1 },
-    ],
-    precision: [
-      { id: "inspect", kind: "work", scope: "focused", name: "Find the cause", goal: "Inspect the relevant implementation and focused tests. Explain the smallest supported change.", reasoningEffort: "low" },
-      { id: "implement", kind: "work", scope: "focused", name: "Make the focused change", goal: "Implement only the supported change. Do not broaden the task.", reasoningEffort: "inherit" },
-      { id: "focused-test", kind: "command", stepType: "test", name: "Run the focused test", command: "python3 -m pytest -q", expectedExitCode: 0, stopOnFailure: true },
-      { id: "static-check", kind: "command", stepType: "checker", name: "Check the changed files", command: "git diff --check", expectedExitCode: 0, stopOnFailure: true },
-      { id: "review", kind: "verify", name: "Review the evidence", criteria: "The change is narrow, the requested behavior is complete, and every exact check passed.", maxRepairs: 0 },
-    ],
-  };
-  return workflows[kind];
-}
-
-function linearGraph(kind) {
-  const phases = clone(phaseProgram(kind));
-  phases.forEach((phase, index) => { phase.position = { x: 90 + (index * 300), y: 230 }; });
-  return {
-    projectionVersion: 1,
-    phases,
-    edges: phases.slice(1).map((phase, index) => ({ from: phases[index].id, to: phase.id })),
-  };
-}
-
 function graphTemplate(kind) {
   const catalogTemplate = phaseTemplateCatalog.get(kind);
   if (catalogTemplate) return clone(catalogTemplate.program);
@@ -95,10 +59,9 @@ function graphTemplate(kind) {
 }
 
 function selectedProgram() {
-  const workflow = $("#workflow-select").value;
   if (designProgram) return clone(designProgram);
   if (activeSavedWorkflow) return clone(activeSavedWorkflow.phaseProgram);
-  return graphTemplate(workflow);
+  return graphTemplate("review");
 }
 
 function buildManifest({ mode, name, cwd, instructions, integrations, agent, program }) {
@@ -124,7 +87,7 @@ function manifest() {
   const authoredName = $("#design-save-name")?.value.trim();
   return buildManifest({
     mode: runMode,
-    name: runMode === "ordinary" ? "Codex direct" : (activeSavedWorkflow?.name || authoredName || $("#workflow-select").selectedOptions[0].textContent),
+    name: runMode === "ordinary" ? "Codex direct" : (activeSavedWorkflow?.name || authoredName || "My workflow"),
     cwd: $("#workspace-input").value.trim(),
     instructions: $("#task-input").value.trim(),
     integrations: { inventoryId: integrationInventory?.inventoryId || null, requested: selectedIntegrations },
@@ -175,13 +138,7 @@ function setMode(mode) {
     button.classList.toggle("active", active);
     button.setAttribute("aria-checked", String(active));
   });
-  const loopAuthoring = $("#loop-authoring");
-  loopAuthoring.classList.toggle("hidden", mode !== "weave");
-  loopAuthoring.setAttribute("aria-hidden", String(mode !== "weave"));
-  if (mode === "weave" && !designProgram) {
-    designProgram = graphTemplate($("#workflow-select").value);
-  }
-  renderWorkflowPreview();
+  if (mode === "weave" && !designProgram) designProgram = graphTemplate("review");
   const runButton = $("#run-task");
   if (runButton && !runButton.disabled) runButton.innerHTML = mode === "weave" ? "Run my workflow <span>→</span>" : "Run with Codex <span>→</span>";
 }
@@ -213,87 +170,6 @@ function phasePlainCopy(phase) {
   return phase.scope === "focused"
     ? { actor: "Focused Codex task", copy: phase.goal, note: "Codex keeps this turn narrow and does not expand into adjacent work." }
     : { actor: "Broad Codex goal", copy: phase.goal, note: "Codex chooses the internal plan and may inspect, edit, test, and retry as much as the outcome requires." };
-}
-
-function renderRunLoop(program) {
-  const preview = $("#run-loop-preview");
-  if (!preview) return;
-  preview.innerHTML = orderedClientPhases(program || { phases: [], edges: [] }).map((phase, index) => {
-    const plain = phasePlainCopy(phase);
-    return `<article class="run-loop-step ${escapeHtml(phase.kind)}"><span>${index + 1}</span><div><small>${escapeHtml(plain.actor)}</small><b>${escapeHtml(phase.name)}</b><p>${escapeHtml(plain.note)}</p></div></article>`;
-  }).join("");
-}
-
-function renderWorkflowPreview() {
-  const program = selectedProgram();
-  $("#workflow-preview").innerHTML = programNodes(program);
-  renderRunLoop(program);
-  if (activeSavedWorkflow) {
-    $("#active-workflow").innerHTML = `<span>Using saved workflow · ${escapeHtml(activeSavedWorkflow.name)}</span>`;
-  } else {
-    $("#active-workflow").innerHTML = "<span>Starting design · change anything later</span>";
-  }
-}
-
-function updateWorkflowExplanation() {
-  activeSavedWorkflow = null;
-  adaptationMethod = null;
-  const copy = {
-    review: "Codex first explains its direction. You decide whether it continues.",
-    audit: "Codex compares approaches, takes the best-supported path, then tries to break its own result.",
-    direct: "Codex completes the goal without a midpoint pause, then checks and repairs the result once.",
-    precision: "Codex works in narrow goals. Exact tests and checkers must visibly pass before the workflow can continue.",
-  };
-  $("#workflow-explanation").textContent = copy[$("#workflow-select").value];
-  $("#design-save-name").value = $("#workflow-select").selectedOptions[0].textContent;
-  designProgram = graphTemplate($("#workflow-select").value);
-  selectedPhaseIndex = 0;
-  renderWorkflowPreview();
-  renderPhaseEditor();
-}
-
-function selectLoopTemplate(template) {
-  if (!["review", "direct", "audit", "precision"].includes(template)) return;
-  activeSavedWorkflow = null;
-  adaptationMethod = null;
-  $("#workflow-select").value = template;
-  setMode("weave");
-  updateWorkflowExplanation();
-  $$('[data-loop-template]').forEach((button) => {
-    const active = button.dataset.loopTemplate === template;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-checked", String(active));
-  });
-}
-
-const exampleCases = {
-  design: {
-    goal: "Create a calm visual direction for a financial planning app.",
-    codex: ["Final answer", "One visual direction, rationale, component guidance, and a finished design brief."],
-    weave: ["Proposal · 3 directions compared", "Your decision · Direction B approved", "Delivery · Brief and assets created", "Proof · Contrast and consistency checked"],
-  },
-  operations: {
-    goal: "Turn support trends into an approved action plan.",
-    codex: ["Final answer", "A prioritized support plan based on the available notes and connected sources."],
-    weave: ["Analysis · Themes linked to source evidence", "Your decision · Priorities 1 and 3 approved", "Delivery · Owners and actions drafted", "Proof · Every claim traced back to a source"],
-  },
-  simulation: {
-    goal: "Simulate a café queue and explain the best staffing choice.",
-    codex: ["Final answer", "A simulation, three scenarios, and a staffing recommendation."],
-    weave: ["Assumptions · Arrival and service rates shown", "Your decision · Lunch spike adjusted", "Execution · Three scenarios run", "Proof · Sensitivity and limitations reported"],
-  },
-};
-
-function renderExample(caseId = "design") {
-  if (!$("#example-goal")) return;
-  const example = exampleCases[caseId] || exampleCases.design;
-  $("#example-goal").innerHTML = `<span>Goal</span>${escapeHtml(example.goal)}`;
-  $("#codex-example-output").innerHTML = example.codex.map((line, index) => `<p class="${index === 0 ? "result-line" : ""}"><span>${index === 0 ? "✓" : ""}</span>${escapeHtml(line)}</p>`).join("");
-  $("#weave-example-output").innerHTML = example.weave.map((line, index) => {
-    const [label, copy] = line.split(" · ");
-    return `<p><span>${index + 1}</span><b>${escapeHtml(label)}</b><small>${escapeHtml(copy)}</small></p>`;
-  }).join("");
-  $$('[data-example-case]').forEach((button) => button.classList.toggle("active", button.dataset.exampleCase === caseId));
 }
 
 function setVoiceState(listening, message) {
@@ -350,12 +226,8 @@ function applyWorkflow(workflow, { customize = false } = {}) {
   designProgram = clone(workflow.phaseProgram);
   selectedPhaseIndex = 0;
   adaptationMethod = null;
-  $("#workflow-select").value = "saved";
-  $("#workflow-select").selectedOptions[0].textContent = workflow.name;
-  $("#workflow-explanation").textContent = "Loaded from your local library. The new task and repository are not inherited.";
   $("#design-save-name").value = workflow.name;
   $("#workflow-name").value = workflow.name;
-  $$("[data-loop-template]").forEach((button) => { button.classList.remove("active"); button.setAttribute("aria-checked", "false"); });
   setMode("weave");
   $("#task-input").value = "";
   if (customize) {
@@ -413,7 +285,6 @@ async function saveWorkflow() {
     const saved = await request("/api/workflows", { method: "POST", body: JSON.stringify(payload) });
     activeSavedWorkflow = saved;
     status.textContent = `Saved “${saved.name}”. The task and folder were not included.`;
-    renderWorkflowPreview();
     await loadWorkflows();
   } catch (error) {
     status.textContent = `Could not save: ${error.message}`;
@@ -595,10 +466,7 @@ async function startLogin() {
 }
 
 function ensureDesignProgram() {
-  if (!designProgram) {
-    const key = $("#workflow-select").value === "saved" ? "review" : $("#workflow-select").value;
-    designProgram = graphTemplate(key);
-  }
+  if (!designProgram) designProgram = graphTemplate("review");
   designProgram.edges ||= designProgram.phases.slice(1).map((phase, index) => ({ from: designProgram.phases[index].id, to: phase.id }));
   designProgram.phases.forEach((phase, index) => { phase.position ||= { x: 90 + (index * 300), y: 250 }; });
   return designProgram;
@@ -616,78 +484,6 @@ function phaseCopyLabel(phase) {
   if (phase.kind === "checkpoint") return "Question shown to you";
   if (phase.kind === "command") return "Exact command to observe";
   return "What counts as proven";
-}
-
-// The product canvas and runtime share this graph representation.
-function clientTopologicalOrder(program) {
-  if (!program?.edges?.length) return program?.phases || [];
-  const byId = new Map(program.phases.map((phase) => [phase.id, phase]));
-  const index = new Map(program.phases.map((phase, order) => [phase.id, order]));
-  const incoming = new Map(program.phases.map((phase) => [phase.id, 0]));
-  const outgoing = new Map(program.phases.map((phase) => [phase.id, []]));
-  for (const edge of program.edges) {
-    if (!byId.has(edge.from) || !byId.has(edge.to)) return program.phases;
-    incoming.set(edge.to, incoming.get(edge.to) + 1);
-    outgoing.get(edge.from).push(edge.to);
-  }
-  const ready = program.phases.filter((phase) => incoming.get(phase.id) === 0).map((phase) => phase.id);
-  const result = [];
-  while (ready.length) {
-    ready.sort((left, right) => index.get(left) - index.get(right));
-    const id = ready.shift();
-    result.push(byId.get(id));
-    for (const target of outgoing.get(id).sort((left, right) => index.get(left) - index.get(right))) {
-      incoming.set(target, incoming.get(target) - 1);
-      if (incoming.get(target) === 0) ready.push(target);
-    }
-  }
-  return result;
-}
-
-function orderedClientPhases(program) {
-  const ordered = clientTopologicalOrder(program);
-  return ordered.length === (program?.phases?.length || 0) ? ordered : (program?.phases || []);
-}
-
-function graphProblem(program) {
-  const ids = new Set(program.phases.map((phase) => phase.id));
-  if (program.edges.some((edge) => !ids.has(edge.from) || !ids.has(edge.to))) return "An arrow points to a missing node.";
-  if (program.edges.some((edge) => edge.from === edge.to)) return "A node cannot point to itself.";
-  const identities = program.edges.map((edge) => `${edge.from}\u0000${edge.to}`);
-  if (new Set(identities).size !== identities.length) return "The same arrow appears twice.";
-  if (program.phases.length > 1 && !program.edges.length) return "Connect the nodes with arrows before running.";
-  const incoming = new Map(program.phases.map((phase) => [phase.id, 0]));
-  for (const edge of program.edges) incoming.set(edge.to, incoming.get(edge.to) + 1);
-  const roots = program.phases.filter((phase) => incoming.get(phase.id) === 0);
-  if (roots.length !== 1) return roots.length ? "Connect every loose node so there is one starting point." : "This graph contains a loop. Remove one arrow.";
-  if (clientTopologicalOrder(program).length !== program.phases.length) return "This graph contains a loop or disconnected nodes.";
-  if (roots[0].kind !== "work") return "The starting node must be a Codex turn.";
-  return "";
-}
-
-function wouldCreateCycle(program, sourceId, targetId) {
-  if (sourceId === targetId) return true;
-  const outgoing = new Map(program.phases.map((phase) => [phase.id, []]));
-  for (const edge of program.edges) outgoing.get(edge.from)?.push(edge.to);
-  const pending = [targetId];
-  const seen = new Set();
-  while (pending.length) {
-    const current = pending.pop();
-    if (current === sourceId) return true;
-    if (seen.has(current)) continue;
-    seen.add(current);
-    pending.push(...(outgoing.get(current) || []));
-  }
-  return false;
-}
-
-function uniquePhaseId(stem, program) {
-  const base = String(stem).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 42) || "node";
-  const ids = new Set(program.phases.map((phase) => phase.id));
-  let id = /^[a-z]/.test(base) ? base : `node-${base}`;
-  let counter = 2;
-  while (ids.has(id)) id = `${base.slice(0, 42)}-${counter++}`;
-  return id;
 }
 
 function phaseInspector(phase) {
@@ -816,7 +612,6 @@ function beginConnection(event, sourceId) {
       adaptationMethod ||= "manual";
     }
     connectionDraft = null;
-    renderWorkflowPreview();
     renderPhaseEditor();
   };
   document.addEventListener("pointermove", move);
@@ -889,7 +684,6 @@ function renderPhaseEditor() {
     else if (key === "stopOnFailure") phase[key] = field.checked;
     else phase[key] = field.value;
     adaptationMethod ||= "manual";
-    renderWorkflowPreview();
     if (["stepType", "scope"].includes(key)) renderPhaseEditor();
     else {
       const node = $(`[data-phase-index="${selectedPhaseIndex}"]`, $("#canvas-nodes"));
@@ -904,7 +698,6 @@ function renderPhaseEditor() {
     program.edges.push({ from: source.id, to: targetId });
     canvasNotice = "";
     adaptationMethod ||= "manual";
-    renderWorkflowPreview();
     renderPhaseEditor();
   }));
   $$("[data-phase-duplicate]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
@@ -918,7 +711,6 @@ function renderPhaseEditor() {
     selectedPhaseIndex = program.phases.length - 1;
     selectedEdgeIndex = null;
     adaptationMethod ||= "manual";
-    renderWorkflowPreview();
     renderPhaseEditor();
   }));
   $$("[data-phase-delete]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
@@ -936,13 +728,11 @@ function renderPhaseEditor() {
     selectedPhaseIndex = Math.min(index, program.phases.length - 1);
     selectedEdgeIndex = null;
     adaptationMethod ||= "manual";
-    renderWorkflowPreview();
     renderPhaseEditor();
   }));
   $$("[data-edge-delete]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
     program.edges.splice(selectedEdgeIndex, 1);
     selectedEdgeIndex = null;
-    renderWorkflowPreview();
     renderPhaseEditor();
   }));
   const problem = graphProblem(program);
@@ -970,7 +760,6 @@ function addPhase(kind, stepOption = "adaptive") {
   selectedPhaseIndex = program.phases.length - 1;
   selectedEdgeIndex = null;
   adaptationMethod ||= "manual";
-  renderWorkflowPreview();
   renderPhaseEditor();
 }
 
@@ -1293,7 +1082,6 @@ function loadGraphTemplate(kind) {
     "creative-poster": "Create a distinctive artistic poster, let me choose the visual direction, then critique and refine the final artwork.",
   };
   if (goals[kind] && !$("#task-input").value.trim()) $("#task-input").value = goals[kind];
-  renderWorkflowPreview();
   renderPhaseEditor();
   window.setTimeout(fitCanvas, 0);
 }
@@ -1310,18 +1098,13 @@ async function init() {
   $("#design-save-name").value = phaseTemplateCatalog.get(initialTemplate)?.name || "My workflow";
   $("#integrations-cwd").value = $("#workspace-input").value;
   await checkAccount();
-  renderWorkflowPreview();
-  renderExample();
   configureVoiceInput();
   await loadWorkflows();
 
   $$("[data-view]").forEach((link) => link.addEventListener("click", (event) => { event.preventDefault(); setView(link.dataset.view); }));
   $$(".mode").forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
-  $$("[data-loop-template]").forEach((button) => button.addEventListener("click", () => selectLoopTemplate(button.dataset.loopTemplate)));
-  $$("[data-example-case]").forEach((button) => button.addEventListener("click", () => renderExample(button.dataset.exampleCase)));
   $$("[data-prompt]").forEach((button) => button.addEventListener("click", () => { $("#task-input").value = button.dataset.prompt; $("#task-input").focus(); }));
   $("#voice-input").addEventListener("click", toggleVoiceInput);
-  $("#workflow-select").addEventListener("change", updateWorkflowExplanation);
   $("#sandbox-select").addEventListener("change", updateSettingsSummary);
   $("#approval-select").addEventListener("change", updateSettingsSummary);
   $("#run-task").addEventListener("click", startRun);
@@ -1329,10 +1112,6 @@ async function init() {
   $("#stop-run").addEventListener("click", () => decide("decline"));
   $("#cancel-active-run").addEventListener("click", stopActiveRun);
   $("#save-workflow").addEventListener("click", saveWorkflow);
-  $("#save-from-run").addEventListener("click", () => {
-    $("#workflow-name").value = activeSavedWorkflow?.name || $("#workflow-select").selectedOptions[0].textContent;
-    setView("library");
-  });
   $("#refresh-workflows").addEventListener("click", loadWorkflows);
   $$("[data-add-phase]").forEach((button) => button.addEventListener("click", () => addPhase(button.dataset.addPhase, button.dataset.stepOption)));
   $$("[data-graph-template]").forEach((button) => button.addEventListener("click", () => loadGraphTemplate(button.dataset.graphTemplate)));
@@ -1368,7 +1147,6 @@ async function init() {
     if (!$("#create-view").hidden && event.key === "Delete" && selectedEdgeIndex != null && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
       ensureDesignProgram().edges.splice(selectedEdgeIndex, 1);
       selectedEdgeIndex = null;
-      renderWorkflowPreview();
       renderPhaseEditor();
     }
   });

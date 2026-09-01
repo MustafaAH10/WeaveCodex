@@ -38,8 +38,6 @@
             <label class="workspace-field">Repository or folder<input id="workspace-input" autocomplete="off" /></label>
             <button id="run-task" class="run-button" type="button"><span class="button-icon" aria-hidden="true">▶</span> Run workflow</button>
           </div>
-          <div id="loop-authoring" class="compatibility-authoring hidden" aria-hidden="true"><select id="workflow-select"><option value="review">Plan with me</option><option value="saved" hidden>Saved workflow</option></select><p id="workflow-explanation"></p><div id="run-loop-preview"></div><div id="active-workflow"></div><button id="save-from-run" type="button">Save</button></div>
-          <div class="hidden"><div id="workflow-preview"></div></div>
         </section>
 
         <section id="live-run" class="live-run section-shell hidden" aria-labelledby="live-run-title">
@@ -95,6 +93,7 @@
       </section>
     </main>
     <footer class="site-footer"><span>Weave for Codex</span><p>Local-first · open source · built on the official Codex app-server</p><a href="https://github.com/MustafaAH10/WeaveCodex">GitHub</a></footer>
+    <script src="/canvas-model.js"></script>
     <script src="/home.js"></script>
   </body>
 </html>

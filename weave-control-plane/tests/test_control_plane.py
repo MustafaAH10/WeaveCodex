@@ -471,7 +471,8 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert 'data-view="field-trials"' not in html
     assert 'id="platform-trials-grid"' in html
     assert 'href="/studio.html#design"' not in html
-    assert "phaseProgram(kind)" in javascript
+    assert 'require("./canvas-model.js")' in javascript
+    assert '<script src="/canvas-model.js"></script>' in html
     assert 'request("/api/compile"' in javascript
     assert 'request("/api/runs"' in javascript
     assert "Design a Codex workflow" in html

@@ -55,8 +55,13 @@ jobs:
 
       - name: Parse product and marketing JavaScript
         run: |
+          node --check weave_codex/static/canvas-model.js
           node --check weave_codex/static/home.js
+          node --check ../public-site/workflows.js
           node --check ../public-site/site.js
+
+      - name: Test the canvas model
+        run: node --test tests/canvas-model.test.mjs
 
       - name: Test the standalone public website
         run: node --test ../public-site/tests/site.test.mjs
