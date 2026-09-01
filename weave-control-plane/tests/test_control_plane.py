@@ -407,17 +407,18 @@ def test_single_product_surface_owns_canvas_saved_workflows_and_runs() -> None:
         assert not (static / obsolete).exists()
 
 
-def test_canvas_is_freeform_executable_and_explains_the_codex_boundary() -> None:
+def test_canvas_is_freeform_executable_fullscreen_and_pannable() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
     html = (static / "index.html").read_text()
     javascript = (static / "home.js").read_text()
     stylesheet = (static / "home.css").read_text()
 
-    assert "Each Codex step is a complete turn" in html
+    assert "Design a Codex workflow" in html
     assert 'id="canvas-nodes"' in html
     assert 'id="canvas-edges"' in html
     assert 'id="canvas-arrange"' in html
     assert 'id="canvas-fit"' in html
+    assert 'id="canvas-fullscreen"' in html
     assert 'data-add-phase="work"' in html
     assert 'data-add-phase="checkpoint"' in html
     assert 'data-add-phase="command"' in html
@@ -425,24 +426,28 @@ def test_canvas_is_freeform_executable_and_explains_the_codex_boundary() -> None
     assert 'request("/api/phase-templates")' in javascript
     assert "function arrangeCanvas()" in javascript
     assert "function fitCanvas()" in javascript
+    assert "function beginCanvasPan(event)" in javascript
+    assert "requestFullscreen" in javascript
     assert "beginConnection" in javascript
     assert "wouldCreateCycle" in javascript
     assert "data-phase-connect-add" in javascript
     assert 'role="region" aria-label="Executable workflow graph"' in html
-    assert 'id="save-design" type="button">Save</button>' in html
+    assert 'id="save-design" type="button"' in html
+    assert '<span aria-hidden="true">↓</span> Save' in html
     assert ".canvas-node.command" in stylesheet
     assert ".canvas-node.checkpoint" in stylesheet
+    assert ".canvas-viewport { height: 640px; overflow: hidden" in stylesheet
+    assert ".canvas-primary:is(:fullscreen, .canvas-expanded)" in stylesheet
+    assert 'canvas.classList.add("canvas-expanded")' in javascript
 
 
 def test_functional_app_prioritizes_the_builder_not_marketing_content() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
     html = (static / "index.html").read_text()
 
-    assert "Build the way you want Codex to work" in html
-    assert 'class="build-guide"' in html
-    assert "Add steps" in html
-    assert "Draw arrows" in html
-    assert "Save or run" in html
+    assert "Design a Codex workflow" in html
+    assert "Add steps, connect them, run" in html
+    assert 'class="build-guide"' not in html
     assert 'class="animated-architecture"' not in html
     assert "input tokens" not in html.lower()
     assert "model completions" not in html.lower()
@@ -469,7 +474,7 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert "phaseProgram(kind)" in javascript
     assert 'request("/api/compile"' in javascript
     assert 'request("/api/runs"' in javascript
-    assert "Each Codex step is a complete turn" in html
+    assert "Design a Codex workflow" in html
     assert 'id="example-workflow-select"' in html
     assert 'request("/api/phase-templates")' in javascript
     assert 'data-add-phase="work" data-step-option="adaptive"' in html

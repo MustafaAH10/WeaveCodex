@@ -11,8 +11,7 @@ python3 -m http.server 8789 --directory public-site
 
 Then open <http://127.0.0.1:8789/>. The functional app remains a separate process at
 <http://127.0.0.1:8790/> and continues to own all account, filesystem, workflow, and run APIs. The
-public site can link to that local address for people who have already started the app, but it does
-not depend on the app server and can be deployed by itself.
+public site neither opens nor depends on that private local address. It can be deployed by itself.
 
 The site has no build step, third-party scripts, remote fonts, or copied brand assets. Its visual
 system, workflow illustrations, and animation are implemented in local HTML, CSS, SVG, and

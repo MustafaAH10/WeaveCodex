@@ -24,6 +24,9 @@ let canvasDrag = null;
 let connectionDraft = null;
 let phaseTemplateCatalog = new Map();
 let canvasZoom = 1;
+let canvasPan = { x: 0, y: 0 };
+let canvasPanDrag = null;
+let canvasPanMoved = false;
 let canvasNotice = "";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -743,9 +746,48 @@ function pointerToCanvas(event) {
   const viewport = $("#canvas-viewport");
   const rect = viewport.getBoundingClientRect();
   return {
-    x: (event.clientX - rect.left + viewport.scrollLeft) / canvasZoom,
-    y: (event.clientY - rect.top + viewport.scrollTop) / canvasZoom,
+    x: (event.clientX - rect.left - canvasPan.x) / canvasZoom,
+    y: (event.clientY - rect.top - canvasPan.y) / canvasZoom,
   };
+}
+
+function applyCanvasTransform() {
+  $("#phase-editor").style.transform = `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})`;
+  $("#canvas-zoom-label").textContent = `${Math.round(canvasZoom * 100)}%`;
+  $("#canvas-viewport").style.backgroundPosition = `${canvasPan.x}px ${canvasPan.y}px`;
+}
+
+function beginCanvasPan(event) {
+  if (event.button !== 0 || event.target.closest(".canvas-node, .edge-hit, .node-port")) return;
+  canvasPanDrag = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    origin: { ...canvasPan },
+  };
+  canvasPanMoved = false;
+  event.currentTarget.setPointerCapture(event.pointerId);
+  event.currentTarget.classList.add("panning");
+  event.preventDefault();
+}
+
+function moveCanvasPan(event) {
+  if (!canvasPanDrag || event.pointerId !== canvasPanDrag.pointerId) return;
+  const deltaX = event.clientX - canvasPanDrag.startX;
+  const deltaY = event.clientY - canvasPanDrag.startY;
+  if (Math.abs(deltaX) + Math.abs(deltaY) > 4) canvasPanMoved = true;
+  canvasPan = {
+    x: canvasPanDrag.origin.x + deltaX,
+    y: canvasPanDrag.origin.y + deltaY,
+  };
+  applyCanvasTransform();
+}
+
+function endCanvasPan(event) {
+  if (!canvasPanDrag || event.pointerId !== canvasPanDrag.pointerId) return;
+  if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  event.currentTarget.classList.remove("panning");
+  canvasPanDrag = null;
 }
 
 function beginConnection(event, sourceId) {
@@ -815,8 +857,9 @@ function renderPhaseEditor() {
   const order = new Map(orderedClientPhases(program).map((phase, index) => [phase.id, index + 1]));
   $("#canvas-nodes").innerHTML = program.phases.map((phase, index) => {
     const plain = phasePlainCopy(phase);
+    const icon = phase.kind === "checkpoint" ? "◇" : phase.kind === "command" ? "✓" : phase.kind === "verify" ? "◎" : "⌁";
     const footer = phase.kind === "checkpoint" ? "Human pause" : phase.kind === "command" ? "Pass / fail" : phase.kind === "verify" ? "Review + repair" : phase.scope === "focused" ? "Focused turn" : "Broad turn";
-    return `<article class="canvas-node ${escapeHtml(phase.kind)} ${escapeHtml(phase.scope || "")} ${index === selectedPhaseIndex ? "selected" : ""}" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}" data-phase-id="${escapeHtml(phase.id)}" tabindex="0"><span class="node-order" aria-label="Step ${order.get(phase.id) || index + 1}">${order.get(phase.id) || index + 1}</span><button class="node-port input" data-port="in" type="button" tabindex="-1" aria-hidden="true"></button><small>${escapeHtml(plain.actor)}</small><b>${escapeHtml(phase.name)}</b><p>${escapeHtml(plain.copy)}</p><em>${escapeHtml(footer)}</em><button class="node-port output" data-port="out" type="button" tabindex="-1" aria-hidden="true"></button></article>`;
+    return `<article class="canvas-node ${escapeHtml(phase.kind)} ${escapeHtml(phase.scope || "")} ${index === selectedPhaseIndex ? "selected" : ""}" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}" data-phase-id="${escapeHtml(phase.id)}" tabindex="0"><span class="node-kind-icon" aria-hidden="true">${icon}</span><span class="node-order" aria-label="Step ${order.get(phase.id) || index + 1}">${order.get(phase.id) || index + 1}</span><button class="node-port input" data-port="in" type="button" tabindex="-1" aria-hidden="true"></button><small>${escapeHtml(plain.actor)}</small><b>${escapeHtml(phase.name)}</b><p>${escapeHtml(plain.copy)}</p><em>${escapeHtml(footer)}</em><button class="node-port output" data-port="out" type="button" tabindex="-1" aria-hidden="true"></button></article>`;
   }).join("");
   if (selectedEdgeIndex != null && program.edges[selectedEdgeIndex]) $("#phase-inspector").innerHTML = edgeInspector(program.edges[selectedEdgeIndex]);
   else if (selectedPhaseIndex >= 0) $("#phase-inspector").innerHTML = phaseInspector(program.phases[selectedPhaseIndex]);
@@ -1138,9 +1181,16 @@ async function loadPhaseTemplates() {
 }
 
 function setCanvasZoom(value) {
-  canvasZoom = Math.max(.42, Math.min(1.35, Number(value.toFixed(2))));
-  $("#phase-editor").style.transform = `scale(${canvasZoom})`;
-  $("#canvas-zoom-label").textContent = `${Math.round(canvasZoom * 100)}%`;
+  const nextZoom = Math.max(.42, Math.min(1.35, Number(value.toFixed(2))));
+  const viewport = $("#canvas-viewport");
+  const center = { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
+  const ratio = nextZoom / canvasZoom;
+  canvasPan = {
+    x: center.x - ((center.x - canvasPan.x) * ratio),
+    y: center.y - ((center.y - canvasPan.y) * ratio),
+  };
+  canvasZoom = nextZoom;
+  applyCanvasTransform();
 }
 
 function arrangeCanvas() {
@@ -1176,15 +1226,55 @@ function arrangeCanvas() {
   }
   adaptationMethod ||= "manual";
   renderPhaseEditor();
+  window.setTimeout(fitCanvas, 0);
 }
 
 function fitCanvas() {
   const program = ensureDesignProgram();
-  const maxX = Math.max(...program.phases.map((phase) => phase.position.x + 290), 900);
-  const maxY = Math.max(...program.phases.map((phase) => phase.position.y + 210), 500);
   const viewport = $("#canvas-viewport");
-  setCanvasZoom(Math.min((viewport.clientWidth - 50) / maxX, (viewport.clientHeight - 50) / maxY, 1));
-  viewport.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+  const minX = Math.min(...program.phases.map((phase) => phase.position.x));
+  const minY = Math.min(...program.phases.map((phase) => phase.position.y));
+  const maxX = Math.max(...program.phases.map((phase) => phase.position.x + 252));
+  const maxY = Math.max(...program.phases.map((phase) => phase.position.y + 170));
+  const width = Math.max(252, maxX - minX);
+  const height = Math.max(170, maxY - minY);
+  canvasZoom = Math.max(.42, Math.min(1, (viewport.clientWidth - 96) / width, (viewport.clientHeight - 96) / height));
+  canvasPan = {
+    x: ((viewport.clientWidth - (width * canvasZoom)) / 2) - (minX * canvasZoom),
+    y: ((viewport.clientHeight - (height * canvasZoom)) / 2) - (minY * canvasZoom),
+  };
+  applyCanvasTransform();
+}
+
+async function toggleCanvasFullscreen() {
+  const canvas = $("#workflow-canvas");
+  const fallbackActive = canvas.classList.contains("canvas-expanded");
+  if (fallbackActive) {
+    canvas.classList.remove("canvas-expanded");
+    document.body.classList.remove("canvas-modal-open");
+    updateFullscreenControl(false);
+    window.setTimeout(fitCanvas, 80);
+    return;
+  }
+  if (document.fullscreenElement === canvas) {
+    await document.exitFullscreen();
+    return;
+  }
+  try {
+    if (typeof canvas.requestFullscreen !== "function") throw new Error("browser full screen is unavailable");
+    await canvas.requestFullscreen();
+  } catch {
+    canvas.classList.add("canvas-expanded");
+    document.body.classList.add("canvas-modal-open");
+    updateFullscreenControl(true);
+    window.setTimeout(fitCanvas, 80);
+  }
+}
+
+function updateFullscreenControl(active) {
+  const button = $("#canvas-fullscreen");
+  button.setAttribute("aria-label", active ? "Exit full screen" : "Enter full screen");
+  $(".control-label", button).textContent = active ? "Exit" : "Full screen";
 }
 
 function loadGraphTemplate(kind) {
@@ -1205,8 +1295,7 @@ function loadGraphTemplate(kind) {
   if (goals[kind] && !$("#task-input").value.trim()) $("#task-input").value = goals[kind];
   renderWorkflowPreview();
   renderPhaseEditor();
-  setCanvasZoom(kind === "blank" ? 1 : .68);
-  $("#canvas-viewport").scrollTo({ left: 0, top: 0, behavior: "smooth" });
+  window.setTimeout(fitCanvas, 0);
 }
 
 async function init() {
@@ -1252,13 +1341,30 @@ async function init() {
   $("#canvas-fit").addEventListener("click", fitCanvas);
   $("#canvas-zoom-out").addEventListener("click", () => setCanvasZoom(canvasZoom - .1));
   $("#canvas-zoom-in").addEventListener("click", () => setCanvasZoom(canvasZoom + .1));
+  $("#canvas-fullscreen").addEventListener("click", toggleCanvasFullscreen);
+  $("#canvas-viewport").addEventListener("pointerdown", beginCanvasPan);
+  $("#canvas-viewport").addEventListener("pointermove", moveCanvasPan);
+  $("#canvas-viewport").addEventListener("pointerup", endCanvasPan);
+  $("#canvas-viewport").addEventListener("pointercancel", endCanvasPan);
+  document.addEventListener("fullscreenchange", () => {
+    const active = document.fullscreenElement === $("#workflow-canvas");
+    updateFullscreenControl(active);
+    window.setTimeout(fitCanvas, 80);
+  });
   $("#phase-editor").addEventListener("click", (event) => {
+    if (canvasPanMoved) { canvasPanMoved = false; return; }
     if (event.target !== $("#phase-editor") && event.target !== $("#canvas-nodes") && event.target !== $("#canvas-edges")) return;
     selectedPhaseIndex = -1;
     selectedEdgeIndex = null;
     renderPhaseEditor();
   });
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && $("#workflow-canvas").classList.contains("canvas-expanded")) {
+      $("#workflow-canvas").classList.remove("canvas-expanded");
+      document.body.classList.remove("canvas-modal-open");
+      updateFullscreenControl(false);
+      window.setTimeout(fitCanvas, 80);
+    }
     if (!$("#create-view").hidden && event.key === "Delete" && selectedEdgeIndex != null && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
       ensureDesignProgram().edges.splice(selectedEdgeIndex, 1);
       selectedEdgeIndex = null;
@@ -1276,7 +1382,7 @@ async function init() {
   $$(".copy-command").forEach((button) => button.addEventListener("click", () => copyCommand(button).catch(() => { button.textContent = "Copy failed"; })));
   window.addEventListener("hashchange", () => setView(location.hash.slice(1), { updateHash: false }));
   setView(location.hash.slice(1) || "create", { updateHash: false });
-  setCanvasZoom(.68);
+  window.setTimeout(fitCanvas, 0);
 }
 
 function updateSettingsSummary() {
