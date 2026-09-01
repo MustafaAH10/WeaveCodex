@@ -517,6 +517,7 @@ class Handler(BaseHTTPRequestHandler):
             "/deep-dive.html": "/#create",
             "/compare.html": "/#activity",
             "/sandbox-trials.html": "/#activity",
+            "/platform.html": "/#create",
         }
         if destination := legacy_destinations.get(request_path):
             self.send_response(HTTPStatus.SEE_OTHER)

@@ -22,6 +22,9 @@ let selectedPhaseIndex = 0;
 let selectedEdgeIndex = null;
 let canvasDrag = null;
 let connectionDraft = null;
+let phaseTemplateCatalog = new Map();
+let canvasZoom = 1;
+let canvasNotice = "";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -79,47 +82,11 @@ function linearGraph(kind) {
 }
 
 function graphTemplate(kind) {
+  const catalogTemplate = phaseTemplateCatalog.get(kind);
+  if (catalogTemplate) return clone(catalogTemplate.program);
   if (["review", "direct", "audit", "precision"].includes(kind)) return linearGraph(kind);
   if (kind === "blank") {
     return { projectionVersion: 1, phases: [{ id: "first-step", kind: "work", scope: "adaptive", name: "First Codex turn", goal: "Describe what Codex should accomplish before handing work to the next node.", reasoningEffort: "inherit", position: { x: 170, y: 250 } }], edges: [] };
-  }
-  if (kind === "fullstack") {
-    return {
-      projectionVersion: 1,
-      phases: [
-        { id: "shape-product", kind: "work", scope: "adaptive", name: "Shape the product", goal: "Inspect the repository and turn the overall request into a coherent product architecture. Record the interfaces that the implementation nodes must share.", reasoningEffort: "inherit", position: { x: 80, y: 300 } },
-        { id: "build-backend", kind: "work", scope: "adaptive", name: "Build the backend", goal: "Implement the backend data model, API, validation, and error handling against the agreed product interfaces. Run the checks needed for this area.", reasoningEffort: "inherit", position: { x: 410, y: 120 } },
-        { id: "build-auth", kind: "work", scope: "adaptive", name: "Build authentication", goal: "Implement the authentication and authorization boundary, including safe session behavior and focused security checks. Keep the shared interfaces compatible.", reasoningEffort: "inherit", position: { x: 410, y: 480 } },
-        { id: "build-frontend", kind: "work", scope: "adaptive", name: "Build the frontend", goal: "Implement the user-facing experience against the completed backend and auth contracts. Inspect the running result and iterate until the core flow works.", reasoningEffort: "inherit", position: { x: 760, y: 300 } },
-        { id: "product-checkpoint", kind: "checkpoint", name: "Review the working product", question: "Does the working product match the intended experience? Continue, redirect the final polish, or stop.", position: { x: 1080, y: 300 } },
-        { id: "prove-product", kind: "verify", name: "Prove the whole flow", criteria: "The backend, authentication, and frontend work together; critical checks pass; the final result matches the approved product direction.", maxRepairs: 1, position: { x: 1400, y: 300 } },
-      ],
-      edges: [
-        { from: "shape-product", to: "build-backend" }, { from: "shape-product", to: "build-auth" },
-        { from: "build-backend", to: "build-frontend" }, { from: "build-auth", to: "build-frontend" },
-        { from: "build-frontend", to: "product-checkpoint" }, { from: "product-checkpoint", to: "prove-product" },
-      ],
-    };
-  }
-  if (kind === "poster") {
-    return {
-      projectionVersion: 1,
-      phases: [
-        { id: "art-direction", kind: "work", scope: "adaptive", name: "Choose the visual world", goal: "Interpret the brief, gather relevant visual references available in the workspace, and define a distinctive art direction with palette, type, composition, and mood.", reasoningEffort: "inherit", position: { x: 70, y: 300 } },
-        { id: "three-concepts", kind: "work", scope: "adaptive", name: "Create three concepts", goal: "Produce three genuinely different poster concepts as inspectable artifacts or detailed compositions. Explain the tradeoff of each without choosing for the user.", reasoningEffort: "inherit", position: { x: 390, y: 300 } },
-        { id: "choose-concept", kind: "checkpoint", name: "Choose a concept", question: "Which concept should Codex develop? Add any changes to tone, palette, or composition before continuing.", position: { x: 710, y: 300 } },
-        { id: "produce-poster", kind: "work", scope: "adaptive", name: "Produce the poster", goal: "Develop the selected concept into a polished final poster in the requested format. Respect the user's latest art direction and create a viewable artifact.", reasoningEffort: "inherit", position: { x: 1030, y: 300 } },
-        { id: "type-critique", kind: "work", scope: "focused", name: "Critique typography", goal: "Review only hierarchy, type choice, legibility, spacing, and copy treatment. Return concrete corrections for the final pass.", reasoningEffort: "low", position: { x: 1360, y: 120 } },
-        { id: "composition-critique", kind: "work", scope: "focused", name: "Critique composition", goal: "Review only balance, focal point, color contrast, negative space, and visual rhythm. Return concrete corrections for the final pass.", reasoningEffort: "low", position: { x: 1360, y: 480 } },
-        { id: "final-artwork", kind: "work", scope: "adaptive", name: "Refine final artwork", goal: "Apply the supported typography and composition corrections, preserve the chosen direction, and export the final viewable poster artifact.", reasoningEffort: "inherit", position: { x: 1700, y: 300 } },
-      ],
-      edges: [
-        { from: "art-direction", to: "three-concepts" }, { from: "three-concepts", to: "choose-concept" },
-        { from: "choose-concept", to: "produce-poster" }, { from: "produce-poster", to: "type-critique" },
-        { from: "produce-poster", to: "composition-critique" }, { from: "type-critique", to: "final-artwork" },
-        { from: "composition-critique", to: "final-artwork" },
-      ],
-    };
   }
   return linearGraph("review");
 }
@@ -351,7 +318,6 @@ function configureVoiceInput() {
     let transcript = "";
     for (let index = 0; index < event.results.length; index += 1) transcript += event.results[index][0].transcript;
     $("#task-input").value = `${voiceBaseText}${voiceBaseText && transcript ? " " : ""}${transcript}`.trim();
-    $("#design-task").value = $("#task-input").value;
   };
   voiceRecognition.onerror = (event) => {
     const denied = event.error === "not-allowed" || event.error === "service-not-allowed";
@@ -390,11 +356,8 @@ function applyWorkflow(workflow, { customize = false } = {}) {
   setMode("weave");
   $("#task-input").value = "";
   if (customize) {
-    $("#design-task").value = $("#task-input").value;
     setView("create");
-    const customizer = $("#customize-loop");
-    customizer.open = true;
-    customizer.scrollIntoView({ behavior: "smooth", block: "start" });
+    $("#workflow-canvas").scrollIntoView({ behavior: "smooth", block: "start" });
   } else {
     setView("create");
     $("#task-input").focus();
@@ -484,7 +447,7 @@ async function startRun() {
     if (problem) {
       $("#design-status").textContent = problem;
       $("#design-status").classList.add("error");
-      $("#customize-loop").scrollIntoView({ behavior: "smooth", block: "start" });
+      $("#workflow-canvas").scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
   }
@@ -525,7 +488,7 @@ async function pollRun(phases) {
   try {
     const state = await request(`/api/runs/${encodeURIComponent(activeRun)}`);
     renderSteps(phases, state);
-    $("#run-status").textContent = String(state.status || "running").replace(/([A-Z])/g, " $1").trim();
+    $("#run-status").textContent = friendlyStatus(state.status || "running");
     if (state.pendingApproval) {
       const checkpoint = state.pendingApproval.method === "harness/checkpoint";
       pendingIsCheckpoint = checkpoint;
@@ -540,9 +503,15 @@ async function pollRun(phases) {
     }
     if (["completed", "failed", "stopped"].includes(state.status)) {
       const result = state.result || {};
+      const completion = result.completionStatus || state.status;
+      $("#run-status").textContent = friendlyStatus(completion);
       $("#run-output").textContent = result.finalResponse || state.error || "Run ended without a final response.";
       $("#run-output").classList.remove("hidden");
-      $("#run-note").textContent = "Finished. A readable record is available in Activity.";
+      $("#run-note").textContent = completion === "completed"
+        ? "Finished. A readable record is available in Runs."
+        : completion === "failedCheck"
+          ? "Stopped because a pass/fail check failed. Open Runs for the evidence."
+          : `${friendlyStatus(completion)}. Open Runs for the evidence.`;
       $("#run-task").disabled = false;
       $("#run-task").innerHTML = "Run another task <span>→</span>";
       $("#cancel-active-run").classList.add("hidden");
@@ -646,110 +615,7 @@ function phaseCopyLabel(phase) {
   return "What counts as proven";
 }
 
-function phaseInspector(phase, index, count) {
-  const key = phaseCopyKey(phase);
-  const scopeSelect = phase.kind === "work" ? `<label>How much freedom?<select data-phase-field="scope"><option value="adaptive" ${phase.scope !== "focused" ? "selected" : ""}>Broad · Codex chooses the internal route</option><option value="focused" ${phase.scope === "focused" ? "selected" : ""}>Focused · stay inside this instruction</option></select></label>` : "";
-  const typeSelect = phase.kind === "command" ? `<label>Step type<select data-phase-field="stepType"><option value="function" ${phase.stepType === "function" ? "selected" : ""}>One function</option><option value="test" ${phase.stepType === "test" ? "selected" : ""}>One test</option><option value="checker" ${phase.stepType === "checker" ? "selected" : ""}>One checker</option></select></label>` : "";
-  const commandSettings = phase.kind === "command" ? `<div class="inspector-grid"><label>Passing exit code<input data-phase-field="expectedExitCode" type="number" min="0" max="255" value="${phase.expectedExitCode ?? 0}"></label><label class="switch-field"><input data-phase-field="stopOnFailure" type="checkbox" ${phase.stopOnFailure !== false ? "checked" : ""}><span>Stop if this fails</span></label></div><p class="inspector-proof">Passed means this exact command was observed in Codex events with the expected exit code.</p>` : "";
-  const verifySettings = phase.kind === "verify" ? `<label>Repair attempts<select data-phase-field="maxRepairs"><option value="0" ${phase.maxRepairs === 0 ? "selected" : ""}>None</option><option value="1" ${phase.maxRepairs === 1 ? "selected" : ""}>One</option><option value="2" ${phase.maxRepairs === 2 ? "selected" : ""}>Two</option></select></label>` : "";
-  const maxLength = phase.kind === "work" ? 4000 : 2000;
-  return `<p class="kicker">STEP ${index + 1} · ${escapeHtml(phaseKindLabel(phase).toUpperCase())}</p><h2>${escapeHtml(phase.name)}</h2><div class="inspector-fields"><label>Step name<input data-phase-field="name" value="${escapeHtml(phase.name)}" maxlength="80"></label>${scopeSelect}${typeSelect}<label>${escapeHtml(phaseCopyLabel(phase))}<textarea data-phase-field="${key}" maxlength="${maxLength}" rows="6">${escapeHtml(phase[key])}</textarea></label>${commandSettings}${verifySettings}</div><div class="inspector-actions"><button type="button" data-phase-move="up" ${index === 0 ? "disabled" : ""}>← Earlier</button><button type="button" data-phase-move="down" ${index === count - 1 ? "disabled" : ""}>Later →</button><button class="danger" type="button" data-phase-delete>Delete</button></div>`;
-}
-
-function renderPhaseEditor() {
-  const program = ensureDesignProgram();
-  $("#design-cwd").value ||= $("#workspace-input").value;
-  selectedPhaseIndex = Math.min(Math.max(selectedPhaseIndex, 0), program.phases.length - 1);
-  $("#phase-editor").innerHTML = program.phases.map((phase, index) => {
-    const plain = phasePlainCopy(phase);
-    return `${index ? '<span class="canvas-edge" aria-hidden="true"><i></i><b>then</b></span>' : ""}<button class="canvas-node ${escapeHtml(phase.kind)} ${escapeHtml(phase.scope || "")} ${index === selectedPhaseIndex ? "selected" : ""}" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}" draggable="true" type="button" role="listitem"><span class="node-order">${index + 1}</span><small>${escapeHtml(plain.actor)}</small><b>${escapeHtml(phase.name)}</b><p>${escapeHtml(plain.copy)}</p><em>Not run</em></button>`;
-  }).join("");
-  $("#phase-inspector").innerHTML = phaseInspector(program.phases[selectedPhaseIndex], selectedPhaseIndex, program.phases.length);
-  $$("[data-phase-index]", $("#phase-editor")).forEach((node) => {
-    node.addEventListener("click", () => { selectedPhaseIndex = Number(node.dataset.phaseIndex); renderPhaseEditor(); });
-    node.addEventListener("dragstart", () => { draggedPhaseIndex = Number(node.dataset.phaseIndex); node.classList.add("dragging"); });
-    node.addEventListener("dragend", () => { draggedPhaseIndex = null; node.classList.remove("dragging"); });
-    node.addEventListener("dragover", (event) => event.preventDefault());
-    node.addEventListener("drop", (event) => {
-      event.preventDefault();
-      const target = Number(node.dataset.phaseIndex);
-      if (draggedPhaseIndex == null || draggedPhaseIndex === target) return;
-      const [moved] = program.phases.splice(draggedPhaseIndex, 1);
-      program.phases.splice(target, 0, moved);
-      selectedPhaseIndex = target;
-      adaptationMethod ||= "manual";
-      renderWorkflowPreview();
-      renderPhaseEditor();
-    });
-  });
-  $$("[data-phase-field]", $("#phase-inspector")).forEach((field) => field.addEventListener("input", () => {
-    const phase = program.phases[selectedPhaseIndex];
-    const key = field.dataset.phaseField;
-    if (["maxRepairs", "expectedExitCode"].includes(key)) phase[key] = Number(field.value);
-    else if (key === "stopOnFailure") phase[key] = field.checked;
-    else phase[key] = field.value;
-    adaptationMethod ||= "manual";
-    renderWorkflowPreview();
-    const node = $(`[data-phase-index="${selectedPhaseIndex}"]`, $("#phase-editor"));
-    if (key === "name") { node.querySelector("b").textContent = field.value; $("#phase-inspector h2").textContent = field.value; }
-    if (key === phaseCopyKey(phase)) node.querySelector("p").textContent = field.value;
-    if (["stepType", "scope"].includes(key)) renderPhaseEditor();
-  }));
-  $$("[data-phase-move]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
-    const index = selectedPhaseIndex;
-    const next = button.dataset.phaseMove === "up" ? index - 1 : index + 1;
-    if (next < 0 || next >= program.phases.length) return;
-    [program.phases[index], program.phases[next]] = [program.phases[next], program.phases[index]];
-    selectedPhaseIndex = next;
-    adaptationMethod ||= "manual";
-    renderWorkflowPreview();
-    renderPhaseEditor();
-  }));
-  $$("[data-phase-delete]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
-    const index = selectedPhaseIndex;
-    if (program.phases.length === 1 || (program.phases[index].kind === "work" && program.phases.filter((item) => item.kind === "work").length === 1)) {
-      $("#design-status").textContent = "A workflow needs at least one Codex work step.";
-      return;
-    }
-    program.phases.splice(index, 1);
-    selectedPhaseIndex = Math.min(index, program.phases.length - 1);
-    adaptationMethod ||= "manual";
-    renderWorkflowPreview();
-    renderPhaseEditor();
-  }));
-  const origin = activeSavedWorkflow
-    ? adaptationMethod
-      ? `Unsaved changes to “${activeSavedWorkflow.name}”`
-      : `Using saved workflow “${activeSavedWorkflow.name}”`
-    : "Starting design · not saved";
-  $("#design-origin").textContent = origin;
-}
-
-function addPhase(kind, stepOption = "adaptive") {
-  const program = ensureDesignProgram();
-  if (program.phases.length >= 16) {
-    $("#design-status").textContent = "A workflow can contain at most sixteen steps.";
-    return;
-  }
-  const commandType = kind === "command" ? stepOption : "test";
-  const stem = kind === "work" ? "work" : kind === "checkpoint" ? "checkpoint" : kind === "command" ? commandType : "verify";
-  let id = stem;
-  let counter = 2;
-  const ids = new Set(program.phases.map((phase) => phase.id));
-  while (ids.has(id)) id = `${stem}-${counter++}`;
-  if (kind === "work") program.phases.push({ id, kind, scope: stepOption === "focused" ? "focused" : "adaptive", name: stepOption === "focused" ? "New focused task" : "New broad Codex goal", goal: stepOption === "focused" ? "Describe one narrow outcome Codex must complete without expanding scope." : "Describe a high-level outcome and let Codex choose the internal plan, tools, and retries.", reasoningEffort: "inherit" });
-  if (kind === "checkpoint") program.phases.push({ id, kind, name: "My decision", question: "Continue to the next step?" });
-  if (kind === "command") program.phases.push({ id, kind, stepType: commandType, name: commandType === "test" ? "Run one test" : commandType === "checker" ? "Run one checker" : "Run one function", command: commandType === "test" ? "python3 -m pytest -q path/to/test.py::test_name" : commandType === "checker" ? "git diff --check" : "python3 -c \"from package import function; function()\"", expectedExitCode: 0, stopOnFailure: true });
-  if (kind === "verify") program.phases.push({ id, kind, name: "Check the result", criteria: "The requested outcome is complete and supported by relevant checks.", maxRepairs: 1 });
-  selectedPhaseIndex = program.phases.length - 1;
-  adaptationMethod ||= "manual";
-  renderWorkflowPreview();
-  renderPhaseEditor();
-}
-
-// The graph-native canvas supersedes the earlier list editor above. Keeping the
-// small list implementation in this file lets old static fixtures keep loading,
-// while these declarations become the product runtime used by the current page.
+// The product canvas and runtime share this graph representation.
 function clientTopologicalOrder(program) {
   if (!program?.edges?.length) return program?.phases || [];
   const byId = new Map(program.phases.map((phase) => [phase.id, phase]));
@@ -796,6 +662,22 @@ function graphProblem(program) {
   return "";
 }
 
+function wouldCreateCycle(program, sourceId, targetId) {
+  if (sourceId === targetId) return true;
+  const outgoing = new Map(program.phases.map((phase) => [phase.id, []]));
+  for (const edge of program.edges) outgoing.get(edge.from)?.push(edge.to);
+  const pending = [targetId];
+  const seen = new Set();
+  while (pending.length) {
+    const current = pending.pop();
+    if (current === sourceId) return true;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    pending.push(...(outgoing.get(current) || []));
+  }
+  return false;
+}
+
 function uniquePhaseId(stem, program) {
   const base = String(stem).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 42) || "node";
   const ids = new Set(program.phases.map((phase) => phase.id));
@@ -807,14 +689,18 @@ function uniquePhaseId(stem, program) {
 
 function phaseInspector(phase) {
   const key = phaseCopyKey(phase);
-  const scopeSelect = phase.kind === "work" ? `<label>Freedom inside this turn<select data-phase-field="scope"><option value="adaptive" ${phase.scope !== "focused" ? "selected" : ""}>Adaptive · Codex chooses the route</option><option value="focused" ${phase.scope === "focused" ? "selected" : ""}>Bounded · do only this instruction</option></select></label>` : "";
-  const typeSelect = phase.kind === "command" ? `<label>Evidence type<select data-phase-field="stepType"><option value="function" ${phase.stepType === "function" ? "selected" : ""}>Function call</option><option value="test" ${phase.stepType === "test" ? "selected" : ""}>Test</option><option value="checker" ${phase.stepType === "checker" ? "selected" : ""}>Checker</option></select></label>` : "";
+  const scopeSelect = phase.kind === "work" ? `<label>How much can this step own?<select data-phase-field="scope"><option value="adaptive" ${phase.scope !== "focused" ? "selected" : ""}>Broad · Codex chooses how</option><option value="focused" ${phase.scope === "focused" ? "selected" : ""}>Focused · only this job</option></select></label>` : "";
+  const typeSelect = phase.kind === "command" ? `<label>Pass/fail check type<select data-phase-field="stepType"><option value="function" ${phase.stepType === "function" ? "selected" : ""}>Function call</option><option value="test" ${phase.stepType === "test" ? "selected" : ""}>Test</option><option value="checker" ${phase.stepType === "checker" ? "selected" : ""}>Checker</option></select></label>` : "";
   const commandSettings = phase.kind === "command" ? `<div class="inspector-grid"><label>Passing exit code<input data-phase-field="expectedExitCode" type="number" min="0" max="255" value="${phase.expectedExitCode ?? 0}"></label><label class="switch-field"><input data-phase-field="stopOnFailure" type="checkbox" ${phase.stopOnFailure !== false ? "checked" : ""}><span>Stop if this fails</span></label></div><p class="inspector-proof">Passed only when Codex events contain this exact command and exit code.</p>` : "";
   const verifySettings = phase.kind === "verify" ? `<label>Repair attempts<select data-phase-field="maxRepairs"><option value="0" ${phase.maxRepairs === 0 ? "selected" : ""}>None</option><option value="1" ${phase.maxRepairs === 1 ? "selected" : ""}>One</option><option value="2" ${phase.maxRepairs === 2 ? "selected" : ""}>Two</option></select></label>` : "";
   const program = ensureDesignProgram();
   const incoming = program.edges.filter((edge) => edge.to === phase.id).length;
   const outgoing = program.edges.filter((edge) => edge.from === phase.id).length;
-  return `<p class="kicker">${escapeHtml(phaseKindLabel(phase).toUpperCase())}</p><h2>${escapeHtml(phase.name)}</h2><div class="inspector-fields"><label>Node name<input data-phase-field="name" value="${escapeHtml(phase.name)}" maxlength="80"></label>${scopeSelect}${typeSelect}<label>${escapeHtml(phaseCopyLabel(phase))}<textarea data-phase-field="${key}" maxlength="${phase.kind === "work" ? 4000 : 2000}" rows="7">${escapeHtml(phase[key])}</textarea></label>${commandSettings}${verifySettings}<p class="connection-summary">${incoming} arrow${incoming === 1 ? "" : "s"} in · ${outgoing} arrow${outgoing === 1 ? "" : "s"} out</p></div><div class="inspector-actions"><button type="button" data-phase-duplicate>Duplicate node</button><button class="danger" type="button" data-phase-delete>Delete node</button></div>`;
+  const targets = program.phases.filter((target) => target.id !== phase.id && !program.edges.some((edge) => edge.from === phase.id && edge.to === target.id) && !wouldCreateCycle(program, phase.id, target.id));
+  const connectControl = targets.length
+    ? `<div class="inspector-connect"><label>Then continue to<select data-phase-connect>${targets.map((target) => `<option value="${escapeHtml(target.id)}">${escapeHtml(target.name)}</option>`).join("")}</select></label><button type="button" data-phase-connect-add>Add arrow</button></div>`
+    : '<p class="inspector-proof">No other step can be connected from here without making a duplicate or loop.</p>';
+  return `<p class="kicker">${escapeHtml(phaseKindLabel(phase).toUpperCase())}</p><h2>${escapeHtml(phase.name)}</h2><div class="inspector-fields"><label>Step name<input data-phase-field="name" value="${escapeHtml(phase.name)}" maxlength="80"></label>${scopeSelect}${typeSelect}<label>${escapeHtml(phaseCopyLabel(phase))}<textarea data-phase-field="${key}" maxlength="${phase.kind === "work" ? 4000 : 2000}" rows="7">${escapeHtml(phase[key])}</textarea></label>${commandSettings}${verifySettings}<p class="connection-summary">${incoming} arrow${incoming === 1 ? "" : "s"} in · ${outgoing} arrow${outgoing === 1 ? "" : "s"} out</p>${connectControl}</div><div class="inspector-actions"><button type="button" data-phase-duplicate>Duplicate step</button><button class="danger" type="button" data-phase-delete>Delete step</button></div>`;
 }
 
 function edgeInspector(edge) {
@@ -856,7 +742,10 @@ function renderCanvasEdges() {
 function pointerToCanvas(event) {
   const viewport = $("#canvas-viewport");
   const rect = viewport.getBoundingClientRect();
-  return { x: event.clientX - rect.left + viewport.scrollLeft, y: event.clientY - rect.top + viewport.scrollTop };
+  return {
+    x: (event.clientX - rect.left + viewport.scrollLeft) / canvasZoom,
+    y: (event.clientY - rect.top + viewport.scrollTop) / canvasZoom,
+  };
 }
 
 function beginConnection(event, sourceId) {
@@ -877,8 +766,11 @@ function beginConnection(event, sourceId) {
     document.removeEventListener("pointermove", move);
     const targetPort = document.elementFromPoint(upEvent.clientX, upEvent.clientY)?.closest('[data-port="in"]');
     const targetId = targetPort?.closest("[data-phase-id]")?.dataset.phaseId;
-    if (targetId && targetId !== sourceId && !program.edges.some((edge) => edge.from === sourceId && edge.to === targetId)) {
+    if (targetId && wouldCreateCycle(program, sourceId, targetId)) {
+      canvasNotice = "That arrow would create a loop. Connect the steps in a forward path instead.";
+    } else if (targetId && !program.edges.some((edge) => edge.from === sourceId && edge.to === targetId)) {
       program.edges.push({ from: sourceId, to: targetId });
+      canvasNotice = "";
       adaptationMethod ||= "manual";
     }
     connectionDraft = null;
@@ -901,8 +793,8 @@ function moveNode(event) {
   if (!canvasDrag) return;
   const phase = ensureDesignProgram().phases[canvasDrag.phaseIndex];
   const point = pointerToCanvas(event);
-  phase.position.x = Math.max(20, Math.min(2100, Math.round(canvasDrag.origin.x + point.x - canvasDrag.start.x)));
-  phase.position.y = Math.max(20, Math.min(930, Math.round(canvasDrag.origin.y + point.y - canvasDrag.start.y)));
+  phase.position.x = Math.max(20, Math.min(2400, Math.round((canvasDrag.origin.x + point.x - canvasDrag.start.x) / 20) * 20));
+  phase.position.y = Math.max(20, Math.min(1010, Math.round((canvasDrag.origin.y + point.y - canvasDrag.start.y) / 20) * 20));
   const node = $(`[data-phase-id="${CSS.escape(phase.id)}"]`, $("#canvas-nodes"));
   node.style.left = `${phase.position.x}px`;
   node.style.top = `${phase.position.y}px`;
@@ -919,20 +811,28 @@ function endNodeDrag(event) {
 
 function renderPhaseEditor() {
   const program = ensureDesignProgram();
-  $("#design-cwd").value ||= $("#workspace-input").value;
   if (selectedPhaseIndex >= program.phases.length) selectedPhaseIndex = program.phases.length - 1;
+  const order = new Map(orderedClientPhases(program).map((phase, index) => [phase.id, index + 1]));
   $("#canvas-nodes").innerHTML = program.phases.map((phase, index) => {
     const plain = phasePlainCopy(phase);
-    return `<article class="canvas-node ${escapeHtml(phase.kind)} ${escapeHtml(phase.scope || "")} ${index === selectedPhaseIndex ? "selected" : ""}" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}" data-phase-id="${escapeHtml(phase.id)}" tabindex="0"><button class="node-port input" data-port="in" type="button" aria-label="Connect into ${escapeHtml(phase.name)}"></button><small>${escapeHtml(plain.actor)}</small><b>${escapeHtml(phase.name)}</b><p>${escapeHtml(plain.copy)}</p><em>${phase.kind === "checkpoint" ? "Human pause" : "One Codex turn"}</em><button class="node-port output" data-port="out" type="button" aria-label="Connect from ${escapeHtml(phase.name)}"></button></article>`;
+    const footer = phase.kind === "checkpoint" ? "Human pause" : phase.kind === "command" ? "Pass / fail" : phase.kind === "verify" ? "Review + repair" : phase.scope === "focused" ? "Focused turn" : "Broad turn";
+    return `<article class="canvas-node ${escapeHtml(phase.kind)} ${escapeHtml(phase.scope || "")} ${index === selectedPhaseIndex ? "selected" : ""}" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}" data-phase-id="${escapeHtml(phase.id)}" tabindex="0"><span class="node-order" aria-label="Step ${order.get(phase.id) || index + 1}">${order.get(phase.id) || index + 1}</span><button class="node-port input" data-port="in" type="button" tabindex="-1" aria-hidden="true"></button><small>${escapeHtml(plain.actor)}</small><b>${escapeHtml(phase.name)}</b><p>${escapeHtml(plain.copy)}</p><em>${escapeHtml(footer)}</em><button class="node-port output" data-port="out" type="button" tabindex="-1" aria-hidden="true"></button></article>`;
   }).join("");
   if (selectedEdgeIndex != null && program.edges[selectedEdgeIndex]) $("#phase-inspector").innerHTML = edgeInspector(program.edges[selectedEdgeIndex]);
   else if (selectedPhaseIndex >= 0) $("#phase-inspector").innerHTML = phaseInspector(program.phases[selectedPhaseIndex]);
-  else $("#phase-inspector").innerHTML = '<p class="kicker">NODE SETTINGS</p><h2>Select a node</h2><p>Drag it anywhere, edit its instruction, or pull an arrow from its right port.</p>';
+  else $("#phase-inspector").innerHTML = '<p class="kicker">STEP SETTINGS</p><h2>Select a step</h2><p>Drag it anywhere, edit its instruction, or pull an arrow from its right dot.</p>';
   $$("[data-phase-index]", $("#canvas-nodes")).forEach((node) => {
     const phase = program.phases[Number(node.dataset.phaseIndex)];
     node.style.left = `${phase.position.x}px`;
     node.style.top = `${phase.position.y}px`;
     node.addEventListener("click", () => { selectedPhaseIndex = Number(node.dataset.phaseIndex); selectedEdgeIndex = null; renderPhaseEditor(); });
+    node.addEventListener("keydown", (event) => {
+      if (!["Enter", " "].includes(event.key)) return;
+      event.preventDefault();
+      selectedPhaseIndex = Number(node.dataset.phaseIndex);
+      selectedEdgeIndex = null;
+      renderPhaseEditor();
+    });
     node.addEventListener("pointerdown", (event) => beginNodeDrag(event, Number(node.dataset.phaseIndex)));
     node.addEventListener("pointermove", moveNode);
     node.addEventListener("pointerup", endNodeDrag);
@@ -953,6 +853,16 @@ function renderPhaseEditor() {
       if (key === "name") { node.querySelector("b").textContent = field.value; $("#phase-inspector h2").textContent = field.value; }
       if (key === phaseCopyKey(phase)) node.querySelector("p").textContent = field.value;
     }
+  }));
+  $$("[data-phase-connect-add]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
+    const source = program.phases[selectedPhaseIndex];
+    const targetId = $("[data-phase-connect]", $("#phase-inspector")).value;
+    if (!targetId || wouldCreateCycle(program, source.id, targetId)) return;
+    program.edges.push({ from: source.id, to: targetId });
+    canvasNotice = "";
+    adaptationMethod ||= "manual";
+    renderWorkflowPreview();
+    renderPhaseEditor();
   }));
   $$("[data-phase-duplicate]", $("#phase-inspector")).forEach((button) => button.addEventListener("click", () => {
     const source = program.phases[selectedPhaseIndex];
@@ -993,8 +903,10 @@ function renderPhaseEditor() {
     renderPhaseEditor();
   }));
   const problem = graphProblem(program);
-  $("#design-status").textContent = problem || "Graph is executable. Arrows determine the turn order.";
-  $("#design-status").classList.toggle("error", Boolean(problem));
+  $("#design-status").textContent = problem || canvasNotice || "Ready to run. Arrows determine the step order.";
+  $("#design-status").classList.toggle("error", Boolean(problem || canvasNotice));
+  const summary = $("#canvas-summary");
+  if (summary) summary.textContent = `${program.phases.length} node${program.phases.length === 1 ? "" : "s"} · ${program.edges.length} arrow${program.edges.length === 1 ? "" : "s"}${problem ? " · needs attention" : " · executable"}`;
   const origin = activeSavedWorkflow ? adaptationMethod ? `Unsaved changes to “${activeSavedWorkflow.name}”` : `Using saved workflow “${activeSavedWorkflow.name}”` : "Canvas draft · not saved";
   $("#design-origin").textContent = origin;
 }
@@ -1020,10 +932,10 @@ function addPhase(kind, stepOption = "adaptive") {
 }
 
 async function adaptWithCodex() {
-  const task = $("#design-task").value.trim();
-  const cwd = $("#design-cwd").value.trim();
-  if (task.length < 8) { $("#design-task").focus(); return; }
-  if (!cwd.startsWith("/")) { $("#design-cwd").focus(); return; }
+  const task = $("#task-input").value.trim();
+  const cwd = $("#workspace-input").value.trim();
+  if (task.length < 8) { $("#task-input").focus(); return; }
+  if (!cwd.startsWith("/")) { $("#workspace-input").focus(); return; }
   const button = $("#adapt-with-codex");
   button.disabled = true;
   $("#design-status").textContent = "Codex is proposing goal-only wording in read-only mode…";
@@ -1064,13 +976,9 @@ async function saveDesign() {
   } finally { button.disabled = false; }
 }
 
-function useDesignInRun() {
+async function useDesignInRun() {
   setMode("weave");
-  $("#task-input").value = $("#design-task").value;
-  $("#workspace-input").value = $("#design-cwd").value;
-  renderWorkflowPreview();
-  setView("create");
-  $("#task-composer").scrollIntoView({ behavior: "smooth", block: "start" });
+  await startRun();
 }
 
 async function loadRuns() {
@@ -1210,19 +1118,73 @@ async function loadPlatformTrials() {
   }
 }
 
-function setArchitectureLayer(enabled) {
-  const card = $(".architecture-card");
-  card.dataset.weave = enabled ? "on" : "off";
-  $("#architecture-codex").classList.toggle("active", !enabled);
-  $("#architecture-weave").classList.toggle("active", enabled);
-  $("#architecture-caption").innerHTML = enabled ? '<b>With Weave:</b> you choose the responsibility of every node—from one adaptive outcome to one exact check. <a href="/platform.html">Read the technical guide →</a>' : '<b>Codex only:</b> one goal enters the native adaptive loop. <a href="/platform.html">Read the technical guide →</a>';
-}
-
 async function copyCommand(button) {
   await navigator.clipboard.writeText(button.dataset.copy || "");
   const original = button.textContent;
   button.textContent = "Copied";
   setTimeout(() => { button.textContent = original; }, 1200);
+}
+
+async function loadPhaseTemplates() {
+  const select = $("#example-workflow-select");
+  try {
+    const response = await request("/api/phase-templates");
+    phaseTemplateCatalog = new Map((response.templates || []).map((item) => [item.id, item]));
+    select.innerHTML = '<option value="blank">Blank canvas</option>' + [...phaseTemplateCatalog.values()].map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} · ${item.nodeCount} nodes</option>`).join("");
+  } catch (error) {
+    select.innerHTML = '<option value="blank">Blank canvas</option><option value="fine-grained-fix">Fix one bug precisely</option>';
+    $("#design-status").textContent = `Example catalog unavailable: ${error.message}`;
+  }
+}
+
+function setCanvasZoom(value) {
+  canvasZoom = Math.max(.42, Math.min(1.35, Number(value.toFixed(2))));
+  $("#phase-editor").style.transform = `scale(${canvasZoom})`;
+  $("#canvas-zoom-label").textContent = `${Math.round(canvasZoom * 100)}%`;
+}
+
+function arrangeCanvas() {
+  const program = ensureDesignProgram();
+  const incoming = new Map(program.phases.map((phase) => [phase.id, 0]));
+  const outgoing = new Map(program.phases.map((phase) => [phase.id, []]));
+  for (const edge of program.edges) {
+    if (!incoming.has(edge.to) || !outgoing.has(edge.from)) continue;
+    incoming.set(edge.to, incoming.get(edge.to) + 1);
+    outgoing.get(edge.from).push(edge.to);
+  }
+  const depth = new Map();
+  const ready = program.phases.filter((phase) => incoming.get(phase.id) === 0).map((phase) => phase.id);
+  for (const id of ready) depth.set(id, 0);
+  while (ready.length) {
+    const id = ready.shift();
+    for (const target of outgoing.get(id)) {
+      depth.set(target, Math.max(depth.get(target) || 0, (depth.get(id) || 0) + 1));
+      incoming.set(target, incoming.get(target) - 1);
+      if (incoming.get(target) === 0) ready.push(target);
+    }
+  }
+  const layers = new Map();
+  program.phases.forEach((phase, index) => {
+    const column = depth.get(phase.id) ?? index;
+    if (!layers.has(column)) layers.set(column, []);
+    layers.get(column).push(phase);
+  });
+  for (const [column, phases] of layers) {
+    const spacing = Math.min(330, 820 / Math.max(1, phases.length));
+    const start = Math.max(70, 520 - ((phases.length - 1) * spacing / 2));
+    phases.forEach((phase, row) => { phase.position = { x: 80 + (column * 320), y: Math.round((start + row * spacing) / 20) * 20 }; });
+  }
+  adaptationMethod ||= "manual";
+  renderPhaseEditor();
+}
+
+function fitCanvas() {
+  const program = ensureDesignProgram();
+  const maxX = Math.max(...program.phases.map((phase) => phase.position.x + 290), 900);
+  const maxY = Math.max(...program.phases.map((phase) => phase.position.y + 210), 500);
+  const viewport = $("#canvas-viewport");
+  setCanvasZoom(Math.min((viewport.clientWidth - 50) / maxX, (viewport.clientHeight - 50) / maxY, 1));
+  viewport.scrollTo({ left: 0, top: 0, behavior: "smooth" });
 }
 
 function loadGraphTemplate(kind) {
@@ -1231,13 +1193,19 @@ function loadGraphTemplate(kind) {
   adaptationMethod = "manual";
   selectedPhaseIndex = 0;
   selectedEdgeIndex = null;
-  const names = { blank: "Untitled workflow", fullstack: "Build a full-stack product", poster: "Create and critique a poster", precision: "Fix, test, prove" };
-  $("#design-save-name").value = names[kind] || "Custom workflow";
-  if (kind === "fullstack" && !$("#task-input").value.trim()) $("#task-input").value = "Build a complete web product in this repository, including the backend, authentication, frontend, and an integrated quality pass.";
-  if (kind === "poster" && !$("#task-input").value.trim()) $("#task-input").value = "Create a distinctive artistic poster from the supplied brief, let me choose the direction, then refine and export the final artwork.";
-  $("#design-task").value = $("#task-input").value;
+  const template = phaseTemplateCatalog.get(kind);
+  $("#design-save-name").value = template?.name || (kind === "blank" ? "Untitled workflow" : "Custom workflow");
+  const goals = {
+    "frontend-launch": "Redesign and implement the primary frontend experience in this repository, then show me the result before the final release checks.",
+    "data-analysis": "Analyze the available business data, let me review the assumptions, and produce a decision brief with traceable numbers.",
+    "full-stack-product": "Build a complete web product in this repository, including backend, authentication, frontend, and an integrated quality pass.",
+    "research-brief": "Research the decision using primary sources, let me choose the supported argument, and produce a defensible cited brief.",
+    "creative-poster": "Create a distinctive artistic poster, let me choose the visual direction, then critique and refine the final artwork.",
+  };
+  if (goals[kind] && !$("#task-input").value.trim()) $("#task-input").value = goals[kind];
   renderWorkflowPreview();
   renderPhaseEditor();
+  setCanvasZoom(kind === "blank" ? 1 : .68);
   $("#canvas-viewport").scrollTo({ left: 0, top: 0, behavior: "smooth" });
 }
 
@@ -1246,8 +1214,11 @@ async function init() {
     securitySession = await request("/api/session");
     $("#workspace-input").value = securitySession.workspaceRoot || "";
   } catch (_) { securitySession = null; }
-  designProgram = graphTemplate("review");
-  $("#design-cwd").value = $("#workspace-input").value;
+  await loadPhaseTemplates();
+  const initialTemplate = phaseTemplateCatalog.has("full-stack-product") ? "full-stack-product" : "review";
+  designProgram = graphTemplate(initialTemplate);
+  if ($("#example-workflow-select")) $("#example-workflow-select").value = phaseTemplateCatalog.has(initialTemplate) ? initialTemplate : "blank";
+  $("#design-save-name").value = phaseTemplateCatalog.get(initialTemplate)?.name || "My workflow";
   $("#integrations-cwd").value = $("#workspace-input").value;
   await checkAccount();
   renderWorkflowPreview();
@@ -1259,8 +1230,7 @@ async function init() {
   $$(".mode").forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
   $$("[data-loop-template]").forEach((button) => button.addEventListener("click", () => selectLoopTemplate(button.dataset.loopTemplate)));
   $$("[data-example-case]").forEach((button) => button.addEventListener("click", () => renderExample(button.dataset.exampleCase)));
-  $$("[data-prompt]").forEach((button) => button.addEventListener("click", () => { $("#task-input").value = button.dataset.prompt; $("#design-task").value = button.dataset.prompt; $("#task-input").focus(); }));
-  $("#task-input").addEventListener("input", () => { $("#design-task").value = $("#task-input").value; });
+  $$("[data-prompt]").forEach((button) => button.addEventListener("click", () => { $("#task-input").value = button.dataset.prompt; $("#task-input").focus(); }));
   $("#voice-input").addEventListener("click", toggleVoiceInput);
   $("#workflow-select").addEventListener("change", updateWorkflowExplanation);
   $("#sandbox-select").addEventListener("change", updateSettingsSummary);
@@ -1274,14 +1244,14 @@ async function init() {
     $("#workflow-name").value = activeSavedWorkflow?.name || $("#workflow-select").selectedOptions[0].textContent;
     setView("library");
   });
-  $("#open-customizer").addEventListener("click", () => {
-    const customizer = $("#customize-loop");
-    customizer.open = true;
-    customizer.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
   $("#refresh-workflows").addEventListener("click", loadWorkflows);
   $$("[data-add-phase]").forEach((button) => button.addEventListener("click", () => addPhase(button.dataset.addPhase, button.dataset.stepOption)));
   $$("[data-graph-template]").forEach((button) => button.addEventListener("click", () => loadGraphTemplate(button.dataset.graphTemplate)));
+  $("#load-example-workflow").addEventListener("click", () => loadGraphTemplate($("#example-workflow-select").value));
+  $("#canvas-arrange").addEventListener("click", arrangeCanvas);
+  $("#canvas-fit").addEventListener("click", fitCanvas);
+  $("#canvas-zoom-out").addEventListener("click", () => setCanvasZoom(canvasZoom - .1));
+  $("#canvas-zoom-in").addEventListener("click", () => setCanvasZoom(canvasZoom + .1));
   $("#phase-editor").addEventListener("click", (event) => {
     if (event.target !== $("#phase-editor") && event.target !== $("#canvas-nodes") && event.target !== $("#canvas-edges")) return;
     selectedPhaseIndex = -1;
@@ -1301,21 +1271,21 @@ async function init() {
   $("#save-design").addEventListener("click", saveDesign);
   $("#refresh-runs").addEventListener("click", loadRuns);
   $("#load-integrations").addEventListener("click", loadIntegrations);
-  $("#architecture-codex").addEventListener("click", () => setArchitectureLayer(false));
-  $("#architecture-weave").addEventListener("click", () => setArchitectureLayer(true));
   $("#check-account").addEventListener("click", checkAccount);
   $("#chatgpt-login").addEventListener("click", startLogin);
   $$(".copy-command").forEach((button) => button.addEventListener("click", () => copyCommand(button).catch(() => { button.textContent = "Copy failed"; })));
   window.addEventListener("hashchange", () => setView(location.hash.slice(1), { updateHash: false }));
   setView(location.hash.slice(1) || "create", { updateHash: false });
+  setCanvasZoom(.68);
 }
 
 function updateSettingsSummary() {
-  $("#settings-summary").textContent = `${$("#sandbox-select").selectedOptions[0].textContent} · ${$("#approval-select").selectedOptions[0].textContent.toLowerCase()} protected actions`;
+  const summary = $("#settings-summary");
+  if (summary) summary.textContent = `${$("#sandbox-select").selectedOptions[0].textContent} · ${$("#approval-select").selectedOptions[0].textContent.toLowerCase()} protected actions`;
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { buildManifest, displaySteps, graphProblem, graphTemplate, orderedClientPhases };
+  module.exports = { buildManifest, displaySteps, graphProblem, graphTemplate, orderedClientPhases, wouldCreateCycle };
 } else {
   void init();
 }

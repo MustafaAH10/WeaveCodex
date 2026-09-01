@@ -1,0 +1,17 @@
+name: WeaveCodex documentation issue
+description: Report unclear, missing, or incorrect WeaveCodex documentation
+labels: [documentation]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Page or file
+      placeholder: URL or repository path
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: What should change?
+    validations:
+      required: true

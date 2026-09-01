@@ -53,11 +53,13 @@ jobs:
       - name: Run control-plane tests
         run: uv run pytest
 
-      - name: Parse browser JavaScript
+      - name: Parse product and marketing JavaScript
         run: |
-          node --check weave_codex/static/app.js
-          node --check weave_codex/static/compare.js
-          node --check weave_codex/static/deep-dive.js
+          node --check weave_codex/static/home.js
+          node --check ../public-site/site.js
+
+      - name: Test the standalone public website
+        run: node --test ../public-site/tests/site.test.mjs
 
       - name: Check the public release surface
         run: uv run python scripts/check_public_release.py

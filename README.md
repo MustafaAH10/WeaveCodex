@@ -1,7 +1,8 @@
 # WeaveCodex
 
-WeaveCodex is an experimental, human-designable control plane built on the open-source Codex
-runtime. It is an independent downstream project, not an OpenAI product.
+WeaveCodex is an open-source visual workflow canvas for Codex. Its central idea is simple: a person
+can draw the important steps, decisions, and checks around Codex without turning every internal tool
+call into a box. It is an independent downstream project, not an OpenAI product.
 
 Ordinary Codex lets you state a goal and lets its agent loop decide how to complete it. WeaveCodex
 keeps that adaptive loop intact, then adds a layer around it that a person can inspect and edit:
@@ -16,6 +17,24 @@ keeps that adaptive loop intact, then adds a layer around it that a person can i
 
 It does **not** require every tool call to become a canvas block, expose private reasoning, or replace
 Codex's native tools, sandbox, approvals, authentication, compaction, or agent loop.
+
+## Public website vs local app
+
+The repository intentionally contains two separate surfaces:
+
+- [`public-site/`](public-site/) is the promotional website. It is static, independently deployable,
+  and has no access to a Codex account, local files, or control-plane APIs.
+- [`weave-control-plane/`](weave-control-plane/) is the private functional application. It runs on
+  loopback, connects to the official Codex app-server, and owns the workflow canvas, filesystem
+  access, saved workflows, approvals, and runs.
+
+Preview the public website from the repository root:
+
+```bash
+python3 -m http.server 8789 --directory public-site
+```
+
+Then open <http://127.0.0.1:8789/>. This preview is separate from the functional app below.
 
 The latest external-user acceptance study ran four memory-off task pairs—forecast repair, poster
 design, a local connector action draft, and an incident-support brief—inside one fresh container
@@ -39,18 +58,20 @@ uv run python -m weave_codex.server \
   --port 8790
 ```
 
-Then open <http://127.0.0.1:8790/>. The product has three places:
+Then open <http://127.0.0.1:8790/>. The local app has three working areas:
 
-- **Create** — describe the goal, then draw a workflow by placing nodes and connecting them with
-  arrows; each node can be as broad as “build the backend” or as narrow as one test command;
-- **Library** — reuse saved workflows, choose existing Codex skills/connectors, and manage local
+- **Build** — describe the goal, then draw a workflow by placing nodes and connecting them with
+  arrows; start blank or load a 5–10 node example for engineering, frontend, data, research, or
+  creative work;
+- **Saved** — reuse workflows, choose existing Codex skills/connectors, and manage local
   account setup; and
-- **Activity** — review your runs in plain English and optionally open the bounded product checks.
+- **Runs** — review authored steps, human decisions, exact checks, and final results.
 
-Architecture is explained inline under Create, with a linked
-[technical platform guide](weave-control-plane/weave_codex/static/platform.html). Setup and integrations live together in Library.
-Evidence lives below personal run history in Activity. Technical hashes and raw identifiers remain
-in machine-readable local artifacts and APIs; they do not dominate the normal interface. A saved
+The standalone public website explains the Codex/Weave boundary; the local Build area stays focused
+on the executable canvas. Setup and integrations live together under Saved, and product evidence is
+an optional disclosure under Runs. Technical hashes and raw identifiers remain in machine-readable
+local artifacts and APIs; they do not dominate the normal interface. The public website never shares
+this local runtime or its privileges. A saved
 workflow can be loaded for another folder and its human-readable goals can be edited manually or
 sent to Codex for a read-only rewrite proposal.
 

@@ -1,0 +1,23 @@
+name: WeaveCodex feature proposal
+description: Propose an improvement to human-designed Codex workflows
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the user and the workflow they cannot express today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed interaction
+      description: Explain how it should appear on the canvas or in the run experience.
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Codex / Weave boundary
+      description: Which behavior belongs to Codex, and which control should WeaveCodex add?

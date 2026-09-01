@@ -103,13 +103,28 @@ def test_templates_are_valid_and_explain_the_codex_loop_boundary() -> None:
     values = phase_templates()
     assert [item["id"] for item in values] == [
         "fine-grained-fix",
-        "inspect",
-        "plan-build-check",
-        "review-repair",
+        "frontend-launch",
+        "data-analysis",
+        "full-stack-product",
+        "research-brief",
+        "creative-poster",
     ]
     assert all(PhaseProgram.model_validate(item["program"]) for item in values)
     assert "exact pass/fail commands" in values[0]["description"]
-    assert "controller turns" in values[2]["description"]
+    assert [item["nodeCount"] for item in values] == [5, 10, 9, 8, 8, 7]
+    assert {item["audience"] for item in values} == {
+        "Engineering",
+        "Design + frontend",
+        "Data analysis",
+        "Product engineering",
+        "Research + strategy",
+        "Creative work",
+    }
+    example_programs = [PhaseProgram.model_validate(item["program"]) for item in values]
+    assert all(program.edges for program in example_programs)
+    assert all(
+        all(phase.position is not None for phase in program.phases) for program in example_programs
+    )
 
 
 def test_exact_command_phase_is_a_real_bounded_controller_turn() -> None:

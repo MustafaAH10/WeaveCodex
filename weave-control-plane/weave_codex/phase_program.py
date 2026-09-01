@@ -6,6 +6,10 @@ items are observed after execution but are deliberately not user-authored graph
 nodes.
 """
 
+# Workflow prose remains in whole source strings so the canvas and API expose
+# identical copy without runtime joining or whitespace normalization.
+# ruff: noqa: E501
+
 from __future__ import annotations
 
 import re
@@ -259,14 +263,21 @@ def compile_phase_program(program: PhaseProgram) -> dict[str, object]:
 
 
 def phase_templates() -> list[dict[str, object]]:
-    """Return small, reviewable starting programs for the canvas."""
+    """Return executable, positioned starting programs for the public canvas.
 
-    templates = [
-        (
-            "fine-grained-fix",
-            "Inspect, fix, test, and check",
-            "A credible engineering loop with narrow Codex goals and exact pass/fail commands.",
-            [
+    The templates intentionally span different levels of abstraction.  A work
+    node can own a broad outcome while a command node remains one exact check.
+    Keeping these programs here makes the API, canvas, and runtime share one
+    definition instead of maintaining a second decorative JavaScript catalog.
+    """
+
+    templates: list[dict[str, object]] = [
+        {
+            "id": "fine-grained-fix",
+            "name": "Fix one bug precisely",
+            "audience": "Engineering",
+            "description": "Five narrow steps with two exact pass/fail commands.",
+            "phases": [
                 WorkPhase(
                     id="inspect-problem",
                     name="Find the cause",
@@ -276,101 +287,431 @@ def phase_templates() -> list[dict[str, object]]:
                         "supported fix."
                     ),
                     reasoningEffort="low",
+                    position=CanvasPosition(x=80, y=360),
                 ),
                 WorkPhase(
                     id="make-fix",
                     name="Make the focused fix",
                     scope="focused",
                     goal="Implement only the supported change. Do not broaden the task.",
+                    position=CanvasPosition(x=390, y=360),
                 ),
                 CommandPhase(
                     id="run-focused-test",
                     stepType="test",
                     name="Run the focused test",
                     command="python3 -m pytest -q path/to/test_file.py::test_name",
+                    position=CanvasPosition(x=700, y=360),
                 ),
                 CommandPhase(
                     id="run-static-check",
                     stepType="checker",
                     name="Run the static checker",
                     command="python -m compileall -q .",
+                    position=CanvasPosition(x=1010, y=360),
                 ),
                 VerifyPhase(
                     id="review-evidence",
                     name="Review the evidence",
                     criteria="The requested change is narrow and both exact checks passed.",
                     maxRepairs=0,
+                    position=CanvasPosition(x=1320, y=360),
                 ),
             ],
-        ),
-        (
-            "inspect",
-            "Inspect and explain",
-            "One autonomous Codex phase for evidence gathering and an answer.",
-            [
-                WorkPhase(
-                    id="inspect-and-answer",
-                    name="Inspect and answer",
-                    goal="Inspect the relevant workspace evidence and answer the task.",
-                )
+            "edges": [
+                ("inspect-problem", "make-fix"),
+                ("make-fix", "run-focused-test"),
+                ("run-focused-test", "run-static-check"),
+                ("run-static-check", "review-evidence"),
             ],
-        ),
-        (
-            "plan-build-check",
-            "Plan, build, then check",
-            "Pause after inspection, then implement and verify in later controller turns.",
-            [
+        },
+        {
+            "id": "frontend-launch",
+            "name": "Design and launch a frontend",
+            "audience": "Design + frontend",
+            "description": "Ten steps from visual direction to browser and accessibility checks.",
+            "phases": [
                 WorkPhase(
-                    id="inspect-and-plan",
-                    name="Inspect and plan",
-                    goal="Understand the codebase and propose a concrete implementation plan.",
+                    id="inspect-product",
+                    name="Understand the product",
+                    goal="Inspect the existing product, brand, routes, and constraints. Describe the user problem and the current visual system.",
+                    position=CanvasPosition(x=80, y=360),
+                ),
+                WorkPhase(
+                    id="explore-directions",
+                    name="Explore three directions",
+                    goal="Create three materially different visual directions with typography, color, layout, motion, and interaction rationale. Do not implement one yet.",
+                    position=CanvasPosition(x=390, y=360),
                 ),
                 CheckpointPhase(
-                    id="approve-plan",
-                    name="Approve the plan",
-                    question="Continue from the proposed plan into implementation?",
+                    id="choose-direction",
+                    name="Choose a direction",
+                    question="Which direction should continue, and what should change before implementation?",
+                    position=CanvasPosition(x=700, y=360),
                 ),
                 WorkPhase(
-                    id="implement-and-test",
-                    name="Implement and test",
-                    goal="Implement the approved plan and run focused verification.",
+                    id="define-system",
+                    name="Define the design system",
+                    scope="focused",
+                    goal="Turn the approved direction into tokens, component rules, responsive behavior, and accessibility constraints.",
+                    position=CanvasPosition(x=1010, y=120),
                 ),
-                VerifyPhase(
-                    id="verify-result",
-                    name="Verify the result",
-                    criteria="The requested behavior is implemented and supported by checks.",
-                    max_repairs=1,
-                ),
-            ],
-        ),
-        (
-            "review-repair",
-            "Independent review and repair",
-            "Build first, then use a structured verifier with one bounded repair turn.",
-            [
                 WorkPhase(
-                    id="complete-task",
-                    name="Complete the task",
-                    goal="Complete the task using Codex's native tools and report the result.",
+                    id="build-components",
+                    name="Build the components",
+                    scope="focused",
+                    goal="Implement the reusable UI components and interaction states against the approved design system.",
+                    position=CanvasPosition(x=1320, y=120),
+                ),
+                WorkPhase(
+                    id="assemble-experience",
+                    name="Assemble the experience",
+                    goal="Compose the components into the complete user flow, connect existing data and routes, and keep the implementation coherent.",
+                    position=CanvasPosition(x=1630, y=360),
+                ),
+                CommandPhase(
+                    id="run-ui-tests",
+                    name="Run the UI tests",
+                    stepType="test",
+                    command="npm test -- --runInBand",
+                    position=CanvasPosition(x=1940, y=120),
+                ),
+                WorkPhase(
+                    id="inspect-browser",
+                    name="Inspect the rendered UI",
+                    scope="focused",
+                    goal="Open the running experience, inspect layout and interaction at desktop width, and repair visible defects without changing the approved direction.",
+                    position=CanvasPosition(x=1940, y=600),
+                ),
+                CommandPhase(
+                    id="run-accessibility",
+                    name="Run accessibility checks",
+                    stepType="checker",
+                    command="npm run test:a11y",
+                    position=CanvasPosition(x=2250, y=120),
                 ),
                 VerifyPhase(
-                    id="review-and-repair",
-                    name="Review and repair",
-                    criteria="The result is correct, complete, and grounded in inspected evidence.",
-                    max_repairs=1,
+                    id="release-review",
+                    name="Review the release",
+                    criteria="The approved visual direction is implemented, the primary flow works, exact checks pass, and no visible high-severity issue remains.",
+                    maxRepairs=1,
+                    position=CanvasPosition(x=2250, y=600),
                 ),
             ],
-        ),
-    ]
-    return [
+            "edges": [
+                ("inspect-product", "explore-directions"),
+                ("explore-directions", "choose-direction"),
+                ("choose-direction", "define-system"),
+                ("define-system", "build-components"),
+                ("build-components", "assemble-experience"),
+                ("assemble-experience", "run-ui-tests"),
+                ("assemble-experience", "inspect-browser"),
+                ("run-ui-tests", "run-accessibility"),
+                ("run-accessibility", "release-review"),
+                ("inspect-browser", "release-review"),
+            ],
+        },
         {
-            "id": template_id,
-            "name": name,
-            "description": description,
-            "program": PhaseProgram(phases=phases).model_dump(by_alias=True, mode="json"),
-        }
-        for template_id, name, description, phases in templates
+            "id": "data-analysis",
+            "name": "Turn raw data into a decision",
+            "audience": "Data analysis",
+            "description": "Nine steps with parallel cleaning, metric definition, and a human assumptions gate.",
+            "phases": [
+                WorkPhase(
+                    id="inspect-sources",
+                    name="Inspect the sources",
+                    goal="Inspect the available data files, definitions, time ranges, and business question. Record uncertainties without silently filling them in.",
+                    position=CanvasPosition(x=80, y=360),
+                ),
+                WorkPhase(
+                    id="profile-data",
+                    name="Profile data quality",
+                    scope="focused",
+                    goal="Profile schemas, missingness, duplicates, ranges, join keys, and suspicious values. Produce a concise quality report.",
+                    position=CanvasPosition(x=390, y=360),
+                ),
+                WorkPhase(
+                    id="clean-data",
+                    name="Prepare a clean dataset",
+                    scope="focused",
+                    goal="Create a reproducible cleaning step that addresses only supported data-quality issues and preserves source provenance.",
+                    position=CanvasPosition(x=700, y=120),
+                ),
+                WorkPhase(
+                    id="define-metrics",
+                    name="Define the metrics",
+                    scope="focused",
+                    goal="Translate the decision question into explicit formulas, denominators, segments, and comparison windows. Do not compute conclusions yet.",
+                    position=CanvasPosition(x=700, y=600),
+                ),
+                CommandPhase(
+                    id="validate-contract",
+                    name="Validate the data contract",
+                    stepType="checker",
+                    command="python3 -m pytest -q tests/test_data_contract.py",
+                    position=CanvasPosition(x=1010, y=120),
+                ),
+                WorkPhase(
+                    id="analyze-results",
+                    name="Analyze the results",
+                    goal="Join the validated data and metric definitions, calculate the requested comparisons, test sensitivity, and keep a reproducible analysis artifact.",
+                    position=CanvasPosition(x=1320, y=360),
+                ),
+                CheckpointPhase(
+                    id="review-assumptions",
+                    name="Review assumptions",
+                    question="Are the sources, definitions, exclusions, and interpretation appropriate for the decision?",
+                    position=CanvasPosition(x=1630, y=360),
+                ),
+                WorkPhase(
+                    id="build-brief",
+                    name="Build the decision brief",
+                    goal="Turn the approved analysis into a concise narrative and useful tables or charts. Separate observations from recommendations.",
+                    position=CanvasPosition(x=1940, y=360),
+                ),
+                VerifyPhase(
+                    id="verify-claims",
+                    name="Trace every claim",
+                    criteria="Every important number and claim traces to a source and reproducible calculation; uncertainty and limitations are explicit.",
+                    maxRepairs=1,
+                    position=CanvasPosition(x=2250, y=360),
+                ),
+            ],
+            "edges": [
+                ("inspect-sources", "profile-data"),
+                ("profile-data", "clean-data"),
+                ("profile-data", "define-metrics"),
+                ("clean-data", "validate-contract"),
+                ("validate-contract", "analyze-results"),
+                ("define-metrics", "analyze-results"),
+                ("analyze-results", "review-assumptions"),
+                ("review-assumptions", "build-brief"),
+                ("build-brief", "verify-claims"),
+            ],
+        },
+        {
+            "id": "full-stack-product",
+            "name": "Build a full-stack product",
+            "audience": "Product engineering",
+            "description": "Eight broad responsibilities with parallel backend and authentication work.",
+            "phases": [
+                WorkPhase(
+                    id="shape-product",
+                    name="Shape the product",
+                    goal="Inspect the repository and turn the request into a coherent architecture with explicit interfaces and acceptance criteria.",
+                    position=CanvasPosition(x=80, y=360),
+                ),
+                WorkPhase(
+                    id="build-backend",
+                    name="Build the backend",
+                    goal="Implement the backend model, API, validation, and error handling against the agreed interfaces.",
+                    position=CanvasPosition(x=400, y=120),
+                ),
+                WorkPhase(
+                    id="build-auth",
+                    name="Build authentication",
+                    goal="Implement authentication, authorization, and safe session behavior against the agreed interfaces.",
+                    position=CanvasPosition(x=400, y=600),
+                ),
+                WorkPhase(
+                    id="build-frontend",
+                    name="Build the frontend",
+                    goal="Implement the user-facing flow against the backend and authentication contracts, then inspect the running result.",
+                    position=CanvasPosition(x=760, y=360),
+                ),
+                CheckpointPhase(
+                    id="product-review",
+                    name="Review the product",
+                    question="Does the working flow match the intended experience, or should the final pass be redirected?",
+                    position=CanvasPosition(x=1080, y=360),
+                ),
+                CommandPhase(
+                    id="run-suite",
+                    name="Run the product tests",
+                    stepType="test",
+                    command="python3 -m pytest -q",
+                    position=CanvasPosition(x=1400, y=120),
+                ),
+                WorkPhase(
+                    id="security-review",
+                    name="Review security boundaries",
+                    scope="focused",
+                    goal="Review only trust boundaries, secrets, authentication, authorization, input handling, and unsafe defaults; repair supported high-severity issues.",
+                    position=CanvasPosition(x=1400, y=600),
+                ),
+                VerifyPhase(
+                    id="prove-product",
+                    name="Prove the whole flow",
+                    criteria="The backend, authentication, and frontend work together; exact tests pass; critical security findings are resolved; the result matches the approved direction.",
+                    maxRepairs=1,
+                    position=CanvasPosition(x=1760, y=360),
+                ),
+            ],
+            "edges": [
+                ("shape-product", "build-backend"),
+                ("shape-product", "build-auth"),
+                ("build-backend", "build-frontend"),
+                ("build-auth", "build-frontend"),
+                ("build-frontend", "product-review"),
+                ("product-review", "run-suite"),
+                ("product-review", "security-review"),
+                ("run-suite", "prove-product"),
+                ("security-review", "prove-product"),
+            ],
+        },
+        {
+            "id": "research-brief",
+            "name": "Research a defensible brief",
+            "audience": "Research + strategy",
+            "description": "Eight steps from source collection to an adversarial claim audit.",
+            "phases": [
+                WorkPhase(
+                    id="frame-question",
+                    name="Frame the question",
+                    scope="focused",
+                    goal="Define the decision, audience, scope, evidence standard, and what would change the answer.",
+                    position=CanvasPosition(x=80, y=360),
+                ),
+                WorkPhase(
+                    id="gather-sources",
+                    name="Gather primary sources",
+                    goal="Find and record relevant primary sources, dates, provenance, and important gaps. Do not draft the conclusion yet.",
+                    position=CanvasPosition(x=390, y=360),
+                ),
+                WorkPhase(
+                    id="extract-evidence",
+                    name="Extract the evidence",
+                    scope="focused",
+                    goal="Create a structured evidence table containing claims, supporting passages, dates, and source links.",
+                    position=CanvasPosition(x=700, y=120),
+                ),
+                WorkPhase(
+                    id="challenge-evidence",
+                    name="Challenge the evidence",
+                    scope="focused",
+                    goal="Search for contradictions, selection bias, stale sources, unsupported causality, and plausible alternative explanations.",
+                    position=CanvasPosition(x=700, y=600),
+                ),
+                CheckpointPhase(
+                    id="choose-angle",
+                    name="Choose the argument",
+                    question="Which supported angle should the brief take, and which uncertainty must remain visible?",
+                    position=CanvasPosition(x=1060, y=360),
+                ),
+                WorkPhase(
+                    id="draft-brief",
+                    name="Draft the brief",
+                    goal="Write the brief around the approved argument, separating evidence, inference, uncertainty, and recommendation.",
+                    position=CanvasPosition(x=1380, y=360),
+                ),
+                CommandPhase(
+                    id="check-links",
+                    name="Check cited links",
+                    stepType="checker",
+                    command="python3 scripts/check_links.py",
+                    position=CanvasPosition(x=1700, y=120),
+                ),
+                VerifyPhase(
+                    id="audit-claims",
+                    name="Audit every claim",
+                    criteria="Every substantive claim has a relevant source, citations resolve, counterevidence is addressed, and inference is clearly labeled.",
+                    maxRepairs=1,
+                    position=CanvasPosition(x=1700, y=600),
+                ),
+            ],
+            "edges": [
+                ("frame-question", "gather-sources"),
+                ("gather-sources", "extract-evidence"),
+                ("gather-sources", "challenge-evidence"),
+                ("extract-evidence", "choose-angle"),
+                ("challenge-evidence", "choose-angle"),
+                ("choose-angle", "draft-brief"),
+                ("draft-brief", "check-links"),
+                ("draft-brief", "audit-claims"),
+                ("check-links", "audit-claims"),
+            ],
+        },
+        {
+            "id": "creative-poster",
+            "name": "Create an artistic poster",
+            "audience": "Creative work",
+            "description": "Seven steps with user-selected direction and parallel typography/composition critiques.",
+            "phases": [
+                WorkPhase(
+                    id="art-direction",
+                    name="Define the visual world",
+                    goal="Interpret the brief and define a distinctive direction with palette, type, composition, references, and mood.",
+                    position=CanvasPosition(x=80, y=360),
+                ),
+                WorkPhase(
+                    id="three-concepts",
+                    name="Create three concepts",
+                    goal="Produce three materially different, inspectable concepts and explain the tradeoff of each without choosing for the user.",
+                    position=CanvasPosition(x=390, y=360),
+                ),
+                CheckpointPhase(
+                    id="choose-concept",
+                    name="Choose a concept",
+                    question="Which concept should continue, and what should change about its tone, palette, or composition?",
+                    position=CanvasPosition(x=700, y=360),
+                ),
+                WorkPhase(
+                    id="produce-poster",
+                    name="Produce the poster",
+                    goal="Develop the chosen concept into a polished, viewable poster artifact in the requested format.",
+                    position=CanvasPosition(x=1010, y=360),
+                ),
+                WorkPhase(
+                    id="type-critique",
+                    name="Critique typography",
+                    scope="focused",
+                    goal="Review only hierarchy, type, legibility, spacing, and copy treatment. Return concrete corrections.",
+                    position=CanvasPosition(x=1320, y=120),
+                ),
+                WorkPhase(
+                    id="composition-critique",
+                    name="Critique composition",
+                    scope="focused",
+                    goal="Review only balance, focal point, contrast, negative space, and visual rhythm. Return concrete corrections.",
+                    position=CanvasPosition(x=1320, y=600),
+                ),
+                VerifyPhase(
+                    id="final-artwork",
+                    name="Review final artwork",
+                    criteria="The final artifact preserves the chosen direction, resolves supported critique, is legible, and is delivered in the requested format.",
+                    maxRepairs=1,
+                    position=CanvasPosition(x=1660, y=360),
+                ),
+            ],
+            "edges": [
+                ("art-direction", "three-concepts"),
+                ("three-concepts", "choose-concept"),
+                ("choose-concept", "produce-poster"),
+                ("produce-poster", "type-critique"),
+                ("produce-poster", "composition-critique"),
+                ("type-critique", "final-artwork"),
+                ("composition-critique", "final-artwork"),
+            ],
+        },
     ]
+    values = []
+    for template in templates:
+        edges = [
+            PhaseEdge(**{"from": source, "to": target})
+            for source, target in template.get("edges", [])
+        ]
+        program = PhaseProgram(phases=template["phases"], edges=edges)
+        values.append(
+            {
+                "id": template["id"],
+                "name": template["name"],
+                "audience": template["audience"],
+                "description": template["description"],
+                "nodeCount": len(program.phases),
+                "program": program.model_dump(by_alias=True, mode="json"),
+            }
+        )
+    return values
 
 
 def safe_phase_id(name: str, existing: set[str] | None = None) -> str:

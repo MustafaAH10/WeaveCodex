@@ -393,113 +393,59 @@ def test_native_action_approval_rejects_checkpoint_feedback() -> None:
     worker.join(timeout=2)
 
 
-def test_ui_contains_phase_canvas_thread_projection_and_receipt_surfaces() -> None:
-    html = (Path(__file__).parents[1] / "weave_codex/static/studio.html").read_text()
-    for element_id in (
-        "manifest-json",
-        "phase-canvas",
-        "phase-palette",
-        "thread-picker",
-        "receipt",
-        "timeline",
-        "receipt-summary",
-        "phase-inspector",
-        "execution-map",
-        "recent-runs",
-        "codex-thread-list",
-        "approval-dialog",
-        "workspace-picker",
-        "workspace-query",
-        "workspace-results",
-    ):
-        assert f'id="{element_id}"' in html
-
-
-def test_ui_edits_phase_programs_without_expanding_codex_tool_calls() -> None:
+def test_single_product_surface_owns_canvas_saved_workflows_and_runs() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
-    javascript = (static / "app.js").read_text()
-    stylesheet = (static / "style.css").read_text()
+    html = (static / "index.html").read_text()
 
-    assert 'button.addEventListener("dragstart"' in javascript
-    assert "function phaseManifest()" in javascript
-    assert 'request("/api/thread-projection"' in javascript
-    assert "One app-server turn; Codex may use many tools inside." in javascript
-    assert "Codex owns the internal tool loop" in javascript
-    assert ".phase-card.fixed-phase" in stylesheet
-    assert ".phase-card.drop-before" in stylesheet
-    assert "A canvas block is not a tool call." in (static / "studio.html").read_text()
+    assert html.count('class="product-view') == 3
+    assert 'id="workflow-canvas"' in html
+    assert 'id="workflow-library"' in html
+    assert 'id="runs-list"' in html
+    assert 'id="connections-panel"' in html
+    assert 'id="setup-panel"' in html
+    for obsolete in ("studio.html", "platform.html", "deep-dive.html", "compare.html"):
+        assert not (static / obsolete).exists()
 
 
-def test_ui_offers_three_additional_complex_programs_and_workspace_references() -> None:
+def test_canvas_is_freeform_executable_and_explains_the_codex_boundary() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
-    html = (static / "studio.html").read_text()
-    javascript = (static / "app.js").read_text()
+    html = (static / "index.html").read_text()
+    javascript = (static / "home.js").read_text()
+    stylesheet = (static / "home.css").read_text()
 
-    for key in ("migration", "monorepo", "incident"):
-        assert f'data-example="{key}"' in html
-        assert f'data-preset="{key}"' in html
-        assert f"  {key}: {{" in javascript
-    assert 'request("/api/workspace/paths"' in javascript
-    assert "Codex can still inspect other files" in html
-    assert "one or one hundred tool calls" in javascript
+    assert "Each Codex step is a complete turn" in html
+    assert 'id="canvas-nodes"' in html
+    assert 'id="canvas-edges"' in html
+    assert 'id="canvas-arrange"' in html
+    assert 'id="canvas-fit"' in html
+    assert 'data-add-phase="work"' in html
+    assert 'data-add-phase="checkpoint"' in html
+    assert 'data-add-phase="command"' in html
+    assert 'data-add-phase="verify"' in html
+    assert 'request("/api/phase-templates")' in javascript
+    assert "function arrangeCanvas()" in javascript
+    assert "function fitCanvas()" in javascript
+    assert "beginConnection" in javascript
+    assert "wouldCreateCycle" in javascript
+    assert "data-phase-connect-add" in javascript
+    assert 'role="region" aria-label="Executable workflow graph"' in html
+    assert 'id="save-design" type="button">Save</button>' in html
+    assert ".canvas-node.command" in stylesheet
+    assert ".canvas-node.checkpoint" in stylesheet
 
 
-def test_run_explorer_comparison_integrations_and_technical_diagrams_are_explicit() -> None:
+def test_functional_app_prioritizes_the_builder_not_marketing_content() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
-    html = (static / "studio.html").read_text()
-    javascript = (static / "app.js").read_text()
-    comparison = (static / "compare.html").read_text()
-    comparison_js = (static / "compare.js").read_text()
-    deep_dive = (static / "deep-dive.html").read_text()
+    html = (static / "index.html").read_text()
 
-    assert "From one task to one evidence map" in html
-    assert 'data-run-source="weave"' in html
-    assert 'data-trace-panel="activity"' in html
-    assert 'id="integrations-view"' in html
-    assert "request(`/api/integrations?" in javascript
-    assert "Codex chooses the tactics.<br />Weave lets people design the process." in comparison
-    assert 'id="codex-map"' in comparison
-    assert 'id="weave-map"' in comparison
-    assert "Deterministic projection of persisted items" in comparison_js
-    assert 'id="integrations"' in deep_dive
-    assert 'id="integration-title"' in deep_dive
-    assert "AGENTS.md chain" in deep_dive
-
-
-def test_deep_dive_is_diagram_led_and_product_owns_setup_navigation() -> None:
-    static = Path(__file__).parents[1] / "weave_codex/static"
-    html = (static / "deep-dive.html").read_text()
-    javascript = (static / "deep-dive.js").read_text()
-    stylesheet = (static / "deep-dive.css").read_text()
-
-    assert html.count('id="system-architecture"') == 1
-    assert 'id="weave-layer"' in html
-    assert 'class="weave-overlay"' in html
-    assert "Codex runs the task." in html
-    assert "Scroll diagram sideways" in html
-    assert "We change four things" not in html
-    assert ".node-copy{font-size:13px}" in stylesheet
-    assert ".diff-grid p,.responsibility p{font-size:15px}" in stylesheet
-    assert 'id="setup-view"' not in html
-    assert 'href="/#architecture"' in html
-    assert 'href="/#setup"' in html
-    assert 'data-view="setup"' not in html
-    assert 'request("/api/account")' not in javascript
-
-
-def test_comparison_prioritizes_human_control_over_compute_totals() -> None:
-    static = Path(__file__).parents[1] / "weave_codex/static"
-    html = (static / "compare.html").read_text()
-    javascript = (static / "compare.js").read_text()
-
-    assert 'id="control-diff"' in html
-    assert "Author the handoffs" in html
-    assert "before the next complete Codex turn starts" in html
-    assert "human checkpoints actually reached" in javascript
-    assert "does not prove a better repair" in javascript
-    assert "model completions" not in html.lower()
+    assert "Build the way you want Codex to work" in html
+    assert 'class="build-guide"' in html
+    assert "Add steps" in html
+    assert "Draw arrows" in html
+    assert "Save or run" in html
+    assert 'class="animated-architecture"' not in html
     assert "input tokens" not in html.lower()
-    assert "tokenUsage" not in javascript
+    assert "model completions" not in html.lower()
 
 
 def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
@@ -513,7 +459,7 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert 'id="create-view"' in html
     assert 'id="library-view"' in html
     assert 'id="activity-view"' in html
-    assert html.count('class="product-view"') == 3
+    assert html.count('class="product-view') == 3
     assert 'data-view="design"' not in html
     assert 'data-view="runs"' not in html
     assert 'data-view="integrations"' not in html
@@ -523,14 +469,13 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert "phaseProgram(kind)" in javascript
     assert 'request("/api/compile"' in javascript
     assert 'request("/api/runs"' in javascript
-    assert "one Codex node means one turn—not one tool" in html
-    assert "connect ports" in html
-    assert 'data-graph-template="fullstack"' in html
-    assert 'data-graph-template="poster"' in html
+    assert "Each Codex step is a complete turn" in html
+    assert 'id="example-workflow-select"' in html
+    assert 'request("/api/phase-templates")' in javascript
     assert 'data-add-phase="work" data-step-option="adaptive"' in html
     assert 'data-add-phase="command" data-step-option="test"' in html
-    assert "Adaptive · Codex chooses the route" in javascript
-    assert "Bounded · do only this instruction" in javascript
+    assert "Broad · Codex chooses how" in javascript
+    assert "Focused · only this job" in javascript
     assert "Function call" in javascript
     assert "Checker" in javascript
     assert 'id="cancel-active-run"' in html
@@ -551,8 +496,9 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert "request(`/api/integrations?cwd=" in javascript
     assert 'request("/reusable-workflow-trials.json"' in javascript
     assert "Test setup" in javascript
-    assert "Three processes reused in new repositories" in html
-    assert "Only the process is saved—not the task or folder" in html
+    assert "Reusable workflows in new repositories" in html
+    assert "Only nodes, arrows, and settings are stored" in html
+    assert "Stopped because a pass/fail check failed" in javascript
 
 
 def test_product_examples_api_source_includes_all_five_examples(tmp_path: Path) -> None:
@@ -569,18 +515,6 @@ def test_product_examples_api_source_includes_all_five_examples(tmp_path: Path) 
         "monorepo-upgrade-design",
         "incident-response-design",
     ]
-
-
-def test_platform_guide_shows_broad_and_bottom_up_real_use_cases() -> None:
-    static = Path(__file__).parents[1] / "weave_codex/static"
-    html = (static / "platform.html").read_text()
-
-    assert "Choose the granularity node by node." in html
-    assert "One broad goal" in html
-    assert "Five explicit responsibilities" in html
-    assert "Exact checks</dt><dd>3 / 3 passed" in html
-    assert "test control semantics, not model quality" in html
-    assert "an earlier broad audit was stopped by the user" in html
 
 
 def test_saved_run_index_and_load_are_local_and_bounded(tmp_path: Path) -> None:

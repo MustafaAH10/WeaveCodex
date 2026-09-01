@@ -11,6 +11,10 @@ CONTROL_PLANE = ROOT / "weave-control-plane"
 REQUIRED_FILES = (
     ROOT / "LICENSE",
     ROOT / "README.md",
+    ROOT / "public-site/index.html",
+    ROOT / "public-site/site.css",
+    ROOT / "public-site/site.js",
+    ROOT / "public-site/README.md",
     CONTROL_PLANE / "CONTRIBUTING.md",
     CONTROL_PLANE / "SECURITY.md",
     CONTROL_PLANE / "UPSTREAM.md",
@@ -42,7 +46,13 @@ def main() -> None:
     for path in tracked_paths():
         relative = path.relative_to(ROOT)
         downstream = (
-            relative.parts[0] in {"weave-control-plane", ".github"} or len(relative.parts) == 1
+            relative.parts[0]
+            in {
+                "weave-control-plane",
+                "public-site",
+                ".github",
+            }
+            or len(relative.parts) == 1
         )
         if path.name in FORBIDDEN_NAMES:
             findings.append(f"credential-shaped tracked path: {relative}")

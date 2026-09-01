@@ -14,11 +14,9 @@ uv sync --frozen
 uv run ruff check .
 uv run ruff format --check .
 uv run pytest
-node --check weave_codex/static/app.js
 node --check weave_codex/static/home.js
-node --check weave_codex/static/compare.js
-node --check weave_codex/static/deep-dive.js
-node --check weave_codex/static/platform.js
+node --check ../public-site/site.js
+node --test ../public-site/tests/site.test.mjs
 uv run python scripts/check_public_release.py
 git diff --check
 ```
@@ -45,3 +43,16 @@ adding visualizations or execution features.
 The local HTTP server is not a multi-user security boundary. Do not expose it
 directly to the public internet. Use a separate sanitized, read-only results
 surface for demonstrations.
+
+## Public website and local app
+
+These are deliberately separate products:
+
+- `public-site/` is an independently deployable static marketing website. It has no account,
+  filesystem, Codex, or local API access. Preview it with
+  `python3 -m http.server 8789 --directory public-site` from the repository root.
+- `weave-control-plane/weave_codex/static/` is the functional loopback application. It may access
+  Codex and a user-selected workspace through the local control-plane server, and must remain bound
+  to `127.0.0.1`, `localhost`, or `::1`.
+
+Do not add authenticated or filesystem-backed behavior to the public website.

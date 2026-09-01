@@ -346,6 +346,7 @@ def test_legacy_product_pages_redirect_into_the_single_app(tmp_path: Path) -> No
             "/deep-dive.html": "/#create",
             "/compare.html": "/#activity",
             "/sandbox-trials.html": "/#activity",
+            "/platform.html": "/#create",
         }
         for path, destination in expected.items():
             connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)

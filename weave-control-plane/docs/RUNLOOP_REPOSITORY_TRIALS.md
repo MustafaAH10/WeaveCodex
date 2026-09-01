@@ -56,8 +56,7 @@ include:
 - `/home/user/weave-lab/repos/requests/src/requests/sessions.py`
 - `/home/user/weave-lab/repos/express/lib/application.js`
 
-The dashboard is at
-[`/sandbox-trials.html`](http://127.0.0.1:8790/sandbox-trials.html) when the
+The bounded result is available from the **Runs → How we tested this product** disclosure when the
 local WeaveCodex server is running. The machine-readable result is
 [`sandbox-trials.json`](../weave_codex/static/sandbox-trials.json), and the
 three final evidence artifacts are in [`examples/sandbox-trials/`](../examples/sandbox-trials/).

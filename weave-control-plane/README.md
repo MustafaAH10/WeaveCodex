@@ -64,10 +64,11 @@ uv run python -m weave_codex.server \
 ```
 
 When launched from `weave-control-plane/`, the parent repository is selected as the initial
-workspace. Use `--workspace-root /absolute/path/to/project` to choose another default; Create can
+workspace. Use `--workspace-root /absolute/path/to/project` to choose another default; Build can
 change it before a run.
 
-Open `http://127.0.0.1:8790`. The default journey is deliberately short:
+Open `http://127.0.0.1:8790`. This is the only supported product URL. The default journey is
+deliberately short:
 
 1. **Describe the outcome** by speaking or typing. Voice entry uses the browser's dictation
    capability, so availability and audio handling depend on the browser; text remains the fallback.
@@ -77,32 +78,30 @@ Open `http://127.0.0.1:8790`. The default journey is deliberately short:
 3. **Run it.** Codex follows the dependency order drawn on the canvas. One Codex-turn node may still
    contain many native model and tool iterations; arrows coordinate turns rather than individual
    tool calls.
-4. **Save the process in Library** without the original task or repository, then reuse or visibly
-   adapt it for another task. Library also contains Codex skills, connectors, and account setup.
-5. **Review Activity** starting from the goals and human decisions—not internal IDs or protocol
+4. **Save from the canvas or under Saved** without the original task or repository, then reuse or
+   visibly adapt it for another task. Saved also contains Codex skills, connectors, and account
+   setup.
+5. **Review Runs** starting from the goals and human decisions—not internal IDs or protocol
    objects. Product checks are available below personal runs as optional evidence.
 
 Exact selected-memory controls, raw manifests, and machine-readable identifiers remain runtime/API
 capabilities rather than controls exposed in the simplified first-run screen.
 
-Activity can also render the tracked four-domain container study directly from its sanitized
+Runs can also render the tracked four-domain container study directly from its sanitized
 outcome receipt. Across coding, design, local-connector operations, and support simulation, both
 the one-turn baseline and Weave produced accepted artifacts (8/8 arms). Weave reached four explicit
 planning gates. This is one rollout per arm and supports a control/observability claim only; it is
 not evidence that Weave improves Codex quality, cost, or call efficiency. Full methods and public
 artifacts are in [the trial report](../experiments/platform-workflow-trials/results-v2/RESULTS.md).
 
-Open `http://127.0.0.1:8790/compare.html` to place a Codex-only thread projection beside an exact
-Weave receipt. The comparison reports observable structure and human coordination; it does not
-claim answer-quality improvement unless an external matched evaluation exists.
-
-That comparison page also contains [three matched memory-off product trials](docs/MATCHED_CODEX_WEAVE_TRIALS.md).
+The optional evidence disclosure under Runs contains
+[three matched memory-off product trials](docs/MATCHED_CODEX_WEAVE_TRIALS.md).
 All six artifacts passed, while Weave used 46 model completions versus 15 for ordinary Codex. The
 result is presented as an observability/compute tradeoff, not an improvement claim.
 
-For a concise, source-grounded explanation, open `http://127.0.0.1:8790/platform.html`. Its central
-architecture toggle first explains Codex by itself, then reveals the exact Weave control-plane
-additions. The longer source audit remains at `http://127.0.0.1:8790/deep-dive.html`.
+The local Build tab stays focused on the executable canvas. Product explanation and comparison live
+on the separate static public website; the longer source-level audit remains repository
+documentation at [Codex is not a flowchart](docs/CODEX_HARNESS_INTERNALS.md).
 
 Through the manifest/runtime API, **Selected** memory can inject only explicitly named workspace
 threads; the receipt lists requested/resolved IDs and hashes each excerpt. In **All** mode, Codex
@@ -116,10 +115,10 @@ Weave spawns the official local `codex app-server` and inherits the same environ
 session is reused and eligible usage remains attached to the user's ChatGPT subscription. Weave
 does not read or copy `auth.json`, access tokens, email addresses, or API keys.
 
-The Setup page reads a secret-free status through `account/read`. If sign-in is required, an
-explicit click starts the documented `account/login/start` ChatGPT browser flow. The app-server,
-not Weave, owns the callback and credential storage. Weave is loopback-only and protects all local
-POST endpoints with a per-process session token and same-origin checks.
+The Account and setup drawer under Saved reads a secret-free status through `account/read`. If
+sign-in is required, an explicit click starts the documented `account/login/start` ChatGPT browser
+flow. The app-server, not Weave, owns the callback and credential storage. Weave is loopback-only
+and protects all local POST endpoints with a per-process session token and same-origin checks.
 
 ## Test
 
@@ -139,8 +138,9 @@ This first version intentionally lives in `weave-control-plane/`. No `codex-core
 app-server protocol code is modified. The runtime uses the pinned Python SDK and these existing v2
 operations: `initialize`, `thread/list`, `thread/read`, `thread/start`,
 `thread/memoryMode/set`, `turn/start`, event notifications, and approval responses.
-The read-only Integrations page additionally uses `skills/list`, `mcpServerStatus/list`, and
-`app/list`; it does not read Codex configuration files or connector credentials directly.
+The read-only integrations drawer under Saved additionally uses `skills/list`,
+`mcpServerStatus/list`, and `app/list`; it does not read Codex configuration files or connector
+credentials directly.
 
 Read [Codex is not a flowchart](docs/CODEX_HARNESS_INTERNALS.md) for the source-level architecture
 and [the source evidence ledger](docs/CODEX_SOURCE_AUDIT.md) for claim-to-symbol provenance.

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Upstream OpenAI Codex issue
+    url: https://github.com/openai/codex/issues/new/choose
+    about: Use this when the issue reproduces in Codex without the WeaveCodex control plane.

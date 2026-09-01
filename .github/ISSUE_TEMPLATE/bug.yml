@@ -1,0 +1,56 @@
+name: WeaveCodex bug
+description: Report a problem with the visual workflow builder or local control plane
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve WeaveCodex. If the same issue occurs in Codex without
+        WeaveCodex, please use the upstream Codex issue link in the issue chooser instead.
+        Never include login tokens, API keys, private prompts, or unredacted traces.
+  - type: input
+    id: version
+    attributes:
+      label: WeaveCodex commit or version
+      placeholder: git rev-parse --short HEAD
+    validations:
+      required: true
+  - type: input
+    id: codex
+    attributes:
+      label: Codex CLI version
+      placeholder: codex --version
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did the problem occur?
+      options:
+        - Local workflow canvas
+        - Workflow execution
+        - Saved workflows
+        - Integrations or account setup
+        - Public website
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Include a minimal workflow and sanitized error text when possible.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
