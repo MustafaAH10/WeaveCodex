@@ -2,52 +2,91 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const html = await readFile(path.join(root, "index.html"), "utf8");
 const css = await readFile(path.join(root, "site.css"), "utf8");
 const script = await readFile(path.join(root, "site.js"), "utf8");
+await import(pathToFileURL(path.join(root, "workflows.js")));
+const workflows = globalThis.WEAVE_WORKFLOWS;
 
 test("the public website is standalone and never opens the local app", () => {
   assert.match(html, /href="site\.css"/);
+  assert.match(html, /src="workflows\.js"/);
   assert.match(html, /src="site\.js"/);
   assert.doesNotMatch(html, /<(?:script|link)[^>]+https?:\/\//);
   assert.doesNotMatch(css, /@import|url\(["']?https?:\/\//);
   assert.doesNotMatch(script, /fetch\(|XMLHttpRequest|\/api\//);
-  assert.doesNotMatch(html, /127\.0\.0\.1:8790[^<]*Open local app/);
-  assert.doesNotMatch(html, /Open local app/);
+  assert.doesNotMatch(html, /Open local app|href="http:\/\/127\.0\.0\.1:8790/);
 });
 
-test("examples are concrete and expose a complete tab contract", () => {
-  const tabIds = [...html.matchAll(/id="(tab-[^"]+)" role="tab"/g)].map((match) => match[1]);
-  const panelIds = [...html.matchAll(/id="(panel-[^"]+)" role="tabpanel"/g)].map((match) => match[1]);
-  const controls = [...html.matchAll(/aria-controls="([^"]+)"/g)].map((match) => match[1]);
+test("all three examples are non-linear executable DAGs", () => {
+  assert.deepEqual(Object.keys(workflows), ["finance", "frontend", "incident"]);
+  for (const [key, workflow] of Object.entries(workflows)) {
+    assert.ok(workflow.nodes.length >= 9 && workflow.nodes.length <= 10, `${key} has a useful number of steps`);
+    const ids = new Set(workflow.nodes.map((node) => node.id));
+    assert.equal(ids.size, workflow.nodes.length, `${key} node ids are unique`);
+    const incoming = new Map(workflow.nodes.map((node) => [node.id, 0]));
+    const outgoing = new Map(workflow.nodes.map((node) => [node.id, []]));
+    for (const [from, to] of workflow.edges) {
+      assert.ok(ids.has(from) && ids.has(to), `${key} edge endpoints exist`);
+      outgoing.get(from).push(to);
+      incoming.set(to, incoming.get(to) + 1);
+    }
+    assert.ok([...outgoing.values()].some((targets) => targets.length > 1), `${key} visibly branches`);
+    assert.ok([...incoming.values()].some((count) => count > 1), `${key} visibly merges`);
+    assert.ok(workflow.nodes.some((node) => node.kind === "human"), `${key} has a human decision`);
+    assert.ok(workflow.nodes.some((node) => node.kind === "check"), `${key} has an exact check`);
 
-  assert.deepEqual(tabIds, ["tab-finance", "tab-frontend", "tab-incident"]);
-  assert.deepEqual(panelIds, ["panel-finance", "panel-frontend", "panel-incident"]);
-  assert.deepEqual(controls, panelIds);
-  for (const phrase of ["Reconcile totals", "Test accessibility", "Run regression"]) assert.match(html, new RegExp(phrase));
+    const sources = [...incoming].filter(([, count]) => count === 0).map(([id]) => id);
+    const sinks = [...outgoing].filter(([, targets]) => targets.length === 0).map(([id]) => id);
+    assert.equal(sources.length, 1, `${key} has one explicit start`);
+    assert.equal(sinks.length, 1, `${key} has one explicit result`);
+    const reachable = new Set(sources);
+    const frontier = [...sources];
+    while (frontier.length) {
+      for (const target of outgoing.get(frontier.shift())) {
+        if (reachable.has(target)) continue;
+        reachable.add(target);
+        frontier.push(target);
+      }
+    }
+    assert.equal(reachable.size, workflow.nodes.length, `${key} connects every authored step to the start`);
+
+    const queue = [...incoming].filter(([, count]) => count === 0).map(([id]) => id);
+    let visited = 0;
+    while (queue.length) {
+      const id = queue.shift();
+      visited += 1;
+      for (const target of outgoing.get(id)) {
+        incoming.set(target, incoming.get(target) - 1);
+        if (incoming.get(target) === 0) queue.push(target);
+      }
+    }
+    assert.equal(visited, workflow.nodes.length, `${key} graph is acyclic and fully connected`);
+  }
+});
+
+test("the graph renderer draws exact edges and supports switching and animation", () => {
+  assert.equal((html.match(/data-workflow-key=/g) ?? []).length, 3);
+  assert.match(html, /id="workflow-graph" role="img"/);
+  assert.match(script, /for \(const \[fromId, toId\] of workflow\.edges\)/);
+  assert.match(script, /createElementNS/);
+  assert.match(script, /playWorkflowGraph/);
+  assert.match(script, /IntersectionObserver/);
   assert.match(script, /ArrowLeft/);
   assert.match(script, /ArrowRight/);
 });
 
-test("workflow, animation, and copy controls have accessible semantics", () => {
+test("copy is concise and preserves the product boundary", () => {
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(ids).size, ids.length, "HTML ids must be unique");
-  assert.equal((html.match(/role="img"/g) ?? []).length, 1);
-  assert.equal((html.match(/class="rail-node/g) ?? []).length, 6);
-  assert.match(html, /class="copy-label" aria-live="polite"/);
-  assert.match(script, /IntersectionObserver/);
-  assert.match(script, /playWorkflow/);
-  assert.match(html, /data-copy="codex login&#10;cd weave-control-plane &amp;&amp; uv sync&#10;uv run python -m weave_codex\.server --codex-bin &quot;\$\(command -v codex\)&quot; --host 127\.0\.0\.1 --port 8790"/);
-});
-
-test("copy is concise and preserves the product boundary", () => {
   assert.match(html, /Codex does the work/);
   assert.match(html, /You design the path/);
   assert.match(html, /official local Codex app-server/);
   assert.match(html, /Independent\. Open source\. Built on Codex\./);
+  assert.match(html, /class="copy-label" aria-live="polite"/);
   assert.doesNotMatch(`${html}${script}`, /[—–]/);
   assert.doesNotMatch(html, /complete turn|not a tool call/i);
 });

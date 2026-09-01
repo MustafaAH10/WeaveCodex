@@ -1,12 +1,110 @@
+const SVG_NS = "http://www.w3.org/2000/svg";
+const workflows = globalThis.WEAVE_WORKFLOWS;
+const graph = document.querySelector("#workflow-graph");
+const workflowButtons = [...document.querySelectorAll("[data-workflow-key]")];
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let activeWorkflow = "finance";
+let graphTimers = [];
+let showcaseVisible = false;
+
+function svgElement(name, attributes = {}) {
+  const element = document.createElementNS(SVG_NS, name);
+  for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, String(value));
+  return element;
+}
+
+function renderWorkflow(key, { animate = showcaseVisible } = {}) {
+  const workflow = workflows[key];
+  activeWorkflow = key;
+  for (const timer of graphTimers) window.clearTimeout(timer);
+  graphTimers = [];
+  graph.replaceChildren();
+
+  const definitions = svgElement("defs");
+  const marker = svgElement("marker", { id: "graph-arrow", markerWidth: 8, markerHeight: 8, refX: 7, refY: 4, orient: "auto", markerUnits: "strokeWidth" });
+  marker.append(svgElement("path", { d: "M0,0 L8,4 L0,8 Z", fill: "#858a80" }));
+  definitions.append(marker);
+  graph.append(definitions);
+
+  const nodeById = new Map(workflow.nodes.map((node) => [node.id, node]));
+  for (const [fromId, toId] of workflow.edges) {
+    const from = nodeById.get(fromId);
+    const to = nodeById.get(toId);
+    const startX = from.x + 150;
+    const startY = from.y + 39;
+    const endX = to.x;
+    const endY = to.y + 39;
+    const curve = Math.max(36, (endX - startX) * .46);
+    graph.append(svgElement("path", {
+      class: "graph-edge",
+      d: `M${startX} ${startY} C${startX + curve} ${startY},${endX - curve} ${endY},${endX} ${endY}`,
+      "data-target": toId,
+    }));
+  }
+
+  for (const node of workflow.nodes) {
+    const group = svgElement("g", { class: `graph-node ${node.kind}`, transform: `translate(${node.x} ${node.y})`, "data-node": node.id });
+    group.append(svgElement("rect", { width: 150, height: 78 }));
+    const mark = svgElement("text", { class: "node-mark", x: 13, y: 23 });
+    mark.textContent = node.eyebrow;
+    const title = svgElement("text", { class: "node-title", x: 13, y: 52 });
+    title.textContent = node.title;
+    group.append(mark, title);
+    graph.append(group);
+  }
+
+  document.querySelector("#workflow-label").textContent = `${workflow.label} workflow`;
+  document.querySelector("#workflow-title").textContent = workflow.title;
+  document.querySelector("#workflow-description").textContent = workflow.description;
+  document.querySelector("#workflow-result").textContent = workflow.result;
+  document.querySelector("#workflow-stats").textContent = `${workflow.nodes.length} steps · ${workflow.edges.length} connections · branches and merges`;
+  for (const button of workflowButtons) {
+    const selected = button.dataset.workflowKey === key;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
+
+  if (reduceMotion || !animate) {
+    if (reduceMotion || !("IntersectionObserver" in window)) graph.querySelectorAll(".graph-node, .graph-edge").forEach((item) => item.classList.add("active"));
+    return;
+  }
+  playWorkflowGraph();
+}
+
+function playWorkflowGraph() {
+  for (const timer of graphTimers) window.clearTimeout(timer);
+  graphTimers = [];
+  graph.querySelectorAll(".graph-node, .graph-edge").forEach((item) => item.classList.remove("active"));
+  workflows[activeWorkflow].nodes.forEach((node, index) => {
+    graphTimers.push(window.setTimeout(() => {
+      graph.querySelector(`[data-node="${node.id}"]`).classList.add("active");
+      graph.querySelectorAll(`[data-target="${node.id}"]`).forEach((edge) => edge.classList.add("active"));
+    }, 100 + index * 190));
+  });
+}
+
+for (const [index, button] of workflowButtons.entries()) {
+  button.addEventListener("click", () => renderWorkflow(button.dataset.workflowKey, { animate: true }));
+  button.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    let next = index;
+    if (event.key === "ArrowRight") next = (index + 1) % workflowButtons.length;
+    if (event.key === "ArrowLeft") next = (index - 1 + workflowButtons.length) % workflowButtons.length;
+    if (event.key === "Home") next = 0;
+    if (event.key === "End") next = workflowButtons.length - 1;
+    workflowButtons[next].focus();
+    renderWorkflow(workflowButtons[next].dataset.workflowKey, { animate: true });
+  });
+}
+
 const modeCopy = {
   codex: "Give Codex a goal and let it choose the route.",
-  weave: "Draw the important stages, decisions, and checks around Codex.",
+  weave: "Draw the branches, decisions, and evidence gates that matter to you.",
 };
-
 const modeButtons = [...document.querySelectorAll(".mode-button")];
 const modeDiagram = document.querySelector(".mode-diagram");
 const modeDescription = document.querySelector(".mode-description");
-
 for (const button of modeButtons) {
   button.addEventListener("click", () => {
     const mode = button.dataset.mode;
@@ -17,34 +115,6 @@ for (const button of modeButtons) {
       candidate.classList.toggle("is-active", selected);
       candidate.setAttribute("aria-pressed", String(selected));
     }
-  });
-}
-
-const exampleTabs = [...document.querySelectorAll("[role='tab'][data-example]")];
-const examplePanels = [...document.querySelectorAll("[role='tabpanel']")];
-
-function selectExample(tab) {
-  const panelId = tab.getAttribute("aria-controls");
-  for (const candidate of exampleTabs) {
-    const selected = candidate === tab;
-    candidate.setAttribute("aria-selected", String(selected));
-    candidate.tabIndex = selected ? 0 : -1;
-  }
-  for (const panel of examplePanels) panel.hidden = panel.id !== panelId;
-}
-
-for (const [index, tab] of exampleTabs.entries()) {
-  tab.addEventListener("click", () => selectExample(tab));
-  tab.addEventListener("keydown", (event) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    event.preventDefault();
-    let next = index;
-    if (event.key === "ArrowRight") next = (index + 1) % exampleTabs.length;
-    if (event.key === "ArrowLeft") next = (index - 1 + exampleTabs.length) % exampleTabs.length;
-    if (event.key === "Home") next = 0;
-    if (event.key === "End") next = exampleTabs.length - 1;
-    selectExample(exampleTabs[next]);
-    exampleTabs[next].focus();
   });
 }
 
@@ -60,7 +130,6 @@ copyButton?.addEventListener("click", async () => {
   window.setTimeout(() => { label.textContent = "Copy commands"; }, 1800);
 });
 
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const revealItems = [...document.querySelectorAll(".reveal")];
 if ("IntersectionObserver" in window && !reduceMotion) {
   document.documentElement.classList.add("has-reveal");
@@ -72,34 +141,16 @@ if ("IntersectionObserver" in window && !reduceMotion) {
     }
   }, { threshold: 0.12 });
   for (const item of revealItems) revealObserver.observe(item);
+
+  const graphObserver = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    showcaseVisible = true;
+    playWorkflowGraph();
+    graphObserver.disconnect();
+  }, { threshold: 0.4 });
+  graphObserver.observe(document.querySelector("#workflow"));
+} else {
+  showcaseVisible = true;
 }
 
-const demo = document.querySelector("[data-workflow-demo]");
-const demoNodes = [...document.querySelectorAll(".rail-node")];
-let demoTimers = [];
-
-function playWorkflow() {
-  for (const timer of demoTimers) window.clearTimeout(timer);
-  demoTimers = [];
-  demo.classList.remove("playing");
-  for (const node of demoNodes) node.classList.remove("active");
-  void demo.offsetWidth;
-  demo.classList.add("playing");
-  demoNodes.forEach((node, index) => {
-    demoTimers.push(window.setTimeout(() => {
-      node.classList.add("active");
-      demo.querySelector(".demo-status").textContent = index === demoNodes.length - 1 ? "Complete" : node.querySelector("b").textContent;
-    }, 320 + index * 570));
-  });
-}
-
-if (demo && !reduceMotion && "IntersectionObserver" in window) {
-  const demoObserver = new IntersectionObserver((entries) => {
-    for (const entry of entries) if (entry.isIntersecting) playWorkflow();
-  }, { threshold: 0.45 });
-  demoObserver.observe(demo);
-} else if (demo) {
-  demo.classList.add("playing");
-  for (const node of demoNodes) node.classList.add("active");
-  demo.querySelector(".demo-status").textContent = "Complete";
-}
+renderWorkflow(activeWorkflow, { animate: false });

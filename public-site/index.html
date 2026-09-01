@@ -9,6 +9,7 @@
     <meta property="og:type" content="website" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="site.css" />
+    <script src="workflows.js" defer></script>
     <script src="site.js" defer></script>
     <title>WeaveCodex | Visual workflows for Codex</title>
   </head>
@@ -20,8 +21,8 @@
         <span>WeaveCodex</span>
       </a>
       <nav aria-label="Main navigation">
-        <a href="#workflow">Workflow</a>
-        <a href="#examples">Examples</a>
+        <a href="#workflow">Workflows</a>
+        <a href="#difference-title">Why Weave</a>
         <a href="#install">Install</a>
       </nav>
       <a class="source-link" href="https://github.com/MustafaAH10/WeaveCodex" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
@@ -37,21 +38,24 @@
           <a class="button button-light" href="#install">Install locally</a>
         </div>
 
-        <div class="workflow-demo reveal" id="workflow" data-workflow-demo>
-          <div class="demo-bar">
-            <span><i></i> Product launch workflow</span>
-            <span class="demo-status" aria-live="polite">Ready</span>
+        <div class="workflow-showcase reveal" id="workflow">
+          <div class="showcase-tabs" role="group" aria-label="Choose a workflow example">
+            <button class="showcase-tab active" type="button" data-workflow-key="finance" aria-pressed="true">Finance</button>
+            <button class="showcase-tab" type="button" data-workflow-key="frontend" aria-pressed="false">Frontend</button>
+            <button class="showcase-tab" type="button" data-workflow-key="incident" aria-pressed="false">Incident response</button>
+            <span id="workflow-stats">9 steps · 11 connections · branches and merges</span>
           </div>
-          <div class="workflow-rail" role="img" aria-label="A six step product launch workflow with a human decision and automated checks">
-            <div class="rail-line"><span></span></div>
-            <article class="rail-node" data-step="0"><span class="node-icon">◎</span><small>Brief</small><b>Set the outcome</b></article>
-            <article class="rail-node" data-step="1"><span class="node-icon">⌁</span><small>Explore</small><b>Find two directions</b></article>
-            <article class="rail-node human" data-step="2"><span class="node-icon">◇</span><small>Your call</small><b>Choose one</b></article>
-            <article class="rail-node" data-step="3"><span class="node-icon">⌁</span><small>Build</small><b>Create the page</b></article>
-            <article class="rail-node check" data-step="4"><span class="node-icon">✓</span><small>Check</small><b>Test the result</b></article>
-            <article class="rail-node" data-step="5"><span class="node-icon">↗</span><small>Deliver</small><b>Review the work</b></article>
+          <div class="showcase-heading">
+            <div><p class="eyebrow" id="workflow-label">Finance workflow</p><h2 id="workflow-title">Publish a board-ready forecast</h2></div>
+            <p id="workflow-description">Inspect source data and assumptions in parallel. Nothing is delivered until the model, dashboard, and reconciliation check agree.</p>
           </div>
-          <div class="demo-caption"><span>Flexible Codex work</span><span>Human choice</span><span>Proof before delivery</span></div>
+          <div class="graph-frame">
+            <svg id="workflow-graph" role="img" aria-labelledby="workflow-title workflow-description" viewBox="0 0 1320 520" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+          <footer class="showcase-footer">
+            <div class="graph-legend"><span><i class="work-key"></i>Codex work</span><span><i class="human-key"></i>Your decision</span><span><i class="check-key"></i>Exact check</span><span><i class="review-key"></i>Review</span></div>
+            <p><span>Result</span><b id="workflow-result">Forecast pack with approved assumptions and reconciled totals</b></p>
+          </footer>
         </div>
       </section>
 
@@ -74,32 +78,6 @@
             </div>
           </div>
           <p class="mode-description" aria-live="polite">Give Codex a goal and let it choose the route.</p>
-        </div>
-      </section>
-
-      <section class="examples" id="examples" aria-labelledby="examples-title">
-        <div class="section-heading centered reveal">
-          <p class="eyebrow">Three useful workflows</p>
-          <h2 id="examples-title">Built around the decisions<br />people actually care about.</h2>
-        </div>
-        <div class="example-tabs reveal" role="tablist" aria-label="Workflow examples">
-          <button id="tab-finance" role="tab" aria-selected="true" aria-controls="panel-finance" data-example="finance">Finance</button>
-          <button id="tab-frontend" role="tab" aria-selected="false" aria-controls="panel-frontend" data-example="frontend" tabindex="-1">Frontend</button>
-          <button id="tab-incident" role="tab" aria-selected="false" aria-controls="panel-incident" data-example="incident" tabindex="-1">Incident response</button>
-        </div>
-        <div class="example-stage reveal">
-          <article class="example-panel" id="panel-finance" role="tabpanel" aria-labelledby="tab-finance">
-            <div class="example-copy"><small>Finance analyst</small><h3>Turn a messy workbook into a board-ready view.</h3><p>Pause on assumptions. Require the totals to reconcile before the dashboard is delivered.</p></div>
-            <ol class="example-flow" aria-label="Finance workflow"><li><span>01</span>Inspect workbook</li><li><span>02</span>Clean rows</li><li class="human"><span>03</span>Approve assumptions</li><li><span>04</span>Build dashboard</li><li class="check"><span>05</span>Reconcile totals</li><li><span>06</span>Write summary</li></ol>
-          </article>
-          <article class="example-panel" id="panel-frontend" role="tabpanel" aria-labelledby="tab-frontend" hidden>
-            <div class="example-copy"><small>Frontend designer</small><h3>Explore before committing to a direction.</h3><p>Compare two concepts, choose the stronger one, then require accessibility checks.</p></div>
-            <ol class="example-flow" aria-label="Frontend workflow"><li><span>01</span>Audit the page</li><li><span>02</span>Sketch two routes</li><li class="human"><span>03</span>Choose direction</li><li><span>04</span>Implement</li><li class="check"><span>05</span>Test accessibility</li><li><span>06</span>Visual review</li></ol>
-          </article>
-          <article class="example-panel" id="panel-incident" role="tabpanel" aria-labelledby="tab-incident" hidden>
-            <div class="example-copy"><small>Engineering lead</small><h3>Control a risky repair without slowing it down.</h3><p>Make the diagnosis and repair plan visible before Codex changes the repository.</p></div>
-            <ol class="example-flow" aria-label="Incident workflow"><li><span>01</span>Collect evidence</li><li><span>02</span>Reproduce issue</li><li class="human"><span>03</span>Approve repair</li><li><span>04</span>Patch safely</li><li class="check"><span>05</span>Run regression</li><li><span>06</span>Write incident note</li></ol>
-          </article>
         </div>
       </section>
 
