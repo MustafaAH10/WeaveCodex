@@ -63,6 +63,8 @@ body::before {
 .source-link { justify-self: end; }
 
 .hero { width: min(var(--shell), calc(100% - 48px)); margin: 0 auto; padding: 125px 0 105px; text-align: center; }
+.launch-status { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 22px; padding: 8px 12px; border: 1px solid #cbd0c5; border-radius: 999px; background: rgba(252, 252, 249, .72); color: #4b5047; font: 740 10px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.launch-status span { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px var(--green-soft); }
 .eyebrow { margin: 0 0 18px; color: var(--green-dark); font: 750 11px/1.2 var(--mono); letter-spacing: .11em; text-transform: uppercase; }
 .hero h1 { margin: 0; font-size: clamp(68px, 8.2vw, 118px); line-height: .89; letter-spacing: -.075em; }
 .hero-copy { max-width: 620px; margin: 30px auto 0; color: #50534c; font-size: 19px; line-height: 1.55; }
