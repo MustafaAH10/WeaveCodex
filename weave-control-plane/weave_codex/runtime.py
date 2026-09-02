@@ -657,6 +657,7 @@ class HarnessRunner:
                 "phaseProgram": (
                     {
                         "projectionVersion": manifest.phase_program.projection_version,
+                        "graph": manifest.phase_program.model_dump(by_alias=True, mode="json"),
                         "executions": phase_executions,
                         "checkpoints": checkpoints,
                         "internalLoopSemantics": (

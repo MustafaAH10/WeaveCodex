@@ -156,6 +156,19 @@ def test_local_session_token_guards_side_effects_and_auth_flow(tmp_path: Path) -
         assert paths["entries"] == [{"path": "src/main.py", "kind": "file"}]
         assert "SECRET_FILE_CONTENT" not in json.dumps(paths)
 
+        status, upload = _request(
+            port,
+            "POST",
+            "/api/workspace/uploads",
+            body={"files": [{"name": "brief.txt", "contentBase64": "bG9jYWwgYnJpZWY="}]},
+            headers=common,
+        )
+        assert status == 201
+        assert upload["privacy"] == "stored only in the local Weave data directory"
+        uploaded_path = Path(upload["files"][0]["path"])
+        assert uploaded_path.read_text(encoding="utf-8") == "local brief"
+        assert uploaded_path.is_relative_to(tmp_path.resolve())
+
         status, workflow = _request(
             port,
             "POST",
@@ -189,6 +202,31 @@ def test_local_session_token_guards_side_effects_and_auth_flow(tmp_path: Path) -
         status, workflows = _request(port, "GET", "/api/workflows")
         assert status == 200
         assert workflows["workflows"][0]["workflowId"] == workflow["workflowId"]
+
+        status, deleted_workflow = _request(
+            port,
+            "DELETE",
+            f"/api/workflows/{workflow['workflowId']}",
+            headers=common,
+        )
+        assert status == 200
+        assert deleted_workflow == {"deleted": True}
+        assert app.workflows.list() == []
+
+        run_id = "00000000-0000-0000-0000-000000000001"
+        (tmp_path / f"{run_id}.json").write_text(
+            json.dumps({"runId": run_id, "finalResponse": "done"}),
+            encoding="utf-8",
+        )
+        status, deleted_run = _request(
+            port,
+            "DELETE",
+            f"/api/runs/{run_id}",
+            headers=common,
+        )
+        assert status == 200
+        assert deleted_run == {"deleted": True}
+        assert app.saved_runs() == []
 
         status, completed = _request(port, "GET", "/api/account/login/login-1")
         assert status == 200

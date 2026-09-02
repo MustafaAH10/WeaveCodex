@@ -4,7 +4,9 @@ const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character
 const CanvasModel = typeof module !== "undefined" && module.exports
   ? require("./canvas-model.js")
   : globalThis.WeaveCanvasModel;
-const { clone, linearGraph, orderedClientPhases, graphProblem, wouldCreateCycle, uniquePhaseId } = CanvasModel;
+const { clone, linearGraph, orderedClientPhases, graphProblem, wouldCreateCycle, uniquePhaseId, layoutRunGraph } = CanvasModel;
+const trashIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"/></svg>';
+const duplicateIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
 
 let securitySession = null;
 let runMode = "weave";
@@ -32,6 +34,8 @@ let canvasPan = { x: 0, y: 0 };
 let canvasPanDrag = null;
 let canvasPanMoved = false;
 let canvasNotice = "";
+let arrowTool = null;
+let uploadedFiles = [];
 
 async function request(path, options = {}) {
   const method = String(options.method || "GET").toUpperCase();
@@ -71,7 +75,7 @@ function buildManifest({ mode, name, cwd, instructions, integrations, agent, pro
     schemaVersion: direct ? 1 : 2,
     name,
     cwd,
-    task: { instructions, contextPaths: [] },
+    task: { instructions, contextPaths: uploadedFiles.map((file) => file.path) },
     memory: { mode: "off", selectedThreadIds: [] },
     integrations: { inventoryId: integrations?.inventoryId || null, requested },
     agent,
@@ -103,7 +107,7 @@ function setView(view, { updateHash = true } = {}) {
     runs: "activity", "field-trials": "activity",
   };
   const requested = aliases[view] || view;
-  const allowed = new Set(["create", "library", "activity"]);
+  const allowed = new Set(["create", "library", "activity", "docs"]);
   const active = allowed.has(requested) ? requested : "create";
   $$(".product-view").forEach((panel) => {
     const selected = panel.id === `${active}-view`;
@@ -150,7 +154,7 @@ function programNodes(program, { compact = false } = {}) {
 
 function stepKind(kind, stepType = "") {
   if (kind === "command") return ({ function: "One function", test: "Exact test", checker: "Exact checker" })[stepType] || "Exact command";
-  return ({ work: "Codex works", checkpoint: "Your decision", verify: "AI review", native: "Codex works" })[kind] || "Observed activity";
+  return ({ work: "Codex works", checkpoint: "Calibration", verify: "AI review", native: "Codex works" })[kind] || "Observed activity";
 }
 
 function phaseKindLabel(phase) {
@@ -164,7 +168,7 @@ function friendlyStatus(value) {
 }
 
 function phasePlainCopy(phase) {
-  if (phase.kind === "checkpoint") return { actor: "Your decision", copy: phase.question, note: "Codex waits here until you continue or stop." };
+  if (phase.kind === "checkpoint") return { actor: "Calibration", copy: phase.question, note: "Lock or redirect the intent before the next Codex step." };
   if (phase.kind === "verify") return { actor: "AI review", copy: phase.criteria, note: `Codex can repair up to ${phase.maxRepairs || 0} time${phase.maxRepairs === 1 ? "" : "s"}.` };
   if (phase.kind === "command") return { actor: stepKind(phase.kind, phase.stepType), copy: phase.command, note: `Passed only when this exact command is observed with exit code ${phase.expectedExitCode ?? 0}.` };
   return phase.scope === "focused"
@@ -242,7 +246,7 @@ function applyWorkflow(workflow, { customize = false } = {}) {
 function workflowCard(workflow) {
   const created = new Date(workflow.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
   const lineage = workflow.parentWorkflowId ? "Adapted from another saved workflow" : "Original workflow";
-  return `<article class="saved-workflow"><header><div><small>Saved ${escapeHtml(created)}</small><h3>${escapeHtml(workflow.name)}</h3></div><span class="saved-badge">Ready to reuse</span></header><p>${escapeHtml(workflow.description || "No description.")}</p><div class="mini-program">${programNodes(workflow.phaseProgram, { compact: true })}</div><footer><span>${workflow.phaseProgram.phases.length} steps · ${escapeHtml(lineage)}</span><div><button type="button" data-use-workflow="${escapeHtml(workflow.workflowId)}">Use for a new task</button><button type="button" data-customize-workflow="${escapeHtml(workflow.workflowId)}">Customize</button></div></footer></article>`;
+  return `<article class="saved-workflow"><header><div><small>Saved ${escapeHtml(created)}</small><h3>${escapeHtml(workflow.name)}</h3></div><button class="trash-button" type="button" data-delete-workflow="${escapeHtml(workflow.workflowId)}" title="Delete workflow" aria-label="Delete ${escapeHtml(workflow.name)}">${trashIcon}</button></header><p>${escapeHtml(workflow.description || "No description.")}</p><div class="mini-program">${programNodes(workflow.phaseProgram, { compact: true })}</div><footer><span>${workflow.phaseProgram.phases.length} steps · ${escapeHtml(lineage)}</span><div><button type="button" data-use-workflow="${escapeHtml(workflow.workflowId)}">Use for a new task</button><button type="button" data-customize-workflow="${escapeHtml(workflow.workflowId)}">Customize</button></div></footer></article>`;
 }
 
 function bindWorkflowUseButtons() {
@@ -253,6 +257,17 @@ function bindWorkflowUseButtons() {
   $$('[data-customize-workflow]').forEach((button) => button.addEventListener("click", () => {
     const workflow = savedWorkflows.find((item) => item.workflowId === button.dataset.customizeWorkflow);
     if (workflow) applyWorkflow(workflow, { customize: true });
+  }));
+  $$('[data-delete-workflow]').forEach((button) => button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      await request(`/api/workflows/${button.dataset.deleteWorkflow}`, { method: "DELETE" });
+      if (activeSavedWorkflow?.workflowId === button.dataset.deleteWorkflow) activeSavedWorkflow = null;
+      await loadWorkflows();
+    } catch (error) {
+      button.disabled = false;
+      $("#save-status").textContent = `Could not delete workflow: ${error.message}`;
+    }
   }));
 }
 
@@ -366,10 +381,10 @@ async function pollRun(phases) {
     if (state.pendingApproval) {
       const checkpoint = state.pendingApproval.method === "harness/checkpoint";
       pendingIsCheckpoint = checkpoint;
-      $("#approval-title").textContent = checkpoint ? "Continue to the next step?" : "Codex requested a protected action";
+      $("#approval-title").textContent = checkpoint ? "Calibrate the next step" : "Codex requested a protected action";
       $("#approval-detail").textContent = checkpoint ? (state.pendingApproval.params?.question || "Continue this run?") : "Review this protected action before allowing it.";
       $("#checkpoint-feedback-wrap").classList.toggle("hidden", !checkpoint);
-      $("#continue-run").textContent = checkpoint ? "Continue / redirect" : "Allow";
+      $("#continue-run").textContent = checkpoint ? "Apply direction" : "Allow";
       $("#approval-card").classList.remove("hidden");
     } else {
       pendingIsCheckpoint = false;
@@ -499,14 +514,14 @@ function phaseInspector(phase) {
   const connectControl = targets.length
     ? `<div class="inspector-connect"><label>Then continue to<select data-phase-connect>${targets.map((target) => `<option value="${escapeHtml(target.id)}">${escapeHtml(target.name)}</option>`).join("")}</select></label><button type="button" data-phase-connect-add>Add arrow</button></div>`
     : '<p class="inspector-proof">No other step can be connected from here without making a duplicate or loop.</p>';
-  return `<p class="kicker">${escapeHtml(phaseKindLabel(phase).toUpperCase())}</p><h2>${escapeHtml(phase.name)}</h2><div class="inspector-fields"><label>Step name<input data-phase-field="name" value="${escapeHtml(phase.name)}" maxlength="80"></label>${scopeSelect}${typeSelect}<label>${escapeHtml(phaseCopyLabel(phase))}<textarea data-phase-field="${key}" maxlength="${phase.kind === "work" ? 4000 : 2000}" rows="7">${escapeHtml(phase[key])}</textarea></label>${commandSettings}${verifySettings}<p class="connection-summary">${incoming} arrow${incoming === 1 ? "" : "s"} in · ${outgoing} arrow${outgoing === 1 ? "" : "s"} out</p>${connectControl}</div><div class="inspector-actions"><button type="button" data-phase-duplicate>Duplicate step</button><button class="danger" type="button" data-phase-delete>Delete step</button></div>`;
+  return `<p class="kicker">${escapeHtml(phaseKindLabel(phase).toUpperCase())}</p><h2>${escapeHtml(phase.name)}</h2><div class="inspector-fields"><label>Step name<input data-phase-field="name" value="${escapeHtml(phase.name)}" maxlength="80"></label>${scopeSelect}${typeSelect}<label>${escapeHtml(phaseCopyLabel(phase))}<textarea data-phase-field="${key}" maxlength="${phase.kind === "work" ? 4000 : 2000}" rows="7">${escapeHtml(phase[key])}</textarea></label>${commandSettings}${verifySettings}<p class="connection-summary">${incoming} arrow${incoming === 1 ? "" : "s"} in · ${outgoing} arrow${outgoing === 1 ? "" : "s"} out</p>${connectControl}</div><div class="inspector-actions"><button class="icon-only" type="button" data-phase-duplicate title="Duplicate step" aria-label="Duplicate step">${duplicateIcon}</button><button class="danger icon-only" type="button" data-phase-delete title="Delete step" aria-label="Delete step">${trashIcon}</button></div>`;
 }
 
 function edgeInspector(edge) {
   const program = ensureDesignProgram();
   const source = program.phases.find((phase) => phase.id === edge.from);
   const target = program.phases.find((phase) => phase.id === edge.to);
-  return `<p class="kicker">SELECTED ARROW</p><h2>${escapeHtml(source?.name || edge.from)} → ${escapeHtml(target?.name || edge.to)}</h2><p class="edge-help">The target waits for the source to finish. Weave derives Codex turn order from this dependency.</p><div class="inspector-actions"><button class="danger" type="button" data-edge-delete>Delete arrow</button></div>`;
+  return `<p class="kicker">SELECTED ARROW</p><h2>${escapeHtml(source?.name || edge.from)} → ${escapeHtml(target?.name || edge.to)}</h2><p class="edge-help">The target waits for the source to finish. Weave derives Codex turn order from this dependency.</p><div class="inspector-actions"><button class="danger icon-only" type="button" data-edge-delete title="Delete arrow" aria-label="Delete arrow">${trashIcon}</button></div>`;
 }
 
 function canvasPath(source, target) {
@@ -549,8 +564,27 @@ function pointerToCanvas(event) {
 
 function applyCanvasTransform() {
   $("#phase-editor").style.transform = `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})`;
-  $("#canvas-zoom-label").textContent = `${Math.round(canvasZoom * 100)}%`;
   $("#canvas-viewport").style.backgroundPosition = `${canvasPan.x}px ${canvasPan.y}px`;
+}
+
+function zoomCanvasAt(value, clientX, clientY) {
+  const nextZoom = Math.max(.42, Math.min(1.35, Number(value.toFixed(3))));
+  const viewport = $("#canvas-viewport");
+  const rect = viewport.getBoundingClientRect();
+  const point = { x: clientX - rect.left, y: clientY - rect.top };
+  const ratio = nextZoom / canvasZoom;
+  canvasPan = {
+    x: point.x - ((point.x - canvasPan.x) * ratio),
+    y: point.y - ((point.y - canvasPan.y) * ratio),
+  };
+  canvasZoom = nextZoom;
+  applyCanvasTransform();
+}
+
+function handleCanvasWheel(event) {
+  event.preventDefault();
+  const normalized = event.deltaMode === 1 ? event.deltaY * 18 : event.deltaMode === 2 ? event.deltaY * 180 : event.deltaY;
+  zoomCanvasAt(canvasZoom * Math.exp(-normalized * .0015), event.clientX, event.clientY);
 }
 
 function beginCanvasPan(event) {
@@ -619,9 +653,9 @@ function beginConnection(event, sourceId) {
 }
 
 function beginNodeDrag(event, phaseIndex) {
-  if (event.target.closest(".node-port")) return;
+  if (event.target.closest(".node-port") || arrowTool) return;
   const phase = ensureDesignProgram().phases[phaseIndex];
-  canvasDrag = { phaseIndex, origin: { ...phase.position }, start: pointerToCanvas(event) };
+  canvasDrag = { phaseIndex, moved: false, origin: { ...phase.position }, start: pointerToCanvas(event) };
   event.currentTarget.setPointerCapture(event.pointerId);
   event.currentTarget.classList.add("dragging");
 }
@@ -630,8 +664,10 @@ function moveNode(event) {
   if (!canvasDrag) return;
   const phase = ensureDesignProgram().phases[canvasDrag.phaseIndex];
   const point = pointerToCanvas(event);
+  if (Math.abs(point.x - canvasDrag.start.x) + Math.abs(point.y - canvasDrag.start.y) < 4) return;
   phase.position.x = Math.max(20, Math.min(2400, Math.round((canvasDrag.origin.x + point.x - canvasDrag.start.x) / 20) * 20));
   phase.position.y = Math.max(20, Math.min(1010, Math.round((canvasDrag.origin.y + point.y - canvasDrag.start.y) / 20) * 20));
+  if (phase.position.x !== canvasDrag.origin.x || phase.position.y !== canvasDrag.origin.y) canvasDrag.moved = true;
   const node = $(`[data-phase-id="${CSS.escape(phase.id)}"]`, $("#canvas-nodes"));
   node.style.left = `${phase.position.x}px`;
   node.style.top = `${phase.position.y}px`;
@@ -640,9 +676,52 @@ function moveNode(event) {
 
 function endNodeDrag(event) {
   if (!canvasDrag) return;
+  const { phaseIndex, moved } = canvasDrag;
   event.currentTarget.classList.remove("dragging");
   canvasDrag = null;
-  adaptationMethod ||= "manual";
+  if (!moved) return;
+  selectedPhaseIndex = phaseIndex;
+  selectedEdgeIndex = null;
+  if (moved) adaptationMethod ||= "manual";
+  renderPhaseEditor();
+}
+
+function setArrowTool(active) {
+  arrowTool = active ? { sourceId: null } : null;
+  const button = $("#canvas-add-arrow");
+  button.setAttribute("aria-pressed", String(Boolean(active)));
+  $("#canvas-viewport").classList.toggle("connecting", Boolean(active));
+  $("#canvas-tool-hint").textContent = active
+    ? "Choose the starting node"
+    : "Drag to move · wheel to zoom · drag the background to pan";
+}
+
+function selectCanvasNode(index) {
+  const program = ensureDesignProgram();
+  const phase = program.phases[index];
+  if (!phase) return;
+  selectedPhaseIndex = index;
+  selectedEdgeIndex = null;
+  if (!arrowTool) {
+    renderPhaseEditor();
+    return;
+  }
+  if (!arrowTool.sourceId) {
+    arrowTool.sourceId = phase.id;
+    $("#canvas-tool-hint").textContent = "Now choose the destination node";
+    renderPhaseEditor();
+    return;
+  }
+  const sourceId = arrowTool.sourceId;
+  if (sourceId === phase.id) canvasNotice = "Choose a different destination node.";
+  else if (program.edges.some((edge) => edge.from === sourceId && edge.to === phase.id)) canvasNotice = "Those nodes are already connected.";
+  else if (wouldCreateCycle(program, sourceId, phase.id)) canvasNotice = "That arrow would create a loop.";
+  else {
+    program.edges.push({ from: sourceId, to: phase.id });
+    canvasNotice = "";
+    adaptationMethod ||= "manual";
+  }
+  setArrowTool(false);
   renderPhaseEditor();
 }
 
@@ -653,7 +732,7 @@ function renderPhaseEditor() {
   $("#canvas-nodes").innerHTML = program.phases.map((phase, index) => {
     const plain = phasePlainCopy(phase);
     const icon = phase.kind === "checkpoint" ? "◇" : phase.kind === "command" ? "✓" : phase.kind === "verify" ? "◎" : "⌁";
-    const footer = phase.kind === "checkpoint" ? "Human pause" : phase.kind === "command" ? "Pass / fail" : phase.kind === "verify" ? "Review + repair" : phase.scope === "focused" ? "Focused turn" : "Broad turn";
+    const footer = phase.kind === "checkpoint" ? "Course check" : phase.kind === "command" ? "Pass / fail" : phase.kind === "verify" ? "Review + repair" : phase.scope === "focused" ? "Focused turn" : "Broad turn";
     return `<article class="canvas-node ${escapeHtml(phase.kind)} ${escapeHtml(phase.scope || "")} ${index === selectedPhaseIndex ? "selected" : ""}" data-kind="${escapeHtml(phase.kind)}" data-phase-index="${index}" data-phase-id="${escapeHtml(phase.id)}" tabindex="0"><span class="node-kind-icon" aria-hidden="true">${icon}</span><span class="node-order" aria-label="Step ${order.get(phase.id) || index + 1}">${order.get(phase.id) || index + 1}</span><button class="node-port input" data-port="in" type="button" tabindex="-1" aria-hidden="true"></button><small>${escapeHtml(plain.actor)}</small><b>${escapeHtml(phase.name)}</b><p>${escapeHtml(plain.copy)}</p><em>${escapeHtml(footer)}</em><button class="node-port output" data-port="out" type="button" tabindex="-1" aria-hidden="true"></button></article>`;
   }).join("");
   if (selectedEdgeIndex != null && program.edges[selectedEdgeIndex]) $("#phase-inspector").innerHTML = edgeInspector(program.edges[selectedEdgeIndex]);
@@ -663,13 +742,14 @@ function renderPhaseEditor() {
     const phase = program.phases[Number(node.dataset.phaseIndex)];
     node.style.left = `${phase.position.x}px`;
     node.style.top = `${phase.position.y}px`;
-    node.addEventListener("click", () => { selectedPhaseIndex = Number(node.dataset.phaseIndex); selectedEdgeIndex = null; renderPhaseEditor(); });
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      selectCanvasNode(Number(node.dataset.phaseIndex));
+    });
     node.addEventListener("keydown", (event) => {
       if (!["Enter", " "].includes(event.key)) return;
       event.preventDefault();
-      selectedPhaseIndex = Number(node.dataset.phaseIndex);
-      selectedEdgeIndex = null;
-      renderPhaseEditor();
+      selectCanvasNode(Number(node.dataset.phaseIndex));
     });
     node.addEventListener("pointerdown", (event) => beginNodeDrag(event, Number(node.dataset.phaseIndex)));
     node.addEventListener("pointermove", moveNode);
@@ -753,14 +833,61 @@ function addPhase(kind, stepOption = "adaptive") {
   const selected = program.phases[selectedPhaseIndex] || program.phases[program.phases.length - 1];
   const position = selected ? { x: Math.min(2100, selected.position.x + 310), y: selected.position.y } : { x: 120, y: 260 };
   if (kind === "work") program.phases.push({ id, kind, scope: stepOption === "focused" ? "focused" : "adaptive", name: "New Codex turn", goal: "Describe what Codex should accomplish in this turn. Make it as broad or as precise as this workflow needs.", reasoningEffort: "inherit", position });
-  if (kind === "checkpoint") program.phases.push({ id, kind, name: "My decision", question: "What should Codex show me here before the workflow continues?", position });
+  if (kind === "checkpoint") program.phases.push({ id, kind, name: "Calibrate the run", question: "What must remain fixed, and what should Codex redirect before continuing?", position });
   if (kind === "command") program.phases.push({ id, kind, stepType: commandType, name: "Run one exact command", command: "python3 -m pytest -q path/to/test.py::test_name", expectedExitCode: 0, stopOnFailure: true, position });
   if (kind === "verify") program.phases.push({ id, kind, name: "Review and repair", criteria: "Describe what must be true before this workflow can finish.", maxRepairs: 1, position });
   if (selected) program.edges.push({ from: selected.id, to: id });
   selectedPhaseIndex = program.phases.length - 1;
   selectedEdgeIndex = null;
   adaptationMethod ||= "manual";
+  $("#canvas-node-menu").hidden = true;
+  $("#canvas-add-node").setAttribute("aria-expanded", "false");
   renderPhaseEditor();
+}
+
+function renderAttachedFiles() {
+  const target = $("#attached-files");
+  target.innerHTML = uploadedFiles.map((file, index) => `<span class="file-chip" title="${escapeHtml(file.path)}"><span>${escapeHtml(file.name)}</span><button type="button" data-remove-file="${index}" aria-label="Remove ${escapeHtml(file.name)}">×</button></span>`).join("");
+  $$('[data-remove-file]', target).forEach((button) => button.addEventListener("click", () => {
+    uploadedFiles.splice(Number(button.dataset.removeFile), 1);
+    renderAttachedFiles();
+  }));
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result).split(",", 2)[1] || ""));
+    reader.addEventListener("error", () => reject(reader.error || new Error("Could not read file")));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadSelectedFiles(files) {
+  const chosen = [...files];
+  if (!chosen.length) return;
+  if (uploadedFiles.length + chosen.length > 8) {
+    $("#voice-status").textContent = "Choose at most eight files.";
+    return;
+  }
+  if (chosen.some((file) => file.size > 4 * 1024 * 1024)) {
+    $("#voice-status").textContent = "Each file must be 4 MB or smaller.";
+    return;
+  }
+  $("#attach-files").disabled = true;
+  $("#voice-status").textContent = "Adding files locally…";
+  try {
+    const encoded = await Promise.all(chosen.map(async (file) => ({ name: file.name, contentBase64: await fileToBase64(file) })));
+    const result = await request("/api/workspace/uploads", { method: "POST", body: JSON.stringify({ files: encoded }) });
+    uploadedFiles.push(...(result.files || []));
+    renderAttachedFiles();
+    $("#voice-status").textContent = `${uploadedFiles.length} local file${uploadedFiles.length === 1 ? "" : "s"} ready for Codex.`;
+  } catch (error) {
+    $("#voice-status").textContent = `Could not add files: ${error.message}`;
+  } finally {
+    $("#attach-files").disabled = false;
+    $("#file-input").value = "";
+  }
 }
 
 async function adaptWithCodex() {
@@ -822,9 +949,23 @@ async function loadRuns() {
       const started = run.startedAt ? new Date(run.startedAt * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Recent";
       const kind = run.phaseCount ? "My workflow" : "Codex directly";
       const fallbackName = run.phaseCount ? `${run.phaseCount}-step workflow` : "One adaptive run";
-      return `<button class="run-list-item ${run.runId === selectedRunId ? "active" : ""}" type="button" data-run-id="${escapeHtml(run.runId)}"><span class="run-kind">${kind}</span><b>${escapeHtml(run.name || fallbackName)}</b><small>${escapeHtml(friendlyStatus(run.completionStatus || run.status))} · ${escapeHtml(started)}</small></button>`;
+      return `<div class="run-list-row"><button class="run-list-item ${run.runId === selectedRunId ? "active" : ""}" type="button" data-run-id="${escapeHtml(run.runId)}"><span class="run-kind">${kind}</span><b>${escapeHtml(run.name || fallbackName)}</b><small>${escapeHtml(friendlyStatus(run.completionStatus || run.status))} · ${escapeHtml(started)}</small></button><button class="trash-button" type="button" data-delete-run="${escapeHtml(run.runId)}" title="Delete run" aria-label="Delete ${escapeHtml(run.name || fallbackName)}">${trashIcon}</button></div>`;
     }).join("") : "<p>No runs yet. Create one and it will appear here.</p>";
     $$("[data-run-id]", list).forEach((button) => button.addEventListener("click", () => void showRun(button.dataset.runId)));
+    $$("[data-delete-run]", list).forEach((button) => button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        await request(`/api/runs/${button.dataset.deleteRun}`, { method: "DELETE" });
+        if (selectedRunId === button.dataset.deleteRun) {
+          selectedRunId = null;
+          $("#run-detail").innerHTML = '<div class="empty-run"><b>Choose a run</b><p>Its workflow and evidence will appear here.</p></div>';
+        }
+        await loadRuns();
+      } catch (error) {
+        button.disabled = false;
+        $("#run-detail").innerHTML = `<div class="empty-run"><b>Could not delete run</b><p>${escapeHtml(error.message)}</p></div>`;
+      }
+    }));
     if (!selectedRunId && runs[0]) {
       selectedRunId = runs[0].runId;
       void showRun(runs[0].runId);
@@ -832,35 +973,110 @@ async function loadRuns() {
   } catch (error) { list.innerHTML = `<p>Runs unavailable: ${escapeHtml(error.message)}</p>`; }
 }
 
+function runExecutionStatus(execution = {}) {
+  if (execution.status === "fail" || execution.status === "failed") return { className: "failed", label: "Failed" };
+  if (execution.status === "stopped") return { className: "stopped", label: "Stopped" };
+  if (execution.kind === "checkpoint") {
+    const continued = ["accept", "acceptForSession"].includes(execution.decision);
+    return { className: continued ? "passed" : "stopped", label: continued ? "Continued" : "Stopped" };
+  }
+  if (execution.status === "repair") return { className: "passed", label: "Repaired" };
+  if (execution.status === "pass") return { className: "passed", label: "Passed" };
+  return { className: "done", label: "Done" };
+}
+
+function runCanvasMarkup(graph, executions) {
+  const layout = layoutRunGraph(graph, executions);
+  const edgeMarkup = layout.edges.map((edge) => {
+    const bend = Math.max(44, Math.abs(edge.endX - edge.startX) * .45);
+    return `<path class="run-graph-edge" d="M${edge.startX} ${edge.startY} C${edge.startX + bend} ${edge.startY},${edge.endX - bend} ${edge.endY},${edge.endX} ${edge.endY}" marker-end="url(#run-arrow)"></path>`;
+  }).join("");
+  const nodeMarkup = layout.nodes.map((node, index) => {
+    const status = runExecutionStatus(node.execution || {});
+    const title = String(node.name || node.execution?.name || `Step ${index + 1}`);
+    const shortTitle = title.length > 25 ? `${title.slice(0, 24)}…` : title;
+    const detailId = `run-node-${String(node.id).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+    return `<g class="run-graph-node ${escapeHtml(node.kind || "work")} ${status.className}" transform="translate(${node.x} ${node.y})" role="button" tabindex="0" data-run-node="${escapeHtml(detailId)}" aria-label="Inspect ${escapeHtml(title)}"><rect width="${node.width}" height="${node.height}" rx="13"></rect><circle cx="18" cy="18" r="5"></circle><text class="run-node-kind" x="31" y="22">${escapeHtml(phaseKindLabel(node).replace("Codex goal", "Codex"))}</text><text class="run-node-title" x="16" y="51">${escapeHtml(shortTitle)}</text><text class="run-node-status" x="16" y="75">${escapeHtml(status.label)}</text></g>`;
+  }).join("");
+  return `<section class="run-replay" aria-labelledby="run-replay-title"><header><div><small>RESULT CANVAS</small><h3 id="run-replay-title">Replay the workflow</h3></div><p>Select a node to inspect it.</p></header><div class="run-graph-frame"><svg class="run-graph" viewBox="0 0 ${layout.width} ${layout.height}" role="img" aria-label="Run result workflow"><defs><marker id="run-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z"></path></marker></defs>${edgeMarkup}${nodeMarkup}</svg></div></section>`;
+}
+
+function contextMarkup(context = {}) {
+  const paths = Array.isArray(context.contextPaths) ? context.contextPaths : [];
+  const rows = [
+    ["Task", context.overallTask],
+    ["Folder", context.workspace],
+    ["Files", paths.join("\n")],
+    ["Your latest direction", context.humanFeedback],
+    ["Previous visible result", context.priorOutput],
+  ].filter(([, value]) => String(value || "").trim());
+  return rows.length
+    ? `<dl>${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd><pre>${escapeHtml(value)}</pre></dd></div>`).join("")}</dl>`
+    : "<p>No additional context was stored for this older run.</p>";
+}
+
+function runNodeDetail(execution, phase, index, timeline, result, state) {
+  const status = runExecutionStatus(execution);
+  const activity = timeline.filter((item) => item.phase === execution.phaseId);
+  const counts = activity.reduce((acc, item) => { acc[item.kind] = (acc[item.kind] || 0) + 1; return acc; }, {});
+  const fileCount = (counts.fileChange || 0) + (counts.file_change || 0);
+  const actionCount = (counts.command || 0) + (counts.tool || 0) + (counts.toolCall || 0) + (counts.mcp || 0);
+  const checkCount = (counts.verification || 0) + (counts.test || 0);
+  const summary = [fileCount && `${fileCount} file change${fileCount === 1 ? "" : "s"}`, actionCount && `${actionCount} tool action${actionCount === 1 ? "" : "s"}`, checkCount && `${checkCount} check${checkCount === 1 ? "" : "s"}`].filter(Boolean);
+  if (execution.kind === "command") summary.unshift(`Exit ${execution.observedExitCode ?? "not observed"}`);
+  const chips = summary.map((item) => `<span>${escapeHtml(item)}</span>`).join("") || "<span>Activity recorded</span>";
+  const io = execution.io || {
+    input: phase?.goal || phase?.question || phase?.command || phase?.criteria || "This older receipt did not store a node input.",
+    context: { overallTask: result.workflow?.task },
+    output: index === (result.phaseProgram?.executions?.length || 1) - 1 ? (result.finalResponse || state.error || "") : "This older receipt did not store a node output.",
+  };
+  const intervention = execution.kind === "checkpoint" ? `<div class="human-intervention"><small>CALIBRATION</small><b>${escapeHtml(status.label)}</b>${execution.feedback ? `<p>${escapeHtml(execution.feedback)}</p>` : "<p>No additional direction was added.</p>"}</div>` : "";
+  const exactState = execution.status === "pass" ? "passed" : execution.status === "stopped" ? "stopped" : "failed";
+  const exactCheck = execution.kind === "command" ? `<div class="exact-check ${exactState}"><b>${escapeHtml(status.label)}</b><code>${escapeHtml(execution.command || phase?.command || "Command unavailable")}</code><p>${escapeHtml(execution.evidence || execution.summary || "No evidence recorded.")}</p></div>` : "";
+  const title = execution.name || phase?.name || (execution.kind === "checkpoint" ? "Calibration" : execution.kind === "verify" ? "Review the result" : "Codex step");
+  const detailId = `run-node-${String(execution.phaseId).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+  return `<details class="run-node-detail" id="${escapeHtml(detailId)}"><summary><span class="run-detail-index">${index + 1}</span><span><small>${escapeHtml(phaseKindLabel(execution))}</small><b>${escapeHtml(title)}</b></span><em class="${status.className}">${escapeHtml(status.label)}</em></summary><div class="run-node-body">${intervention}${exactCheck}<div class="activity-chips">${chips}</div><div class="node-io-grid"><details><summary>Input</summary><pre>${escapeHtml(io.input || "No input stored.")}</pre></details><details><summary>Context</summary>${contextMarkup(io.context)}</details><details><summary>Output</summary><pre>${escapeHtml(io.output || "No output stored.")}</pre></details></div></div></details>`;
+}
+
+function bindRunReplay(detail) {
+  const openDetail = (id) => {
+    const target = document.getElementById(id);
+    if (!target) return;
+    target.open = true;
+    $$("[data-run-node]", detail).forEach((node) => node.classList.toggle("selected", node.dataset.runNode === id));
+    target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+  $$("[data-run-node]", detail).forEach((node) => {
+    node.addEventListener("click", () => openDetail(node.dataset.runNode));
+    node.addEventListener("keydown", (event) => {
+      if (!["Enter", " "].includes(event.key)) return;
+      event.preventDefault();
+      openDetail(node.dataset.runNode);
+    });
+  });
+}
+
 async function showRun(runId) {
   selectedRunId = runId;
   await loadRuns();
   const detail = $("#run-detail");
-    detail.innerHTML = "<p>Loading run…</p>";
+  detail.innerHTML = "<p>Loading run…</p>";
   try {
     const state = await request(`/api/runs/${encodeURIComponent(runId)}`);
     const result = state.result || {};
-    const executions = result.phaseProgram?.executions || [];
+    let executions = result.phaseProgram?.executions || [];
     const timeline = result.timeline || state.timeline || [];
-    const phaseCards = executions.map((execution, index) => {
-      const activity = timeline.filter((item) => item.phase === execution.phaseId);
-      const counts = activity.reduce((acc, item) => { acc[item.kind] = (acc[item.kind] || 0) + 1; return acc; }, {});
-      const fileCount = (counts.fileChange || 0) + (counts.file_change || 0);
-      const actionCount = (counts.command || 0) + (counts.tool || 0) + (counts.toolCall || 0) + (counts.mcp || 0);
-      const checkCount = (counts.verification || 0) + (counts.test || 0);
-      const summary = [fileCount && `Files changed · ${fileCount}`, actionCount && `Tools used · ${actionCount}`, checkCount && `Checks · ${checkCount}`].filter(Boolean);
-      if (execution.kind === "command") summary.unshift(`Exit code · ${execution.observedExitCode ?? "not observed"}`);
-      const chips = summary.map((item) => `<span>${escapeHtml(item)}</span>`).join("") || "<span>Codex activity recorded</span>";
-      const intervention = execution.kind === "checkpoint" ? `<div class="human-intervention"><small>YOUR DECISION</small><b>${escapeHtml(execution.decision === "accept" || execution.decision === "acceptForSession" ? "Continued" : "Stopped")}</b>${execution.feedback ? `<p>${escapeHtml(execution.feedback)}</p>` : "<p>No additional direction was added.</p>"}</div>` : "";
-      const exactState = execution.status === "pass" ? "passed" : execution.status === "stopped" ? "stopped" : "failed";
-      const exactLabel = execution.status === "pass" ? "Passed" : execution.status === "stopped" ? "Stopped" : "Failed";
-      const exactCheck = execution.kind === "command" ? `<div class="exact-check ${exactState}"><small>${escapeHtml(phaseKindLabel(execution).toUpperCase())}</small><b>${exactLabel}</b><code>${escapeHtml(execution.command || "Command unavailable")}</code><p>${escapeHtml(execution.evidence || execution.summary || "No evidence recorded.")}</p></div>` : "";
-      const title = execution.name || (execution.kind === "checkpoint" ? "Your checkpoint" : execution.kind === "verify" ? "Check the result" : "Codex worked on the goal");
-      return `<article class="receipt-phase"><header><div><small>${escapeHtml(phaseKindLabel(execution))}</small><b>${escapeHtml(title)}</b></div><small>${escapeHtml(friendlyStatus(execution.status || "observed"))}</small></header>${intervention}${exactCheck}<div class="activity-chips">${chips}</div></article>`;
-    }).join("");
+    let graph = result.phaseProgram?.graph || null;
+    if (!executions.length) {
+      executions = [{ phaseId: "native-codex-run", name: "Codex run", kind: "native", status: result.finalResponse ? "pass" : "fail", io: { input: result.workflow?.task || "Task unavailable", context: { overallTask: result.workflow?.task }, output: result.finalResponse || state.error || "No final response." } }];
+      graph = { phases: [{ id: "native-codex-run", name: "Codex run", kind: "native" }], edges: [] };
+    }
+    const phaseById = new Map((graph?.phases || []).map((phase) => [phase.id, phase]));
+    const phaseCards = executions.map((execution, index) => runNodeDetail(execution, phaseById.get(execution.phaseId), index, timeline, result, state)).join("");
     const title = result.workflow?.name || (executions.length ? "Guided workflow" : "Direct Codex run");
     const task = result.workflow?.task || "What you asked Codex to do, where you intervened, and what came back.";
-    detail.innerHTML = `<header class="receipt-head"><div><p class="kicker">${escapeHtml(friendlyStatus(result.completionStatus || state.status).toUpperCase())}</p><h2>${escapeHtml(title)}</h2><p>${escapeHtml(task)}</p></div></header>${phaseCards || "<article class=\"receipt-phase\"><header><div><small>CODEX WORKED ADAPTIVELY</small><b>One direct run</b></div><small>Observed</small></header><p>Codex chose its own internal sequence of reasoning and tools.</p></article>"}<section class="result-card"><small>FINAL RESULT</small><pre class="receipt-output">${escapeHtml(result.finalResponse || state.error || "No final response.")}</pre></section><details class="technical-receipt"><summary>Technical record</summary><p>Machine-readable identifiers remain in the local receipt for reproducibility. They are intentionally hidden from the normal workflow.</p></details>`;
+    detail.innerHTML = `<header class="receipt-head"><div><p class="kicker">${escapeHtml(friendlyStatus(result.completionStatus || state.status).toUpperCase())}</p><h2>${escapeHtml(title)}</h2><p>${escapeHtml(task)}</p></div></header>${runCanvasMarkup(graph, executions)}<section class="run-node-list" aria-label="Inspectable workflow nodes">${phaseCards}</section><details class="result-card"><summary>Final result</summary><pre class="receipt-output">${escapeHtml(result.finalResponse || state.error || "No final response.")}</pre></details>`;
+    bindRunReplay(detail);
   } catch (error) { detail.innerHTML = `<p>Could not load receipt: ${escapeHtml(error.message)}</p>`; }
 }
 
@@ -904,7 +1120,7 @@ async function loadFieldTrials() {
       const kinds = trial.phaseKinds || [];
       const command = (trial.externalCommand || []).join(" ");
       const checkpoint = (trial.checkpoints || [])[0];
-      return `<article class="trial-card"><header><div><p class="kicker">${escapeHtml(trial.workflowLabel)}</p><h2>${escapeHtml(trial.taskFamily)}</h2></div><span class="verdict">${escapeHtml(friendlyStatus(trial.status))}</span></header><div class="repo-route"><div><small>CREATED IN</small><b><a href="${escapeHtml(trial.sourceRepository || "#")}" target="_blank" rel="noreferrer">${escapeHtml(trial.sourceRepo)}</a></b></div><span>→</span><div><small>REUSED IN</small><b><a href="${escapeHtml(trial.targetRepository || "#")}" target="_blank" rel="noreferrer">${escapeHtml(trial.targetRepo)}</a></b></div></div><ol class="trial-program">${names.map((name, index) => `<li><small>${escapeHtml(stepKind(kinds[index]))}</small><b>${escapeHtml(name)}</b></li>`).join("")}</ol><p class="adaptation-proof"><b>What changed:</b> ${trial.changedGoals || 0} goal descriptions were rewritten for the new task. The step order and safety bounds stayed the same.</p><dl><dt>human checkpoint</dt><dd>${escapeHtml(checkpoint ? friendlyStatus(checkpoint.decision) : "Not needed")}</dd><dt>created</dt><dd>${escapeHtml((trial.changedFiles || []).join(", ") || "No file artifact")}</dd><dt>repository check</dt><dd>${trial.upstreamChecks === "passed" ? "Passed" : escapeHtml(friendlyStatus(trial.upstreamChecks))}${trial.externalElapsedSeconds == null ? "" : ` · ${trial.externalElapsedSeconds}s`}</dd><dt>result</dt><dd>${escapeHtml(trial.verification || "Not recorded")}</dd></dl><details class="technical-receipt"><summary>Reproduction command</summary><code>${escapeHtml(command)}</code></details></article>`;
+      return `<article class="trial-card"><header><div><p class="kicker">${escapeHtml(trial.workflowLabel)}</p><h2>${escapeHtml(trial.taskFamily)}</h2></div><span class="verdict">${escapeHtml(friendlyStatus(trial.status))}</span></header><div class="repo-route"><div><small>CREATED IN</small><b><a href="${escapeHtml(trial.sourceRepository || "#")}" target="_blank" rel="noreferrer">${escapeHtml(trial.sourceRepo)}</a></b></div><span>→</span><div><small>REUSED IN</small><b><a href="${escapeHtml(trial.targetRepository || "#")}" target="_blank" rel="noreferrer">${escapeHtml(trial.targetRepo)}</a></b></div></div><ol class="trial-program">${names.map((name, index) => `<li><small>${escapeHtml(stepKind(kinds[index]))}</small><b>${escapeHtml(name)}</b></li>`).join("")}</ol><p class="adaptation-proof"><b>What changed:</b> ${trial.changedGoals || 0} goal descriptions were rewritten for the new task. The step order and safety bounds stayed the same.</p><dl><dt>calibration point</dt><dd>${escapeHtml(checkpoint ? friendlyStatus(checkpoint.decision) : "Not needed")}</dd><dt>created</dt><dd>${escapeHtml((trial.changedFiles || []).join(", ") || "No file artifact")}</dd><dt>repository check</dt><dd>${trial.upstreamChecks === "passed" ? "Passed" : escapeHtml(friendlyStatus(trial.upstreamChecks))}${trial.externalElapsedSeconds == null ? "" : ` · ${trial.externalElapsedSeconds}s`}</dd><dt>result</dt><dd>${escapeHtml(trial.verification || "Not recorded")}</dd></dl><details class="technical-receipt"><summary>Reproduction command</summary><code>${escapeHtml(command)}</code></details></article>`;
     }).join("");
     const incidents = evidence.incidents || [];
     const incidentText = incidents.length ? `<p>A setup incident was retained separately and excluded from these accepted results.</p>` : "";
@@ -933,7 +1149,7 @@ function platformArm(arm, label) {
   const checkpoint = (arm.checkpointDecisions || [])[0];
   const root = arm.publicArtifactRoot || "";
   const links = files.map((file) => `<a href="https://github.com/MustafaAH10/WeaveCodex/blob/main/experiments/platform-workflow-trials/results-v2/${escapeHtml(root)}/${escapeHtml(file)}" target="_blank" rel="noreferrer">${escapeHtml(file)}</a>`).join(" · ");
-  return `<article class="platform-arm ${checkpoint ? "weave-arm" : ""}"><header><span>${label}</span><b>${arm.artifactPassed ? "Result accepted" : "Result rejected"}</b></header><p>${escapeHtml(cleanTrialExcerpt(arm.finalResponseExcerpt))}</p><footer>${checkpoint ? `<span>Your checkpoint · ${escapeHtml(friendlyStatus(checkpoint.decision))}</span>` : "<span>Codex chose the route</span>"}<span>${links || "No public artifact"}</span></footer></article>`;
+  return `<article class="platform-arm ${checkpoint ? "weave-arm" : ""}"><header><span>${label}</span><b>${arm.artifactPassed ? "Result accepted" : "Result rejected"}</b></header><p>${escapeHtml(cleanTrialExcerpt(arm.finalResponseExcerpt))}</p><footer>${checkpoint ? `<span>Calibration · ${escapeHtml(friendlyStatus(checkpoint.decision))}</span>` : "<span>Codex chose the route</span>"}<span>${links || "No public artifact"}</span></footer></article>`;
 }
 
 async function loadPlatformTrials() {
@@ -941,7 +1157,7 @@ async function loadPlatformTrials() {
   try {
     const evidence = await request("/api/platform-trials");
     const totals = evidence.totals || {};
-    $("#platform-trials-summary").innerHTML = `<article><b>${totals.arms || 0}</b><small>runs completed</small></article><article><b>${totals.artifactsAccepted || 0}</b><small>results accepted</small></article><article><b>${totals.weaveCheckpointsAccepted || 0}</b><small>human gates exercised</small></article>`;
+    $("#platform-trials-summary").innerHTML = `<article><b>${totals.arms || 0}</b><small>runs completed</small></article><article><b>${totals.artifactsAccepted || 0}</b><small>results accepted</small></article><article><b>${totals.weaveCheckpointsAccepted || 0}</b><small>calibrations recorded</small></article>`;
     grid.innerHTML = (evidence.results || []).map((trial) => `<section class="platform-pair"><header><p class="kicker">SAME TASK · DIFFERENT CONTROL</p><h3>${escapeHtml(trialLabels[trial.trialId] || trial.trialId)}</h3></header><div>${platformArm(trial.ordinaryCodex || {}, "CODEX DIRECT")}${platformArm(trial.weaveCodex || {}, "WITH YOUR WORKFLOW")}</div></section>`).join("");
     $("#platform-trials-limits").innerHTML = `<b>What this shows</b><p>Both control styles produced accepted artifacts in one run per task. The difference was coordination: Weave exposed a visible decision before production. This does not show that Weave makes Codex smarter or more efficient.</p><p><a href="https://github.com/MustafaAH10/WeaveCodex/blob/main/experiments/platform-workflow-trials/results-v2/RESULTS.md" target="_blank" rel="noreferrer">Read the test method →</a></p>`;
   } catch (error) {
@@ -967,55 +1183,6 @@ async function loadPhaseTemplates() {
     select.innerHTML = '<option value="blank">Blank canvas</option><option value="fine-grained-fix">Fix one bug precisely</option>';
     $("#design-status").textContent = `Example catalog unavailable: ${error.message}`;
   }
-}
-
-function setCanvasZoom(value) {
-  const nextZoom = Math.max(.42, Math.min(1.35, Number(value.toFixed(2))));
-  const viewport = $("#canvas-viewport");
-  const center = { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
-  const ratio = nextZoom / canvasZoom;
-  canvasPan = {
-    x: center.x - ((center.x - canvasPan.x) * ratio),
-    y: center.y - ((center.y - canvasPan.y) * ratio),
-  };
-  canvasZoom = nextZoom;
-  applyCanvasTransform();
-}
-
-function arrangeCanvas() {
-  const program = ensureDesignProgram();
-  const incoming = new Map(program.phases.map((phase) => [phase.id, 0]));
-  const outgoing = new Map(program.phases.map((phase) => [phase.id, []]));
-  for (const edge of program.edges) {
-    if (!incoming.has(edge.to) || !outgoing.has(edge.from)) continue;
-    incoming.set(edge.to, incoming.get(edge.to) + 1);
-    outgoing.get(edge.from).push(edge.to);
-  }
-  const depth = new Map();
-  const ready = program.phases.filter((phase) => incoming.get(phase.id) === 0).map((phase) => phase.id);
-  for (const id of ready) depth.set(id, 0);
-  while (ready.length) {
-    const id = ready.shift();
-    for (const target of outgoing.get(id)) {
-      depth.set(target, Math.max(depth.get(target) || 0, (depth.get(id) || 0) + 1));
-      incoming.set(target, incoming.get(target) - 1);
-      if (incoming.get(target) === 0) ready.push(target);
-    }
-  }
-  const layers = new Map();
-  program.phases.forEach((phase, index) => {
-    const column = depth.get(phase.id) ?? index;
-    if (!layers.has(column)) layers.set(column, []);
-    layers.get(column).push(phase);
-  });
-  for (const [column, phases] of layers) {
-    const spacing = Math.min(330, 820 / Math.max(1, phases.length));
-    const start = Math.max(70, 520 - ((phases.length - 1) * spacing / 2));
-    phases.forEach((phase, row) => { phase.position = { x: 80 + (column * 320), y: Math.round((start + row * spacing) / 20) * 20 }; });
-  }
-  adaptationMethod ||= "manual";
-  renderPhaseEditor();
-  window.setTimeout(fitCanvas, 0);
 }
 
 function fitCanvas() {
@@ -1063,7 +1230,7 @@ async function toggleCanvasFullscreen() {
 function updateFullscreenControl(active) {
   const button = $("#canvas-fullscreen");
   button.setAttribute("aria-label", active ? "Exit full screen" : "Enter full screen");
-  $(".control-label", button).textContent = active ? "Exit" : "Full screen";
+  button.setAttribute("title", active ? "Exit full screen" : "Full screen canvas");
 }
 
 function loadGraphTemplate(kind) {
@@ -1075,11 +1242,11 @@ function loadGraphTemplate(kind) {
   const template = phaseTemplateCatalog.get(kind);
   $("#design-save-name").value = template?.name || (kind === "blank" ? "Untitled workflow" : "Custom workflow");
   const goals = {
-    "frontend-launch": "Redesign and implement the primary frontend experience in this repository, then show me the result before the final release checks.",
-    "data-analysis": "Analyze the available business data, let me review the assumptions, and produce a decision brief with traceable numbers.",
+    "frontend-launch": "Repair the checkout journey using the available funnel notes and design system. Let me choose the route before implementation, then prove accessibility and the final flow.",
+    "data-analysis": "Explain the material actual-versus-budget variances in the attached quarterly workbook and produce a reconciled one-page CFO brief.",
     "full-stack-product": "Build a complete web product in this repository, including backend, authentication, frontend, and an integrated quality pass.",
-    "research-brief": "Research the decision using primary sources, let me choose the supported argument, and produce a defensible cited brief.",
-    "creative-poster": "Create a distinctive artistic poster, let me choose the visual direction, then critique and refine the final artwork.",
+    "research-brief": "Choose a CRM for a 50-person sales team using current primary evidence, explicit non-negotiable requirements, and a defensible migration-aware shortlist.",
+    "creative-poster": "Create a launch poster from the attached campaign brief using my selected image integration. Show three directions, let me lock one, then audit the final artwork.",
   };
   if (goals[kind] && !$("#task-input").value.trim()) $("#task-input").value = goals[kind];
   renderPhaseEditor();
@@ -1092,7 +1259,7 @@ async function init() {
     $("#workspace-input").value = securitySession.workspaceRoot || "";
   } catch (_) { securitySession = null; }
   await loadPhaseTemplates();
-  const initialTemplate = phaseTemplateCatalog.has("full-stack-product") ? "full-stack-product" : "review";
+  const initialTemplate = phaseTemplateCatalog.has("data-analysis") ? "data-analysis" : "review";
   designProgram = graphTemplate(initialTemplate);
   if ($("#example-workflow-select")) $("#example-workflow-select").value = phaseTemplateCatalog.has(initialTemplate) ? initialTemplate : "blank";
   $("#design-save-name").value = phaseTemplateCatalog.get(initialTemplate)?.name || "My workflow";
@@ -1105,6 +1272,8 @@ async function init() {
   $$(".mode").forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
   $$("[data-prompt]").forEach((button) => button.addEventListener("click", () => { $("#task-input").value = button.dataset.prompt; $("#task-input").focus(); }));
   $("#voice-input").addEventListener("click", toggleVoiceInput);
+  $("#attach-files").addEventListener("click", () => $("#file-input").click());
+  $("#file-input").addEventListener("change", (event) => void uploadSelectedFiles(event.target.files));
   $("#sandbox-select").addEventListener("change", updateSettingsSummary);
   $("#approval-select").addEventListener("change", updateSettingsSummary);
   $("#run-task").addEventListener("click", startRun);
@@ -1113,18 +1282,28 @@ async function init() {
   $("#cancel-active-run").addEventListener("click", stopActiveRun);
   $("#save-workflow").addEventListener("click", saveWorkflow);
   $("#refresh-workflows").addEventListener("click", loadWorkflows);
+  $("#canvas-add-node").addEventListener("click", (event) => {
+    event.stopPropagation();
+    const menu = $("#canvas-node-menu");
+    menu.hidden = !menu.hidden;
+    $("#canvas-add-node").setAttribute("aria-expanded", String(!menu.hidden));
+  });
   $$("[data-add-phase]").forEach((button) => button.addEventListener("click", () => addPhase(button.dataset.addPhase, button.dataset.stepOption)));
+  $("#canvas-add-arrow").addEventListener("click", () => setArrowTool(!arrowTool));
+  document.addEventListener("click", (event) => {
+    if (event.target.closest(".node-menu-shell")) return;
+    $("#canvas-node-menu").hidden = true;
+    $("#canvas-add-node").setAttribute("aria-expanded", "false");
+  });
   $$("[data-graph-template]").forEach((button) => button.addEventListener("click", () => loadGraphTemplate(button.dataset.graphTemplate)));
   $("#load-example-workflow").addEventListener("click", () => loadGraphTemplate($("#example-workflow-select").value));
-  $("#canvas-arrange").addEventListener("click", arrangeCanvas);
   $("#canvas-fit").addEventListener("click", fitCanvas);
-  $("#canvas-zoom-out").addEventListener("click", () => setCanvasZoom(canvasZoom - .1));
-  $("#canvas-zoom-in").addEventListener("click", () => setCanvasZoom(canvasZoom + .1));
   $("#canvas-fullscreen").addEventListener("click", toggleCanvasFullscreen);
   $("#canvas-viewport").addEventListener("pointerdown", beginCanvasPan);
   $("#canvas-viewport").addEventListener("pointermove", moveCanvasPan);
   $("#canvas-viewport").addEventListener("pointerup", endCanvasPan);
   $("#canvas-viewport").addEventListener("pointercancel", endCanvasPan);
+  $("#canvas-viewport").addEventListener("wheel", handleCanvasWheel, { passive: false });
   document.addEventListener("fullscreenchange", () => {
     const active = document.fullscreenElement === $("#workflow-canvas");
     updateFullscreenControl(active);
@@ -1138,6 +1317,11 @@ async function init() {
     renderPhaseEditor();
   });
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && arrowTool) {
+      setArrowTool(false);
+      canvasNotice = "";
+      renderPhaseEditor();
+    }
     if (event.key === "Escape" && $("#workflow-canvas").classList.contains("canvas-expanded")) {
       $("#workflow-canvas").classList.remove("canvas-expanded");
       document.body.classList.remove("canvas-modal-open");

@@ -24,6 +24,7 @@ from .manifest import HarnessManifest, compile_manifest
 from .phase_program import PhaseProgram, compile_phase_program, phase_templates
 from .runtime import HarnessRunner, RunSession
 from .trace_projection import project_thread
+from .uploads import store_local_uploads
 from .workflow_adaptation import WorkflowAdaptationService, WorkflowAdaptRequest
 from .workflow_store import WorkflowCreate, WorkflowStore
 
@@ -140,6 +141,7 @@ class ControlPlane:
         self.runner = HarnessRunner(codex_bin)
         self.auth = NativeAuthService(codex_bin)
         self.data_root = data_root
+        self.upload_root = (data_root / "uploads").resolve()
         self.workflows = WorkflowStore(data_root / "workflows")
         self.workflow_adapter = WorkflowAdaptationService(codex_bin)
         current = Path.cwd().resolve()
@@ -214,6 +216,21 @@ class ControlPlane:
             return json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return None
+
+    def delete_run(self, run_id: str) -> bool:
+        if re.fullmatch(r"[0-9a-f-]{36}", run_id) is None:
+            return False
+        session = self.sessions.get(run_id)
+        if session and session.status in {"queued", "running", "waitingForApproval"}:
+            raise ValueError("stop the active run before deleting it")
+        path = self.data_root / f"{run_id}.json"
+        if not path.is_file():
+            return False
+        trash = self.data_root / ".trash"
+        trash.mkdir(parents=True, exist_ok=True)
+        path.replace(trash / f"{run_id}-{secrets.token_hex(4)}.json")
+        self.sessions.pop(run_id, None)
+        return True
 
     def product_examples(self) -> list[dict[str, Any]]:
         root = Path(__file__).parents[1] / "examples"
@@ -394,6 +411,12 @@ class Handler(BaseHTTPRequestHandler):
                     list_workspace_paths(cwd, query=query, limit=limit),
                 )
                 return
+            if self.path == "/api/workspace/uploads":
+                self._json(
+                    HTTPStatus.CREATED,
+                    store_local_uploads(self.server.app.upload_root, payload),
+                )
+                return
             if self.path == "/api/compile":
                 manifest = HarnessManifest.model_validate(payload)
                 self._json(HTTPStatus.OK, compile_manifest(manifest))
@@ -459,6 +482,29 @@ class Handler(BaseHTTPRequestHandler):
             details = exc.errors() if isinstance(exc, ValidationError) else str(exc)
             self._json(HTTPStatus.BAD_REQUEST, {"error": details})
 
+    def do_DELETE(self) -> None:  # noqa: N802
+        try:
+            self._require_local_json()
+            if self.path.startswith("/api/workflows/"):
+                workflow_id = self.path.removeprefix("/api/workflows/")
+                deleted = self.server.app.workflows.delete(workflow_id)
+                self._json(
+                    HTTPStatus.OK if deleted else HTTPStatus.NOT_FOUND,
+                    {"deleted": deleted},
+                )
+                return
+            if self.path.startswith("/api/runs/"):
+                run_id = self.path.removeprefix("/api/runs/")
+                deleted = self.server.app.delete_run(run_id)
+                self._json(
+                    HTTPStatus.OK if deleted else HTTPStatus.NOT_FOUND,
+                    {"deleted": deleted},
+                )
+                return
+            self._json(HTTPStatus.NOT_FOUND, {"error": "route not found"})
+        except ValueError as exc:
+            self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+
     def _local_request(self) -> bool:
         host = self.headers.get("Host", "")
         hostname = host.rsplit(":", 1)[0].strip("[]").lower()
@@ -483,6 +529,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"))
+        if length < 0 or length > 18 * 1024 * 1024:
+            raise ValueError("request body exceeds the 18 MB local limit")
         value = json.loads(self.rfile.read(length) or b"{}")
         if not isinstance(value, dict):
             raise ValueError("request body must be a JSON object")

@@ -1,0 +1,5 @@
+account_id,days_to_renewal,health_score,open_severity_one,expansion_signal
+ACC-101,18,42,no,no
+ACC-102,45,88,no,yes
+ACC-103,12,76,yes,yes
+ACC-104,90,55,no,no

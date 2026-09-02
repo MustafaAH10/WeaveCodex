@@ -143,3 +143,18 @@ def test_derived_workflow_binds_parent_without_mutating_it(tmp_path: Path) -> No
     assert child.parent_program_hash == parent.program_hash
     assert child.program_hash != parent.program_hash
     assert (store.root / f"{parent.workflow_id}.json").read_bytes() == parent_bytes
+
+
+def test_delete_removes_workflow_from_library_and_keeps_recovery_copy(tmp_path: Path) -> None:
+    store = WorkflowStore(tmp_path / "workflows")
+    saved = store.save(
+        WorkflowCreate.model_validate(
+            {"name": "Temporary workflow", "phaseProgram": reusable_program()}
+        )
+    )
+
+    assert store.delete(saved.workflow_id) is True
+    assert store.get(saved.workflow_id) is None
+    assert store.list() == []
+    assert len(list((store.root / ".trash").glob(f"{saved.workflow_id}-*.json"))) == 1
+    assert store.delete(saved.workflow_id) is False

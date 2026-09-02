@@ -115,10 +115,10 @@ def test_templates_are_valid_and_explain_the_codex_loop_boundary() -> None:
     assert {item["audience"] for item in values} == {
         "Engineering",
         "Design + frontend",
-        "Data analysis",
+        "Financial analysis",
         "Product engineering",
-        "Research + strategy",
-        "Creative work",
+        "Operations + strategy",
+        "Creative direction",
     }
     example_programs = [PhaseProgram.model_validate(item["program"]) for item in values]
     assert all(program.edges for program in example_programs)
@@ -362,6 +362,15 @@ def test_phase_program_executes_controller_turns_and_real_human_checkpoint() -> 
         "Implement and test",
         "Verify the result",
     ]
+    assert session.result["phaseProgram"]["graph"] == program().model_dump(
+        by_alias=True, mode="json"
+    )
+    inspect_io = session.result["phaseProgram"]["executions"][0]["io"]
+    assert inspect_io["input"] == "Read relevant files and form an evidence-backed plan."
+    assert inspect_io["context"]["overallTask"] == "Redesign the frontend and verify it."
+    assert inspect_io["output"] == "inspection and plan"
+    checkpoint_io = session.result["phaseProgram"]["executions"][1]["io"]
+    assert checkpoint_io["output"] == "Use direction B and reduce visual noise."
     assert session.result["observed"]["modelCompletions"] == 3
     assert session.result["observed"]["completedItemsByType"] == {"commandExecution": 3}
     assert session.result["traceProjection"]["projectionBasis"] == (
@@ -410,6 +419,7 @@ class CommandPhaseGatewayFake(PhaseGatewayFake):
                                 {"type": "unknown", "command": self.observed_command}
                             ],
                             "exitCode": self.exit_code,
+                            "aggregatedOutput": "3 focused tests passed\n",
                             "status": "completed" if self.exit_code == 0 else "failed",
                         }
                     },
@@ -477,16 +487,12 @@ def test_interrupted_work_phase_stops_without_claiming_completion() -> None:
     assert session.status == "stopped"
     assert session.result is not None
     assert session.result["completionStatus"] == "stopped"
-    assert session.result["phaseProgram"]["executions"] == [
-        {
-            "phaseId": "inspect",
-            "name": "Inspect the workspace",
-            "kind": "work",
-            "turnIds": ["turn-interrupted"],
-            "scope": "adaptive",
-            "status": "stopped",
-        }
-    ]
+    execution = session.result["phaseProgram"]["executions"][0]
+    assert execution["phaseId"] == "inspect"
+    assert execution["turnIds"] == ["turn-interrupted"]
+    assert execution["status"] == "stopped"
+    assert execution["io"]["input"] == "Read relevant files and form an evidence-backed plan."
+    assert execution["io"]["output"] == ""
 
 
 def test_exact_command_pass_requires_matching_observed_app_server_item() -> None:
@@ -500,6 +506,8 @@ def test_exact_command_pass_requires_matching_observed_app_server_item() -> None
     command = session.result["phaseProgram"]["executions"][1]
     assert command["status"] == "pass"
     assert command["observedExitCode"] == 0
+    assert command["observedOutput"] == "3 focused tests passed\n"
+    assert command["io"]["output"] == "3 focused tests passed\n"
     assert command["matchingCommandItems"] == 1
     assert "beyond the effects of the declared command" in fake.prompts[1]
     assert session.result["completionStatus"] == "completed"

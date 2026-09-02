@@ -43,3 +43,30 @@ test("built-in graphs are cloned and receive stable unique IDs", () => {
   assert.notEqual(second.phases[0].name, "changed");
   assert.equal(model.uniquePhaseId("Inspect", second), "inspect-2");
 });
+
+test("lays out a branching run receipt as a bounded result canvas", () => {
+  const graph = {
+    phases: [
+      { id: "start", kind: "work", name: "Start" },
+      { id: "left", kind: "work", name: "Left" },
+      { id: "right", kind: "checkpoint", name: "Right" },
+      { id: "finish", kind: "verify", name: "Finish" },
+    ],
+    edges: [
+      { from: "start", to: "left" },
+      { from: "start", to: "right" },
+      { from: "left", to: "finish" },
+      { from: "right", to: "finish" },
+    ],
+  };
+  const layout = model.layoutRunGraph(graph, [
+    { phaseId: "start", status: "pass" },
+    { phaseId: "right", status: "pass", decision: "accept" },
+  ]);
+  assert.equal(layout.nodes.length, 4);
+  assert.equal(layout.edges.length, 4);
+  assert.equal(layout.nodes.find((node) => node.id === "right").execution.decision, "accept");
+  assert.ok(layout.nodes.every((node) => node.x >= 0 && node.x + node.width <= layout.width));
+  assert.ok(layout.nodes.every((node) => node.y >= 0 && node.y + node.height <= layout.height));
+  assert.equal(layout.nodes.find((node) => node.id === "left").x, layout.nodes.find((node) => node.id === "right").x);
+});

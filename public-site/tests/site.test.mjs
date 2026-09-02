@@ -8,21 +8,26 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const html = await readFile(path.join(root, "index.html"), "utf8");
 const css = await readFile(path.join(root, "site.css"), "utf8");
 const script = await readFile(path.join(root, "site.js"), "utf8");
+const workflowSource = await readFile(path.join(root, "workflows.js"), "utf8");
+const comparisonSource = await readFile(path.join(root, "comparisons.js"), "utf8");
 await import(pathToFileURL(path.join(root, "workflows.js")));
+await import(pathToFileURL(path.join(root, "comparisons.js")));
 const workflows = globalThis.WEAVE_WORKFLOWS;
+const comparisons = globalThis.WEAVE_COMPARISONS;
 
 test("the public website is standalone and never opens the local app", () => {
-  assert.match(html, /href="site\.css"/);
-  assert.match(html, /src="workflows\.js"/);
-  assert.match(html, /src="site\.js"/);
+  assert.match(html, /href="site\.css(?:\?[^\"]*)?"/);
+  assert.match(html, /src="workflows\.js(?:\?[^\"]*)?"/);
+  assert.match(html, /src="comparisons\.js(?:\?[^\"]*)?"/);
+  assert.match(html, /src="site\.js(?:\?[^\"]*)?"/);
   assert.doesNotMatch(html, /<(?:script|link)[^>]+https?:\/\//);
   assert.doesNotMatch(css, /@import|url\(["']?https?:\/\//);
   assert.doesNotMatch(script, /fetch\(|XMLHttpRequest|\/api\//);
   assert.doesNotMatch(html, /Open local app|href="http:\/\/127\.0\.0\.1:8790/);
 });
 
-test("all three examples are non-linear executable DAGs", () => {
-  assert.deepEqual(Object.keys(workflows), ["finance", "frontend", "incident"]);
+test("all four examples are non-linear executable DAGs", () => {
+  assert.deepEqual(Object.keys(workflows), ["finance", "campaign", "crm", "frontend"]);
   for (const [key, workflow] of Object.entries(workflows)) {
     assert.ok(workflow.nodes.length >= 9 && workflow.nodes.length <= 10, `${key} has a useful number of steps`);
     const ids = new Set(workflow.nodes.map((node) => node.id));
@@ -69,7 +74,7 @@ test("all three examples are non-linear executable DAGs", () => {
 });
 
 test("the graph renderer draws exact edges and supports switching and animation", () => {
-  assert.equal((html.match(/data-workflow-key=/g) ?? []).length, 3);
+  assert.equal((html.match(/data-workflow-key=/g) ?? []).length, 4);
   assert.match(html, /id="workflow-graph" role="img"/);
   assert.match(script, /for \(const \[fromId, toId\] of workflow\.edges\)/);
   assert.match(script, /createElementNS/);
@@ -79,14 +84,37 @@ test("the graph renderer draws exact edges and supports switching and animation"
   assert.match(script, /ArrowRight/);
 });
 
+test("the side by side demo uses three concrete tested workflow scenarios", () => {
+  assert.deepEqual(Object.keys(comparisons), ["forecast", "poster", "operations"]);
+  assert.equal((html.match(/data-comparison-key=/g) ?? []).length, 3);
+  for (const comparison of Object.values(comparisons)) {
+    assert.equal(comparison.codex.length, 4);
+    assert.equal(comparison.weave.length, 4);
+    assert.equal(comparison.path.length, 4);
+    assert.ok(comparison.weave.some(([kind]) => kind === "calibrate"));
+    assert.ok(comparison.weave.some(([kind]) => kind === "pass"));
+    assert.match(comparison.path[1], /Lock/);
+    assert.match(comparison.result, /Both artifacts passed/);
+  }
+  assert.match(script, /function playComparison\(\)/);
+  assert.match(script, /data-stream-index/);
+  assert.match(script, /comparisonObserver/);
+  assert.match(html, /Observed product acceptance trial/);
+});
+
 test("copy is concise and preserves the product boundary", () => {
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(ids).size, ids.length, "HTML ids must be unique");
-  assert.match(html, /Codex does the work/);
-  assert.match(html, /You design the path/);
+  assert.match(html, /Keep the run on course/);
+  assert.match(html, /Same permissions, different control/);
+  assert.match(html, /Lock the intent, evidence, and recovery path/);
+  assert.match(html, /Your visible contract/);
   assert.match(html, /official local Codex app-server/);
   assert.match(html, /Independent\. Open source\. Built on Codex\./);
   assert.match(html, /class="copy-label" aria-live="polite"/);
+  assert.equal((html.match(/class="copy-button"/g) ?? []).length, 4);
+  assert.match(html, /git clone https:\/\/github\.com\/MustafaAH10\/WeaveCodex\.git/);
   assert.doesNotMatch(`${html}${script}`, /[—–]/);
+  assert.doesNotMatch(`${html}${workflowSource}${comparisonSource}`, /\b(?:approve|approval|operator gate|human gate)\b/i);
   assert.doesNotMatch(html, /complete turn|not a tool call/i);
 });

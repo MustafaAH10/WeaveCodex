@@ -58,6 +58,7 @@ jobs:
           node --check weave_codex/static/canvas-model.js
           node --check weave_codex/static/home.js
           node --check ../public-site/workflows.js
+          node --check ../public-site/comparisons.js
           node --check ../public-site/site.js
 
       - name: Test the canvas model

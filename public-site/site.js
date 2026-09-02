@@ -1,11 +1,15 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 const workflows = globalThis.WEAVE_WORKFLOWS;
+const comparisons = globalThis.WEAVE_COMPARISONS;
 const graph = document.querySelector("#workflow-graph");
 const workflowButtons = [...document.querySelectorAll("[data-workflow-key]")];
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let activeWorkflow = "finance";
 let graphTimers = [];
 let showcaseVisible = false;
+let activeComparison = "forecast";
+let comparisonTimers = [];
+let comparisonVisible = false;
 
 function svgElement(name, attributes = {}) {
   const element = document.createElementNS(SVG_NS, name);
@@ -98,37 +102,63 @@ for (const [index, button] of workflowButtons.entries()) {
   });
 }
 
-const modeCopy = {
-  codex: "Give Codex a goal and let it choose the route.",
-  weave: "Draw the branches, decisions, and evidence gates that matter to you.",
-};
-const modeButtons = [...document.querySelectorAll(".mode-button")];
-const modeDiagram = document.querySelector(".mode-diagram");
-const modeDescription = document.querySelector(".mode-description");
-for (const button of modeButtons) {
-  button.addEventListener("click", () => {
-    const mode = button.dataset.mode;
-    modeDiagram.dataset.currentMode = mode;
-    modeDescription.textContent = modeCopy[mode];
-    for (const candidate of modeButtons) {
-      const selected = candidate === button;
-      candidate.classList.toggle("is-active", selected);
-      candidate.setAttribute("aria-pressed", String(selected));
-    }
-  });
+function streamMarkup(lines) {
+  return lines.map(([kind, text], index) => `<div class="stream-line ${kind}" data-stream-index="${index}"><small>${kind}</small><pre>${String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</pre></div>`).join("");
 }
 
-const copyButton = document.querySelector(".copy-button");
-copyButton?.addEventListener("click", async () => {
+function playComparison() {
+  for (const timer of comparisonTimers) window.clearTimeout(timer);
+  comparisonTimers = [];
+  const lines = [...document.querySelectorAll(".stream-line")];
+  const pathNodes = [...document.querySelectorAll(".contract-node")];
+  lines.forEach((line) => line.classList.remove("active"));
+  pathNodes.forEach((node) => node.classList.remove("active"));
+  if (reduceMotion || !comparisonVisible) {
+    if (reduceMotion) {
+      lines.forEach((line) => line.classList.add("active"));
+      pathNodes.forEach((node) => node.classList.add("active"));
+    }
+    return;
+  }
+  for (let index = 0; index < comparisons[activeComparison].codex.length; index += 1) {
+    comparisonTimers.push(window.setTimeout(() => {
+      document.querySelectorAll(`[data-stream-index="${index}"]`).forEach((line) => line.classList.add("active"));
+      pathNodes[index]?.classList.add("active");
+    }, 180 + index * 620));
+  }
+}
+
+function renderComparison(key, { animate = comparisonVisible } = {}) {
+  const comparison = comparisons[key];
+  activeComparison = key;
+  document.querySelector("#comparison-label").textContent = comparison.label;
+  document.querySelector("#comparison-title").textContent = comparison.title;
+  document.querySelector("#comparison-task").textContent = comparison.task;
+  document.querySelector("#comparison-result").textContent = comparison.result;
+  document.querySelector("#codex-stream").innerHTML = streamMarkup(comparison.codex);
+  document.querySelector("#weave-stream").innerHTML = streamMarkup(comparison.weave);
+  document.querySelector("#contract-path").innerHTML = comparison.path.map((label, index) => `<span class="contract-node ${index === 1 ? "calibrate" : ""}">${label}</span>`).join("");
+  document.querySelectorAll("[data-comparison-key]").forEach((button) => {
+    const selected = button.dataset.comparisonKey === key;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+  if (animate) playComparison();
+}
+
+document.querySelectorAll("[data-comparison-key]").forEach((button) => button.addEventListener("click", () => renderComparison(button.dataset.comparisonKey, { animate: true })));
+document.querySelector("#replay-comparison")?.addEventListener("click", playComparison);
+
+document.querySelectorAll(".copy-button").forEach((copyButton) => copyButton.addEventListener("click", async () => {
   const label = copyButton.querySelector(".copy-label");
   try {
     await navigator.clipboard.writeText(copyButton.dataset.copy);
     label.textContent = "Copied";
   } catch {
-    label.textContent = "Select the commands above";
+    label.textContent = "Select";
   }
-  window.setTimeout(() => { label.textContent = "Copy commands"; }, 1800);
-});
+  window.setTimeout(() => { label.textContent = "Copy"; }, 1800);
+}));
 
 const revealItems = [...document.querySelectorAll(".reveal")];
 if ("IntersectionObserver" in window && !reduceMotion) {
@@ -149,8 +179,18 @@ if ("IntersectionObserver" in window && !reduceMotion) {
     graphObserver.disconnect();
   }, { threshold: 0.4 });
   graphObserver.observe(document.querySelector("#workflow"));
+
+  const comparisonObserver = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    comparisonVisible = true;
+    playComparison();
+    comparisonObserver.disconnect();
+  }, { threshold: 0.35 });
+  comparisonObserver.observe(document.querySelector("#execution-demo"));
 } else {
   showcaseVisible = true;
+  comparisonVisible = true;
 }
 
 renderWorkflow(activeWorkflow, { animate: false });
+renderComparison(activeComparison, { animate: false });

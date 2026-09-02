@@ -1,0 +1,62 @@
+globalThis.WEAVE_COMPARISONS = {
+  forecast: {
+    tab: "Python repair",
+    label: "Tested code repair",
+    title: "Preserve an explicit zero override",
+    task: "Fix the forecast fallback bug and keep the supplied tests unchanged.",
+    path: ["Baseline", "Lock intent", "Repair", "Prove"],
+    codex: [
+      ["read", "Read forecast.py and test_forecast.py"],
+      ["code", "if override in (None, \"\"):\n    growth = baseline_growth"],
+      ["edit", "Preserve 0, reject invalid values with the row ID"],
+      ["pass", "python3 -m unittest -v   3/3 passed"],
+    ],
+    weave: [
+      ["phase", "Capture the failing behavior and smallest valid change"],
+      ["calibrate", "Intent locked: zero is valid; keep tests and API stable"],
+      ["code", "if override in (None, \"\"):\n    growth = baseline_growth"],
+      ["pass", "Verified: 3/3 tests and git diff --check passed"],
+    ],
+    result: "Both artifacts passed. Weave kept the repair inside the agreed behavior and proof contract.",
+  },
+  poster: {
+    tab: "Poster design",
+    label: "Tested creative workflow",
+    title: "Create a Night Bloom event poster",
+    task: "Produce an original accessible SVG poster and design notes from fixed event facts.",
+    path: ["Explore", "Lock brief", "Create", "Critique"],
+    codex: [
+      ["read", "Read event facts and palette"],
+      ["code", "<svg viewBox=\"0 0 1200 1600\">\n  <title>Night Bloom</title>"],
+      ["edit", "Create poster.svg and design-notes.md"],
+      ["pass", "Required facts, palette, and accessibility passed"],
+    ],
+    weave: [
+      ["phase", "Explore hierarchy, typography, and botanical direction"],
+      ["calibrate", "Brief locked: facts, palette, and required fields"],
+      ["code", "<svg viewBox=\"0 0 1200 1600\">\n  <title>Night Bloom</title>"],
+      ["pass", "Critique confirmed facts, inline vectors, and metadata"],
+    ],
+    result: "Both artifacts passed. Weave kept creative freedom inside a visible brief and critique loop.",
+  },
+  operations: {
+    tab: "Safe operations",
+    label: "Tested action drafting",
+    title: "Draft actions without applying them",
+    task: "Read local connector records, propose only eligible actions, and leave source state unchanged.",
+    path: ["Inspect", "Lock policy", "Draft", "Reconcile"],
+    codex: [
+      ["read", "Read orders and accounts through mock_connector.py"],
+      ["code", "{ \"order\": \"ORD-101\",\n  \"action\": \"priority_outreach\" }"],
+      ["edit", "Write two policy-matched draft actions"],
+      ["pass", "No mutation log created"],
+    ],
+    weave: [
+      ["phase", "Map eligible records against policy"],
+      ["calibrate", "Policy locked: draft only, preserve source records"],
+      ["code", "{ \"order\": \"ORD-101\",\n  \"action\": \"priority_outreach\" }"],
+      ["pass", "Audit matched source IDs and confirmed zero mutations"],
+    ],
+    result: "Both artifacts passed. Weave made the policy boundary and reconciliation path visible before the run could drift.",
+  },
+};

@@ -17,6 +17,11 @@ The site has no build step, third-party scripts, remote fonts, or copied brand a
 system, workflow illustrations, and animation are implemented in local HTML, CSS, SVG, and
 JavaScript.
 
+The side-by-side execution examples are concise visualizations of the tracked acceptance trials in
+`experiments/platform-workflow-trials/results-v2/`. Both Codex and WeaveCodex artifacts passed the
+declared graders. The comparison demonstrates visible calibration, drift control, and evidence. It
+does not claim a model-quality or efficiency advantage.
+
 ## Design provenance
 
 The visual direction takes high-level inspiration from [pi.dev](https://pi.dev/): one clear thesis,

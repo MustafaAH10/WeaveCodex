@@ -17,6 +17,7 @@ uv run pytest
 node --check weave_codex/static/canvas-model.js
 node --check weave_codex/static/home.js
 node --check ../public-site/workflows.js
+node --check ../public-site/comparisons.js
 node --check ../public-site/site.js
 node --test tests/canvas-model.test.mjs
 node --test ../public-site/tests/site.test.mjs

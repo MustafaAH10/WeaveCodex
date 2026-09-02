@@ -15,6 +15,7 @@
         <a href="#create" data-view="create">Build</a>
         <a href="#library" data-view="library">Saved</a>
         <a href="#activity" data-view="activity">Runs</a>
+        <a href="#docs" data-view="docs">Docs</a>
       </nav>
       <a class="account-shortcut" href="#library" data-view="library"><span class="live-dot" aria-hidden="true"></span><span id="account-state">Checking Codex...</span></a>
     </header>
@@ -22,16 +23,15 @@
     <main id="main-content">
       <section id="create-view" class="product-view active" aria-labelledby="create-title">
         <section class="build-intro section-shell">
-          <p class="kicker">WORKFLOW BUILDER</p>
-          <h1 id="create-title">Design a Codex workflow.</h1>
-          <p>Add steps, connect them, run.</p>
+          <h1 id="create-title">Build your workflow.</h1>
         </section>
 
         <section id="task-composer" class="task-bar section-shell" aria-labelledby="composer-title">
           <div class="goal-field">
             <label for="task-input"><span>Goal</span><small id="composer-title">What should Codex do?</small></label>
-            <div class="goal-input-shell"><textarea id="task-input" rows="2" placeholder="Build a dashboard, pause for my assumptions, then verify every number."></textarea><button id="voice-input" class="voice-button icon-button-text" type="button" aria-pressed="false"><span class="button-icon" aria-hidden="true">●</span><b>Speak</b></button></div>
-            <p id="voice-status">Voice stays in your browser.</p>
+            <div class="goal-input-shell"><textarea id="task-input" rows="2" placeholder="Build a dashboard, pause for my assumptions, then verify every number."></textarea><div class="goal-tools"><input id="file-input" type="file" multiple hidden aria-hidden="true" tabindex="-1" /><button id="attach-files" class="goal-tool" type="button" title="Attach local files" aria-label="Attach local files"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 12 6.5-6.5a3.5 3.5 0 0 1 5 5L11 20a5 5 0 0 1-7-7l9-9"/></svg></button><button id="voice-input" class="goal-tool" type="button" aria-label="Speak your goal" title="Speak your goal" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"/></svg></button></div></div>
+            <div id="attached-files" class="attached-files" aria-live="polite"></div>
+            <p id="voice-status">Add files or speak. Everything stays on this computer.</p>
           </div>
           <div class="run-panel">
             <div class="mode-picker" role="radiogroup" aria-label="Run style"><button class="mode" data-mode="ordinary" type="button" role="radio" aria-checked="false"><b>Codex directly</b><small>One native adaptive turn</small></button><button class="mode active" data-mode="weave" type="button" role="radio" aria-checked="true"><b>Use this workflow</b><small>Follow the canvas handoffs</small></button></div>
@@ -43,31 +43,33 @@
         <section id="live-run" class="live-run section-shell hidden" aria-labelledby="live-run-title">
           <header><div><p class="kicker">RUNNING</p><h2 id="live-run-title">Codex is starting…</h2></div><div class="live-run-controls"><span id="run-status">Preparing</span><button id="cancel-active-run" class="hidden" type="button">Stop</button></div></header>
           <div id="run-steps" class="run-steps"></div>
-          <section id="approval-card" class="approval-card hidden"><div class="approval-copy"><b id="approval-title">Your decision is needed</b><p id="approval-detail"></p><label id="checkpoint-feedback-wrap" class="hidden">Direction for the next step<textarea id="checkpoint-feedback" maxlength="2000" rows="3" placeholder="Continue with direction B, but make the hierarchy calmer."></textarea></label></div><div class="approval-actions"><button id="stop-run" type="button">Stop</button><button id="continue-run" type="button">Continue</button></div></section>
+          <section id="approval-card" class="approval-card hidden"><div class="approval-copy"><b id="approval-title">Calibrate the next step</b><p id="approval-detail"></p><label id="checkpoint-feedback-wrap" class="hidden">What should stay fixed or change?<textarea id="checkpoint-feedback" maxlength="2000" rows="3" placeholder="Keep direction B, but make the hierarchy calmer."></textarea></label></div><div class="approval-actions"><button id="stop-run" type="button">Stop</button><button id="continue-run" type="button">Apply direction</button></div></section>
           <pre id="run-output" class="run-output hidden"></pre>
           <footer><span id="run-note">A readable record will appear in Runs.</span><a href="#activity" data-view="activity">Open the run →</a></footer>
         </section>
 
         <section id="workflow-canvas" class="canvas-primary" aria-labelledby="phase-designer-title">
           <header class="canvas-topbar">
-            <div><p class="kicker">YOUR WORKFLOW</p><h2 id="phase-designer-title">Canvas</h2><p>Broad goals or precise checks. Your choice.</p></div>
+            <div><p class="kicker">YOUR WORKFLOW</p><h2 id="phase-designer-title">Canvas</h2></div>
             <div class="template-picker"><label for="example-workflow-select">Example workflow</label><div><select id="example-workflow-select"><option value="blank">Blank canvas</option></select><button id="load-example-workflow" type="button">Load</button></div></div>
           </header>
           <div class="canvas-commandbar">
-            <div class="canvas-palette" aria-label="Add a step"><button data-add-phase="work" data-step-option="adaptive" type="button" title="Add Codex step"><span aria-hidden="true">⌁</span> Codex</button><button data-add-phase="checkpoint" type="button" title="Add your decision"><span aria-hidden="true">◇</span> Decision</button><button data-add-phase="command" data-step-option="test" type="button" title="Add pass or fail check"><span aria-hidden="true">✓</span> Check</button><button data-add-phase="verify" type="button" title="Add final review"><span aria-hidden="true">◎</span> Review</button></div>
-            <div class="canvas-view-controls"><button id="canvas-arrange" type="button" title="Arrange nodes"><span aria-hidden="true">⌗</span><span class="control-label">Arrange</span></button><button id="canvas-fit" type="button" title="Fit workflow"><span aria-hidden="true">⊙</span><span class="control-label">Fit</span></button><button id="canvas-zoom-out" type="button" aria-label="Zoom out">−</button><span id="canvas-zoom-label">100%</span><button id="canvas-zoom-in" type="button" aria-label="Zoom in">+</button><button id="canvas-fullscreen" type="button" title="Full screen canvas" aria-label="Enter full screen"><span aria-hidden="true">⛶</span><span class="control-label">Full screen</span></button></div>
-            <div class="canvas-toolbar-actions"><span id="canvas-summary" aria-live="polite">Ready</span><button id="save-design" type="button"><span aria-hidden="true">↓</span> Save</button><button id="use-design" class="primary-button" type="button"><span aria-hidden="true">▶</span> Run</button></div>
+            <div class="canvas-create-tools" aria-label="Canvas tools">
+              <div class="node-menu-shell"><button id="canvas-add-node" class="canvas-icon-button" type="button" title="Add node" aria-label="Add node" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><div id="canvas-node-menu" class="canvas-node-menu" hidden><button data-add-phase="work" data-step-option="adaptive" type="button"><span class="menu-icon work">⌁</span><span><b>Codex step</b><small>A flexible task</small></span></button><button data-add-phase="checkpoint" type="button"><span class="menu-icon checkpoint">◇</span><span><b>Calibration</b><small>Pause and redirect</small></span></button><button data-add-phase="command" data-step-option="test" type="button"><span class="menu-icon command">✓</span><span><b>Exact check</b><small>Run one command</small></span></button><button data-add-phase="verify" type="button"><span class="menu-icon verify">◎</span><span><b>Review</b><small>Check and repair</small></span></button></div></div>
+              <button id="canvas-add-arrow" class="canvas-icon-button" type="button" title="Add arrow" aria-label="Add arrow" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17 17 5m-6 0h6v6"/></svg></button>
+              <span id="canvas-tool-hint">Drag to move · wheel to zoom · drag the background to pan</span>
+            </div>
+            <div class="canvas-view-controls"><button id="canvas-fit" class="canvas-icon-button" type="button" title="Fit workflow" aria-label="Fit workflow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M8 21H3v-5m13 5h5v-5"/></svg></button><button id="canvas-fullscreen" class="canvas-icon-button" type="button" title="Full screen canvas" aria-label="Enter full screen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M8 21H3v-5m13 5h5v-5"/></svg></button></div>
+            <div class="canvas-toolbar-actions"><span id="canvas-summary" aria-live="polite">Ready</span><button id="save-design" class="canvas-icon-button" type="button" title="Save workflow" aria-label="Save workflow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h12l2 2v14H5zM8 4v6h8V4M8 20v-6h8v6"/></svg></button><button id="use-design" class="primary-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 9 6-9 6z"/></svg> Run</button></div>
           </div>
           <div class="canvas-workspace">
             <section class="canvas-stage-shell">
-              <div class="canvas-help" aria-label="Canvas controls"><span title="Drag empty canvas to move"><b aria-hidden="true">✥</b> Pan</span><span title="Drag a card"><b aria-hidden="true">▣</b> Move</span><span title="Drag from the right dot"><b aria-hidden="true">↗</b> Connect</span></div>
               <div class="canvas-viewport" id="canvas-viewport">
                 <div id="phase-editor" class="phase-editor" role="region" aria-label="Executable workflow graph">
                   <svg id="canvas-edges" class="canvas-edges" aria-hidden="true"><defs><marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z"></path></marker></defs></svg>
                   <div id="canvas-nodes" class="canvas-nodes"></div>
                 </div>
               </div>
-          <footer class="canvas-legend"><span><i class="work-dot"></i> Codex</span><span><i class="checkpoint-dot"></i> Decision</span><span><i class="command-dot"></i> Check</span><span><i class="verify-dot"></i> Review</span></footer>
             </section>
             <aside id="phase-inspector" class="phase-inspector" aria-live="polite"><p class="kicker">STEP SETTINGS</p><h2>Select a step</h2><p>Choose how much this step owns and tell Codex what done means.</p></aside>
           </div>
@@ -90,6 +92,13 @@
         <header class="view-intro section-shell"><div><p class="kicker">RUNS</p><h1 id="activity-title">What happened.</h1></div><p>Steps, decisions, checks, result.</p></header>
         <div class="runs-shell section-shell"><aside><header><h2>Recent runs</h2><button id="refresh-runs" type="button">Refresh</button></header><div id="runs-list"><p>Loading…</p></div></aside><section id="run-detail" class="run-detail"><div class="empty-run"><b>Choose a run</b><p>Its workflow and evidence will appear here.</p></div></section></div>
         <details class="evidence-drawer section-shell"><summary><span><b>How we tested this product</b><small>Bounded acceptance checks, not performance claims.</small></span><i>Open</i></summary><section class="trial-section"><header><h2>Codex directly vs a user-authored workflow</h2><p>Same task, different coordination.</p></header><section id="platform-trials-summary" class="trial-summary"><p>Loading…</p></section><div id="platform-trials-grid"></div><aside id="platform-trials-limits"></aside></section><section class="trial-section"><header><h2>Reusable workflows in new repositories</h2><p>The task wording changed; the saved process stayed visible.</p></header><section id="field-trials-summary" class="trial-summary"><p>Loading…</p></section><div id="field-trials-grid"></div><aside id="field-trials-limits"></aside></section></details>
+      </section>
+
+      <section id="docs-view" class="product-view" hidden aria-labelledby="docs-title">
+        <header class="view-intro section-shell"><div><p class="kicker">DOCS</p><h1 id="docs-title">Weave around Codex.</h1></div><p>Codex still plans, reads, edits, and uses tools. Weave adds a small, human-owned graph that decides when a new turn starts, what it must accomplish, what evidence must pass, and where you can redirect it.</p></header>
+        <section class="docs-architecture section-shell" aria-label="Weave Codex architecture"><article><span>1</span><div><b>Your canvas</b><p>Nodes and arrows become a validated workflow.</p></div></article><i aria-hidden="true">→</i><article><span>2</span><div><b>Weave runtime</b><p>Runs each node in dependency order and records the handoff.</p></div></article><i aria-hidden="true">→</i><article><span>3</span><div><b>Codex app-server</b><p>Uses your ChatGPT sign-in, filesystem, tools, skills, and MCP connections.</p></div></article></section>
+        <section class="docs-grid section-shell"><article><h2>What a node controls</h2><ul><li>The goal for this turn</li><li>Broad or focused scope</li><li>An exact command and expected exit code</li><li>A calibration question or review rule</li></ul></article><article><h2>What stays native to Codex</h2><ul><li>Its internal reasoning and tool loop</li><li>Filesystem reads and edits</li><li>Sandbox and protected-action policy</li><li>Skills, MCP servers, and connected apps</li></ul></article><article><h2>What gets recorded</h2><ul><li>Node order and outcome</li><li>Your calibration feedback</li><li>Observed exact-check status</li><li>Inputs, context, and visible output</li></ul></article></section>
+        <section class="docs-setup section-shell"><header><p class="kicker">SETUP</p><h2>Start locally</h2></header><div class="setup-command-list"><div><span>1</span><code>git clone https://github.com/MustafaAH10/WeaveCodex.git</code><button class="copy-command" data-copy="git clone https://github.com/MustafaAH10/WeaveCodex.git" type="button">Copy</button></div><div><span>2</span><code>npm install -g @openai/codex &amp;&amp; codex login</code><button class="copy-command" data-copy="npm install -g @openai/codex&#10;codex login" type="button">Copy</button></div><div><span>3</span><code>cd WeaveCodex/weave-control-plane &amp;&amp; uv sync</code><button class="copy-command" data-copy="cd WeaveCodex/weave-control-plane &amp;&amp; uv sync" type="button">Copy</button></div><div><span>4</span><code>uv run python -m weave_codex.server --codex-bin "$(command -v codex)" --host 127.0.0.1 --port 8790</code><button class="copy-command" data-copy="uv run python -m weave_codex.server --codex-bin &quot;$(command -v codex)&quot; --host 127.0.0.1 --port 8790" type="button">Copy</button></div></div></section>
       </section>
     </main>
     <footer class="site-footer"><span>Weave for Codex</span><p>Local-first · open source · built on the official Codex app-server</p><a href="https://github.com/MustafaAH10/WeaveCodex">GitHub</a></footer>

@@ -397,12 +397,13 @@ def test_single_product_surface_owns_canvas_saved_workflows_and_runs() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
     html = (static / "index.html").read_text()
 
-    assert html.count('class="product-view') == 3
+    assert html.count('class="product-view') == 4
     assert 'id="workflow-canvas"' in html
     assert 'id="workflow-library"' in html
     assert 'id="runs-list"' in html
     assert 'id="connections-panel"' in html
     assert 'id="setup-panel"' in html
+    assert 'id="docs-view"' in html
     for obsolete in ("studio.html", "platform.html", "deep-dive.html", "compare.html"):
         assert not (static / obsolete).exists()
 
@@ -413,10 +414,12 @@ def test_canvas_is_freeform_executable_fullscreen_and_pannable() -> None:
     javascript = (static / "home.js").read_text()
     stylesheet = (static / "home.css").read_text()
 
-    assert "Design a Codex workflow" in html
+    assert "Build your workflow" in html
     assert 'id="canvas-nodes"' in html
     assert 'id="canvas-edges"' in html
-    assert 'id="canvas-arrange"' in html
+    assert 'id="canvas-add-node"' in html
+    assert 'id="canvas-add-arrow"' in html
+    assert 'id="canvas-arrange"' not in html
     assert 'id="canvas-fit"' in html
     assert 'id="canvas-fullscreen"' in html
     assert 'data-add-phase="work"' in html
@@ -424,19 +427,19 @@ def test_canvas_is_freeform_executable_fullscreen_and_pannable() -> None:
     assert 'data-add-phase="command"' in html
     assert 'data-add-phase="verify"' in html
     assert 'request("/api/phase-templates")' in javascript
-    assert "function arrangeCanvas()" in javascript
     assert "function fitCanvas()" in javascript
     assert "function beginCanvasPan(event)" in javascript
+    assert "function handleCanvasWheel(event)" in javascript
+    assert 'addEventListener("wheel", handleCanvasWheel, { passive: false })' in javascript
     assert "requestFullscreen" in javascript
     assert "beginConnection" in javascript
     assert "wouldCreateCycle" in javascript
     assert "data-phase-connect-add" in javascript
     assert 'role="region" aria-label="Executable workflow graph"' in html
-    assert 'id="save-design" type="button"' in html
-    assert '<span aria-hidden="true">↓</span> Save' in html
+    assert 'id="save-design" class="canvas-icon-button" type="button"' in html
     assert ".canvas-node.command" in stylesheet
     assert ".canvas-node.checkpoint" in stylesheet
-    assert ".canvas-viewport { height: 640px; overflow: hidden" in stylesheet
+    assert ".canvas-viewport { height: 680px; overflow: hidden" in stylesheet
     assert ".canvas-primary:is(:fullscreen, .canvas-expanded)" in stylesheet
     assert 'canvas.classList.add("canvas-expanded")' in javascript
 
@@ -445,8 +448,7 @@ def test_functional_app_prioritizes_the_builder_not_marketing_content() -> None:
     static = Path(__file__).parents[1] / "weave_codex/static"
     html = (static / "index.html").read_text()
 
-    assert "Design a Codex workflow" in html
-    assert "Add steps, connect them, run" in html
+    assert "Build your workflow" in html
     assert 'class="build-guide"' not in html
     assert 'class="animated-architecture"' not in html
     assert "input tokens" not in html.lower()
@@ -464,7 +466,8 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert 'id="create-view"' in html
     assert 'id="library-view"' in html
     assert 'id="activity-view"' in html
-    assert html.count('class="product-view') == 3
+    assert 'id="docs-view"' in html
+    assert html.count('class="product-view') == 4
     assert 'data-view="design"' not in html
     assert 'data-view="runs"' not in html
     assert 'data-view="integrations"' not in html
@@ -475,8 +478,13 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert '<script src="/canvas-model.js"></script>' in html
     assert 'request("/api/compile"' in javascript
     assert 'request("/api/runs"' in javascript
-    assert "Design a Codex workflow" in html
+    assert "Build your workflow" in html
     assert 'id="example-workflow-select"' in html
+    assert 'id="attach-files"' in html
+    assert 'id="file-input"' in html
+    assert 'request("/api/workspace/uploads"' in javascript
+    assert "data-delete-workflow" in javascript
+    assert "data-delete-run" in javascript
     assert 'request("/api/phase-templates")' in javascript
     assert 'data-add-phase="work" data-step-option="adaptive"' in html
     assert 'data-add-phase="command" data-step-option="test"' in html
@@ -487,8 +495,14 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert 'id="cancel-active-run"' in html
     assert '/stop`, { method: "POST"' in javascript
     assert 'id="checkpoint-feedback"' in html
-    assert "YOUR DECISION" in javascript
+    assert "CALIBRATION" in javascript
     assert "execution.feedback" in javascript
+    assert "layoutRunGraph" in javascript
+    assert "RESULT CANVAS" in javascript
+    assert "runCanvasMarkup" in javascript
+    assert "node-io-grid" in javascript
+    assert 'title="Delete step" aria-label="Delete step"' in javascript
+    assert "trashIcon" in javascript
     assert 'request("/api/platform-trials"' in javascript
     assert 'data-view="create"' in html
     assert 'data-view="library"' in html

@@ -50,6 +50,30 @@ class PhaseRunResult:
     completion_status: str = "completed"
 
 
+def _receipt_text(value: object, *, limit: int = 12_000) -> str:
+    """Bound user-visible phase I/O without persisting hidden model internals."""
+
+    text = str(value or "")
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit]}\n\n[truncated after {limit:,} characters]"
+
+
+def _phase_context(
+    manifest: HarnessManifest,
+    *,
+    prior_output: str,
+    human_feedback: str,
+) -> dict[str, object]:
+    return {
+        "overallTask": _receipt_text(manifest.task.instructions),
+        "workspace": str(manifest.cwd),
+        "contextPaths": list(manifest.task.context_paths),
+        "priorOutput": _receipt_text(prior_output),
+        "humanFeedback": _receipt_text(human_feedback),
+    }
+
+
 COMMAND_RESULT_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -122,11 +146,15 @@ def _observed_command_result(
     exact = len(observed) == 1
     item = observed[0] if exact else {}
     exit_code = item.get("exitCode") if isinstance(item.get("exitCode"), int) else None
+    observed_output = (
+        item.get("aggregatedOutput") if isinstance(item.get("aggregatedOutput"), str) else ""
+    )
     passed = bool(exact and exit_code == expected_exit_code and item.get("status") == "completed")
     return {
         "status": "pass" if passed else "fail",
         "expectedExitCode": expected_exit_code,
         "observedExitCode": exit_code,
+        "observedOutput": _receipt_text(observed_output),
         "matchingCommandItems": len(observed),
         "evidence": (
             "One exact command completed with the expected exit code."
@@ -228,6 +256,12 @@ def execute_phase_program(
     work_count = 0
     pending_human_feedback = ""
     for phase in ordered_phases(program):
+        prior_output = result.answer
+        phase_context = _phase_context(
+            manifest,
+            prior_output=prior_output,
+            human_feedback=pending_human_feedback,
+        )
         if phase.kind == "checkpoint":
             session.stage(phase.id, phase.name, phase.question)
             resolution = session.request_checkpoint(phase.id, phase.question)
@@ -243,6 +277,12 @@ def execute_phase_program(
                     "kind": phase.kind,
                     "turnIds": [],
                     "decision": decision,
+                    "status": ("pass" if decision in {"accept", "acceptForSession"} else "stopped"),
+                    "io": {
+                        "input": _receipt_text(phase.question),
+                        "context": phase_context,
+                        "output": _receipt_text(feedback or decision),
+                    },
                     **({"feedback": feedback} if feedback else {}),
                 }
             )
@@ -288,12 +328,18 @@ def execute_phase_program(
             pending_human_feedback = ""
             phase_turn_ids.append(turn.turn_id)
             result.answer = turn.final_response
+            execution_detail["io"] = {
+                "input": _receipt_text(phase.goal),
+                "context": phase_context,
+                "output": _receipt_text(turn.final_response),
+            }
             if turn.status != "completed":
                 result.completion_status = "stopped"
                 execution_detail["status"] = "stopped"
                 stop_after_execution = True
                 session.stage(phase.id, f"{phase.name} stopped", f"Turn {turn.turn_id}")
             else:
+                execution_detail["status"] = "pass"
                 session.stage(phase.id, f"{phase.name} finished", f"Turn {turn.turn_id}")
         elif phase.kind == "command":
             session.stage(
@@ -339,6 +385,11 @@ def execute_phase_program(
                     "matchingCommandItems": 0,
                     "summary": "The run was stopped before this check completed.",
                     "evidence": "No passing result is claimed for an interrupted check.",
+                    "io": {
+                        "input": _receipt_text(phase.command),
+                        "context": phase_context,
+                        "output": "The command step was interrupted before a result was observed.",
+                    },
                 }
                 result.completion_status = "stopped"
                 stop_after_execution = True
@@ -361,9 +412,18 @@ def execute_phase_program(
                     "status": "pass" if passed else "fail",
                     "expectedExitCode": phase.expected_exit_code,
                     "observedExitCode": observed["observedExitCode"],
+                    "observedOutput": observed["observedOutput"],
                     "matchingCommandItems": observed["matchingCommandItems"],
                     "summary": reported["summary"],
                     "evidence": observed["evidence"],
+                    "io": {
+                        "input": _receipt_text(phase.command),
+                        "context": phase_context,
+                        "output": _receipt_text(
+                            observed["observedOutput"]
+                            or f"{reported['summary']}\n{observed['evidence']}"
+                        ),
+                    },
                 }
             stage_outcome = (
                 "passed"
@@ -381,6 +441,13 @@ def execute_phase_program(
                 result.completion_status = "failedCheck"
                 stop_after_execution = True
         else:
+            execution_detail = {
+                "io": {
+                    "input": _receipt_text(phase.criteria),
+                    "context": phase_context,
+                    "output": "",
+                }
+            }
             for attempt in range(1 + phase.max_repairs):
                 attempt_phase = phase.id if attempt == 0 else f"{phase.id}-repair-{attempt}"
                 action = "verification" if attempt == 0 else "repair verification"
@@ -415,7 +482,8 @@ def execute_phase_program(
                 phase_turn_ids.append(turn.turn_id)
                 if turn.status != "completed":
                     result.completion_status = "stopped"
-                    execution_detail = {"status": "stopped"}
+                    execution_detail["status"] = "stopped"
+                    execution_detail["io"]["output"] = _receipt_text(turn.final_response)
                     stop_after_execution = True
                     session.stage(
                         attempt_phase,
@@ -424,6 +492,9 @@ def execute_phase_program(
                     )
                     break
                 parsed = json.loads(turn.final_response)
+                execution_detail["status"] = parsed["status"]
+                execution_detail["issues"] = parsed["issues"]
+                execution_detail["io"]["output"] = _receipt_text(parsed["answer"])
                 result.verification.append(
                     {
                         "phaseId": phase.id,

@@ -136,3 +136,17 @@ class WorkflowStore:
             return SavedWorkflow.model_validate_json(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return None
+
+    def delete(self, workflow_id: str) -> bool:
+        """Remove a saved workflow from the library while keeping a local recovery copy."""
+
+        if _WORKFLOW_ID.fullmatch(workflow_id) is None:
+            return False
+        path = self.root / f"{workflow_id}.json"
+        with self._lock:
+            if not path.is_file():
+                return False
+            trash = self.root / ".trash"
+            trash.mkdir(parents=True, exist_ok=True)
+            path.replace(trash / f"{workflow_id}-{uuid4().hex[:8]}.json")
+        return True

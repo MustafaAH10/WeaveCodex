@@ -8,9 +8,10 @@
     <meta property="og:description" content="Design the path around Codex. Keep the agent flexible while making the workflow yours." />
     <meta property="og:type" content="website" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="site.css" />
-    <script src="workflows.js" defer></script>
-    <script src="site.js" defer></script>
+    <link rel="stylesheet" href="site.css?v=20260902" />
+    <script src="workflows.js?v=20260902" defer></script>
+    <script src="comparisons.js?v=20260902" defer></script>
+    <script src="site.js?v=20260902" defer></script>
     <title>WeaveCodex | Visual workflows for Codex</title>
   </head>
   <body>
@@ -32,7 +33,7 @@
       <section class="hero" aria-labelledby="hero-title">
         <p class="eyebrow reveal">A visual workflow builder for Codex</p>
         <h1 id="hero-title" class="reveal">Draw how the work<br />should happen.</h1>
-        <p class="hero-copy reveal">Define the steps, pauses, and checks. Codex handles the work inside each step.</p>
+        <p class="hero-copy reveal">Give Codex room to work. Lock the intent, evidence, and recovery path so the run stays on course.</p>
         <div class="hero-actions reveal">
           <a class="button button-dark" href="#workflow">See a workflow</a>
           <a class="button button-light" href="#install">Install locally</a>
@@ -41,8 +42,9 @@
         <div class="workflow-showcase reveal" id="workflow">
           <div class="showcase-tabs" role="group" aria-label="Choose a workflow example">
             <button class="showcase-tab active" type="button" data-workflow-key="finance" aria-pressed="true">Finance</button>
-            <button class="showcase-tab" type="button" data-workflow-key="frontend" aria-pressed="false">Frontend</button>
-            <button class="showcase-tab" type="button" data-workflow-key="incident" aria-pressed="false">Incident response</button>
+            <button class="showcase-tab" type="button" data-workflow-key="campaign" aria-pressed="false">Campaign</button>
+            <button class="showcase-tab" type="button" data-workflow-key="crm" aria-pressed="false">CRM choice</button>
+            <button class="showcase-tab" type="button" data-workflow-key="frontend" aria-pressed="false">Checkout</button>
             <span id="workflow-stats">9 steps · 11 connections · branches and merges</span>
           </div>
           <div class="showcase-heading">
@@ -53,38 +55,38 @@
             <svg id="workflow-graph" role="img" aria-labelledby="workflow-title workflow-description" viewBox="0 0 1320 520" preserveAspectRatio="xMidYMid meet"></svg>
           </div>
           <footer class="showcase-footer">
-            <div class="graph-legend"><span><i class="work-key"></i>Codex work</span><span><i class="human-key"></i>Your decision</span><span><i class="check-key"></i>Exact check</span><span><i class="review-key"></i>Review</span></div>
-            <p><span>Result</span><b id="workflow-result">Forecast pack with approved assumptions and reconciled totals</b></p>
+            <div class="graph-legend"><span><i class="work-key"></i>Codex work</span><span><i class="human-key"></i>Calibration</span><span><i class="check-key"></i>Exact check</span><span><i class="review-key"></i>Review</span></div>
+            <p><span>Result</span><b id="workflow-result">Forecast pack with locked assumptions and reconciled totals</b></p>
           </footer>
         </div>
       </section>
 
       <section class="difference" aria-labelledby="difference-title">
-        <div class="section-heading reveal">
-          <p class="eyebrow">The difference</p>
-          <h2 id="difference-title">Codex does the work.<br />You design the path.</h2>
+        <div class="execution-heading reveal">
+          <p class="eyebrow">Same permissions, different control</p>
+          <h2 id="difference-title">Keep the run on course.</h2>
+          <p>Codex keeps its freedom inside each step. Weave makes the intended route, checks, and recovery points explicit.</p>
         </div>
-        <div class="mode-switcher reveal">
-          <div class="mode-buttons" role="group" aria-label="Compare Codex and WeaveCodex">
-            <button class="mode-button is-active" type="button" data-mode="codex" aria-pressed="true">Codex</button>
-            <button class="mode-button" type="button" data-mode="weave" aria-pressed="false">With Weave</button>
+        <div class="execution-demo reveal" id="execution-demo">
+          <div class="execution-tabs" role="group" aria-label="Choose a tested task">
+            <button class="execution-tab active" type="button" data-comparison-key="forecast" aria-pressed="true">Python repair</button>
+            <button class="execution-tab" type="button" data-comparison-key="poster" aria-pressed="false">Poster design</button>
+            <button class="execution-tab" type="button" data-comparison-key="operations" aria-pressed="false">Safe operations</button>
+            <button id="replay-comparison" type="button" aria-label="Replay comparison">Replay</button>
           </div>
-          <div class="mode-diagram" data-current-mode="codex">
-            <div class="mode-row codex-row">
-              <span class="mode-pill input">Your goal</span><i></i><span class="mode-core">Codex</span><i></i><span class="mode-pill output">Result</span>
-            </div>
-            <div class="mode-row weave-row" aria-hidden="true">
-              <span class="mode-pill input">Your goal</span><i></i><span class="mode-pill">Explore</span><i></i><span class="mode-pill human">Choose</span><i></i><span class="mode-core">Codex</span><i></i><span class="mode-pill check">Check</span><i></i><span class="mode-pill output">Result</span>
-            </div>
+          <header class="execution-task"><div><small id="comparison-label">Tested code repair</small><h3 id="comparison-title">Preserve an explicit zero override</h3></div><p id="comparison-task">Fix the forecast fallback bug and keep the supplied tests unchanged.</p></header>
+          <div class="execution-columns">
+            <article class="execution-pane codex-pane"><header><span>Codex</span><small>One adaptive run</small></header><div class="terminal"><div class="terminal-bar"><i></i><i></i><i></i><span>codex</span></div><div class="terminal-stream" id="codex-stream"></div></div></article>
+            <article class="execution-pane weave-pane"><header><span>WeaveCodex</span><small>Your visible contract</small></header><div class="contract-path" id="contract-path"></div><div class="terminal"><div class="terminal-bar"><i></i><i></i><i></i><span>weave run</span></div><div class="terminal-stream" id="weave-stream"></div></div></article>
           </div>
-          <p class="mode-description" aria-live="polite">Give Codex a goal and let it choose the route.</p>
+          <footer><span>Observed product acceptance trial</span><p id="comparison-result">Both artifacts passed. Weave kept the repair inside the agreed behavior and proof contract.</p></footer>
         </div>
       </section>
 
       <section class="principles" aria-labelledby="principles-title">
         <div class="section-heading reveal"><p class="eyebrow">What you gain</p><h2 id="principles-title">A workflow you can see,<br />change, and reuse.</h2></div>
         <div class="principle-grid">
-          <article class="reveal"><span>01</span><h3>Control</h3><p>Choose where Codex can adapt and where it must pause.</p></article>
+          <article class="reveal"><span>01</span><h3>Calibration</h3><p>Pin the intent and proof while Codex keeps broad freedom to execute.</p></article>
           <article class="reveal"><span>02</span><h3>Observability</h3><p>See the current step, your decisions, checks, and final evidence.</p></article>
           <article class="reveal"><span>03</span><h3>Reuse</h3><p>Save a workflow and apply it to the next similar task.</p></article>
         </div>
@@ -93,10 +95,10 @@
       <section class="install" id="install" aria-labelledby="install-title">
         <div class="install-copy reveal"><p class="eyebrow">Open source</p><h2 id="install-title">Run it with your Codex account.</h2><p>WeaveCodex uses the official local Codex app-server and your existing ChatGPT sign-in.</p><a href="https://github.com/MustafaAH10/WeaveCodex" target="_blank" rel="noreferrer">Read the source <span aria-hidden="true">↗</span></a></div>
         <div class="install-card reveal">
-          <div><span>1</span><code>codex login</code></div>
-          <div><span>2</span><code>cd weave-control-plane &amp;&amp; uv sync</code></div>
-          <div><span>3</span><code>uv run python -m weave_codex.server --codex-bin "$(command -v codex)" --host 127.0.0.1 --port 8790</code></div>
-          <button class="copy-button" type="button" data-copy="codex login&#10;cd weave-control-plane &amp;&amp; uv sync&#10;uv run python -m weave_codex.server --codex-bin &quot;$(command -v codex)&quot; --host 127.0.0.1 --port 8790"><span class="copy-label" aria-live="polite">Copy commands</span><span aria-hidden="true">⧉</span></button>
+          <div><span>1</span><code>git clone https://github.com/MustafaAH10/WeaveCodex.git</code><button class="copy-button" type="button" data-copy="git clone https://github.com/MustafaAH10/WeaveCodex.git" aria-label="Copy clone command"><span class="copy-label" aria-live="polite">Copy</span><span aria-hidden="true">⧉</span></button></div>
+          <div><span>2</span><code>npm install -g @openai/codex &amp;&amp; codex login</code><button class="copy-button" type="button" data-copy="npm install -g @openai/codex&#10;codex login" aria-label="Copy Codex setup command"><span class="copy-label" aria-live="polite">Copy</span><span aria-hidden="true">⧉</span></button></div>
+          <div><span>3</span><code>cd WeaveCodex/weave-control-plane &amp;&amp; uv sync</code><button class="copy-button" type="button" data-copy="cd WeaveCodex/weave-control-plane &amp;&amp; uv sync" aria-label="Copy dependency command"><span class="copy-label" aria-live="polite">Copy</span><span aria-hidden="true">⧉</span></button></div>
+          <div><span>4</span><code>uv run python -m weave_codex.server --codex-bin "$(command -v codex)" --host 127.0.0.1 --port 8790</code><button class="copy-button" type="button" data-copy="uv run python -m weave_codex.server --codex-bin &quot;$(command -v codex)&quot; --host 127.0.0.1 --port 8790" aria-label="Copy start command"><span class="copy-label" aria-live="polite">Copy</span><span aria-hidden="true">⧉</span></button></div>
         </div>
       </section>
     </main>

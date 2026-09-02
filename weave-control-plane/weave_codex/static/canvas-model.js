@@ -13,8 +13,8 @@
       ],
       review: [
         { id: "inspect", kind: "work", name: "Understand and propose", goal: "Understand the available context and present a concise direction. Do not make consequential changes yet." },
-        { id: "approve", kind: "checkpoint", name: "Check with me", question: "Does this direction look right, and should Codex continue?" },
-        { id: "implement", kind: "work", name: "Complete the goal", goal: "Follow the approved direction and produce the requested outcome using any relevant tools or integrations." },
+        { id: "approve", kind: "checkpoint", name: "Calibrate the run", question: "What must remain fixed, and what should Codex redirect before continuing?" },
+        { id: "implement", kind: "work", name: "Complete the goal", goal: "Follow the calibrated direction and produce the requested outcome using any relevant tools or integrations." },
         { id: "verify", kind: "verify", name: "Prove the result", criteria: "The requested outcome is complete, accurate, and supported by relevant evidence or checks.", maxRepairs: 1 },
       ],
       audit: [
@@ -114,5 +114,75 @@
     return id;
   }
 
-  return { clone, phaseProgram, linearGraph, clientTopologicalOrder, orderedClientPhases, graphProblem, wouldCreateCycle, uniquePhaseId };
+  function layoutRunGraph(graph, executions = []) {
+    const sourcePhases = graph?.phases?.length
+      ? clone(graph.phases)
+      : executions.map((execution) => ({
+          id: execution.phaseId,
+          kind: execution.kind,
+          name: execution.name,
+        }));
+    const sourceEdges = graph?.edges?.length
+      ? clone(graph.edges)
+      : sourcePhases.slice(1).map((phase, index) => ({ from: sourcePhases[index].id, to: phase.id }));
+    if (!sourcePhases.length) return { width: 1200, height: 320, nodes: [], edges: [] };
+
+    const program = { phases: sourcePhases, edges: sourceEdges };
+    const ordered = orderedClientPhases(program);
+    const parents = new Map(sourcePhases.map((phase) => [phase.id, []]));
+    for (const edge of sourceEdges) parents.get(edge.to)?.push(edge.from);
+    const levelById = new Map();
+    for (const phase of ordered) {
+      const phaseParents = parents.get(phase.id) || [];
+      levelById.set(phase.id, phaseParents.length ? Math.max(...phaseParents.map((id) => levelById.get(id) || 0)) + 1 : 0);
+    }
+    const levels = new Map();
+    for (const phase of ordered) {
+      const level = levelById.get(phase.id) || 0;
+      if (!levels.has(level)) levels.set(level, []);
+      levels.get(level).push(phase);
+    }
+
+    const width = 1200;
+    const nodeWidth = 176;
+    const nodeHeight = 90;
+    const xPadding = 54;
+    const yPadding = 46;
+    const maxLevel = Math.max(...levels.keys());
+    const largestLevel = Math.max(...[...levels.values()].map((items) => items.length));
+    const height = Math.max(320, (largestLevel * 118) + (yPadding * 2));
+    const executionById = new Map(executions.map((execution) => [execution.phaseId, execution]));
+    const nodes = [];
+    for (const [level, phases] of levels) {
+      const x = maxLevel ? xPadding + (level * ((width - nodeWidth - (xPadding * 2)) / maxLevel)) : (width - nodeWidth) / 2;
+      const contentHeight = phases.length * nodeHeight + Math.max(0, phases.length - 1) * 28;
+      const startY = (height - contentHeight) / 2;
+      phases.forEach((phase, index) => {
+        nodes.push({
+          ...phase,
+          x,
+          y: startY + index * (nodeHeight + 28),
+          width: nodeWidth,
+          height: nodeHeight,
+          execution: executionById.get(phase.id) || null,
+        });
+      });
+    }
+    const byId = new Map(nodes.map((node) => [node.id, node]));
+    const edges = sourceEdges.flatMap((edge) => {
+      const source = byId.get(edge.from);
+      const target = byId.get(edge.to);
+      if (!source || !target) return [];
+      return [{
+        ...edge,
+        startX: source.x + source.width,
+        startY: source.y + source.height / 2,
+        endX: target.x,
+        endY: target.y + target.height / 2,
+      }];
+    });
+    return { width, height, nodes, edges };
+  }
+
+  return { clone, phaseProgram, linearGraph, clientTopologicalOrder, orderedClientPhases, graphProblem, wouldCreateCycle, uniquePhaseId, layoutRunGraph };
 });
