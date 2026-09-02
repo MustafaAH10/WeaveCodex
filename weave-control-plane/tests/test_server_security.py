@@ -3,6 +3,7 @@ from __future__ import annotations
 import http.client
 import json
 import threading
+import time
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any
@@ -169,6 +170,47 @@ def test_local_session_token_guards_side_effects_and_auth_flow(tmp_path: Path) -
         assert uploaded_path.read_text(encoding="utf-8") == "local brief"
         assert uploaded_path.is_relative_to(tmp_path.resolve())
 
+        artifact_workspace = tmp_path / "artifact-workspace"
+        artifact_workspace.mkdir()
+        run_started = int(time.time()) - 1
+        (artifact_workspace / "result.csv").write_text(
+            "account,variance\nRevenue,5000\n", encoding="utf-8"
+        )
+        artifact_run_id = "00000000-0000-0000-0000-000000000002"
+        (tmp_path / f"{artifact_run_id}.json").write_text(
+            json.dumps(
+                {
+                    "runId": artifact_run_id,
+                    "startedAt": run_started,
+                    "completedAt": int(time.time()) + 1,
+                    "finalResponse": "Created result.csv",
+                    "observed": {"completedItemsByType": {"fileChange": 1}},
+                    "phaseProgram": {
+                        "executions": [{"io": {"context": {"workspace": str(artifact_workspace)}}}]
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        status, artifacts = _request(port, "GET", f"/api/runs/{artifact_run_id}/artifacts")
+        assert status == 200
+        assert artifacts["artifacts"][0]["path"] == "result.csv"
+        status, preview = _request(
+            port,
+            "GET",
+            f"/api/runs/{artifact_run_id}/artifacts/preview?path=result.csv",
+        )
+        assert status == 200
+        assert preview["columns"] == ["account", "variance"]
+        assert preview["rows"] == [["Revenue", "5000"]]
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+        connection.request("GET", f"/api/runs/{artifact_run_id}/artifacts/raw?path=result.csv")
+        raw_response = connection.getresponse()
+        assert raw_response.status == 200
+        assert raw_response.getheader("Content-Disposition", "").startswith("attachment;")
+        assert raw_response.read() == b"account,variance\nRevenue,5000\n"
+        connection.close()
+
         status, workflow = _request(
             port,
             "POST",
@@ -226,7 +268,7 @@ def test_local_session_token_guards_side_effects_and_auth_flow(tmp_path: Path) -
         )
         assert status == 200
         assert deleted_run == {"deleted": True}
-        assert app.saved_runs() == []
+        assert [item["runId"] for item in app.saved_runs()] == [artifact_run_id]
 
         status, completed = _request(port, "GET", "/api/account/login/login-1")
         assert status == 200

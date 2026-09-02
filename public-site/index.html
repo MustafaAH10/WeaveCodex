@@ -8,10 +8,10 @@
     <meta property="og:description" content="Design the path around Codex. Keep the agent flexible while making the workflow yours." />
     <meta property="og:type" content="website" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="site.css?v=20260902" />
-    <script src="workflows.js?v=20260902" defer></script>
-    <script src="comparisons.js?v=20260902" defer></script>
-    <script src="site.js?v=20260902" defer></script>
+    <link rel="stylesheet" href="site.css?v=20260903" />
+    <script src="workflows.js?v=20260903" defer></script>
+    <script src="comparisons.js?v=20260903" defer></script>
+    <script src="site.js?v=20260903" defer></script>
     <title>WeaveCodex | Visual workflows for Codex</title>
   </head>
   <body>
@@ -63,24 +63,37 @@
 
       <section class="difference" aria-labelledby="difference-title">
         <div class="execution-heading reveal">
-          <p class="eyebrow">Same permissions, different control</p>
-          <h2 id="difference-title">Keep the run on course.</h2>
-          <p>Codex keeps its freedom inside each step. Weave makes the intended route, checks, and recovery points explicit.</p>
+          <p class="eyebrow">Same Codex, a route you own</p>
+          <h2 id="difference-title">Decide the route<br />before the run.</h2>
+          <p>Codex still chooses how to complete each step. You choose how the work is decomposed, what evidence counts, and where a failed check goes next.</p>
         </div>
         <div class="execution-demo reveal" id="execution-demo">
-          <div class="execution-tabs" role="group" aria-label="Choose a tested task">
-            <button class="execution-tab active" type="button" data-comparison-key="forecast" aria-pressed="true">Python repair</button>
-            <button class="execution-tab" type="button" data-comparison-key="poster" aria-pressed="false">Poster design</button>
-            <button class="execution-tab" type="button" data-comparison-key="operations" aria-pressed="false">Safe operations</button>
-            <button id="replay-comparison" type="button" aria-label="Replay comparison">Replay</button>
+          <div class="execution-tabs" role="group" aria-label="Choose a workflow comparison">
+            <button class="execution-tab active" type="button" data-comparison-key="finance" aria-pressed="true">Board forecast</button>
+            <button class="execution-tab" type="button" data-comparison-key="campaign" aria-pressed="false">Campaign launch</button>
+            <button class="execution-tab" type="button" data-comparison-key="vendor" aria-pressed="false">Vendor decision</button>
+            <button class="execution-tab" type="button" data-comparison-key="release" aria-pressed="false">Product release</button>
+            <button id="replay-comparison" type="button" aria-label="Replay workflow animation"><span aria-hidden="true">↻</span> Replay</button>
           </div>
-          <header class="execution-task"><div><small id="comparison-label">Tested code repair</small><h3 id="comparison-title">Preserve an explicit zero override</h3></div><p id="comparison-task">Fix the forecast fallback bug and keep the supplied tests unchanged.</p></header>
+          <header class="execution-task"><div><small id="comparison-label">Finance review</small><h3 id="comparison-title">Publish a forecast the board can trace</h3></div><p id="comparison-task">Turn actuals, budget, and planning assumptions into a reconciled model and a short variance narrative.</p></header>
           <div class="execution-columns">
-            <article class="execution-pane codex-pane"><header><span>Codex</span><small>One adaptive run</small></header><div class="terminal"><div class="terminal-bar"><i></i><i></i><i></i><span>codex</span></div><div class="terminal-stream" id="codex-stream"></div></div></article>
-            <article class="execution-pane weave-pane"><header><span>WeaveCodex</span><small>Your visible contract</small></header><div class="contract-path" id="contract-path"></div><div class="terminal"><div class="terminal-bar"><i></i><i></i><i></i><span>weave run</span></div><div class="terminal-stream" id="weave-stream"></div></div></article>
+            <article class="execution-pane codex-pane">
+              <header><span>Codex</span><small>Route chosen during the run</small></header>
+              <div class="adaptive-run">
+                <div class="prompt-card"><small>Your goal</small><strong id="codex-goal">Build the forecast pack from the supplied workbook.</strong></div>
+                <div class="adaptive-route" id="codex-route" aria-label="An adaptive route chosen by Codex"></div>
+                <p id="codex-note">Codex can adapt freely, but the order of analysis, evidence threshold, and retry point are decided inside the run unless the prompt spells them out.</p>
+              </div>
+            </article>
+            <article class="execution-pane weave-pane">
+              <header><span>WeaveCodex</span><small>Route drawn before the run</small></header>
+              <div class="comparison-graph-frame"><svg id="comparison-graph" role="img" aria-labelledby="comparison-title comparison-task" viewBox="0 0 950 380" preserveAspectRatio="xMidYMid meet"></svg></div>
+            </article>
           </div>
-          <footer><span>Observed product acceptance trial</span><p id="comparison-result">Both artifacts passed. Weave kept the repair inside the agreed behavior and proof contract.</p></footer>
+          <div class="contract-grid" id="comparison-contracts" aria-label="User-authored workflow contracts"></div>
+          <footer><span>What Weave changes</span><p id="comparison-result">The analyst chooses the order, the sign-off point, and exactly where a failed reconciliation returns.</p></footer>
         </div>
+        <p class="comparison-disclosure reveal">This illustrates the control surfaces, not a claim that Codex fails the unstructured task. Both modes use Codex. Weave moves the route from model-selected execution into a user-authored, replayable graph.</p>
       </section>
 
       <section class="principles" aria-labelledby="principles-title">

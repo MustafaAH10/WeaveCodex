@@ -5,20 +5,27 @@ from __future__ import annotations
 import argparse
 import hmac
 import json
+import mimetypes
 import os
 import re
 import secrets
 import shutil
 import threading
+import zipfile
 from collections import deque
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 from pydantic import ValidationError
 
+from .artifact_preview import (
+    discover_run_artifacts,
+    preview_run_artifact,
+    read_run_artifact,
+)
 from .auth_service import NativeAuthService
 from .manifest import HarnessManifest, compile_manifest
 from .phase_program import PhaseProgram, compile_phase_program, phase_templates
@@ -217,6 +224,12 @@ class ControlPlane:
         except (OSError, json.JSONDecodeError):
             return None
 
+    def run_receipt(self, run_id: str) -> dict[str, Any] | None:
+        session = self.sessions.get(run_id)
+        if session is not None and session.result is not None:
+            return session.result
+        return self.saved_run(run_id)
+
     def delete_run(self, run_id: str) -> bool:
         if re.fullmatch(r"[0-9a-f-]{36}", run_id) is None:
             return False
@@ -369,6 +382,35 @@ class Handler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/runs":
             self._json(HTTPStatus.OK, {"runs": self.server.app.saved_runs()})
+            return
+        artifact_route = re.fullmatch(
+            r"/api/runs/([0-9a-f-]{36})/artifacts(?:/(preview|raw))?",
+            parsed.path,
+        )
+        if artifact_route:
+            run_id, action = artifact_route.groups()
+            receipt = self.server.app.run_receipt(run_id)
+            if receipt is None:
+                self._json(HTTPStatus.NOT_FOUND, {"error": "run not found"})
+                return
+            query = parse_qs(parsed.query)
+            try:
+                if action == "preview":
+                    relative_path = query.get("path", [""])[0]
+                    sheet = query.get("sheet", [None])[0]
+                    self._json(
+                        HTTPStatus.OK,
+                        preview_run_artifact(receipt, relative_path, sheet=sheet),
+                    )
+                    return
+                if action == "raw":
+                    relative_path = query.get("path", [""])[0]
+                    path, body = read_run_artifact(receipt, relative_path)
+                    self._artifact_bytes(path, body)
+                    return
+                self._json(HTTPStatus.OK, discover_run_artifacts(receipt))
+            except (OSError, ValueError, zipfile.BadZipFile) as exc:
+                self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
             return
         if parsed.path.startswith("/api/runs/"):
             run_id = parsed.path.removeprefix("/api/runs/")
@@ -541,6 +583,21 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _artifact_bytes(self, path: Path, body: bytes) -> None:
+        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        disposition = (
+            "inline" if content_type.startswith(("image/", "audio/", "video/")) else "attachment"
+        )
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header(
+            "Content-Disposition", f"{disposition}; filename*=UTF-8''{quote(path.name)}"
+        )
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)

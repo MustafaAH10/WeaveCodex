@@ -7,7 +7,7 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").match
 let activeWorkflow = "finance";
 let graphTimers = [];
 let showcaseVisible = false;
-let activeComparison = "forecast";
+let activeComparison = "finance";
 let comparisonTimers = [];
 let comparisonVisible = false;
 
@@ -102,30 +102,96 @@ for (const [index, button] of workflowButtons.entries()) {
   });
 }
 
-function streamMarkup(lines) {
-  return lines.map(([kind, text], index) => `<div class="stream-line ${kind}" data-stream-index="${index}"><small>${kind}</small><pre>${String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</pre></div>`).join("");
+function escapeMarkup(value) {
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function comparisonEdge(edge) {
+  return Array.isArray(edge) ? { from: edge[0], to: edge[1], kind: "route" } : edge;
+}
+
+function renderComparisonGraph(comparison) {
+  const comparisonGraph = document.querySelector("#comparison-graph");
+  comparisonGraph.replaceChildren();
+
+  const definitions = svgElement("defs");
+  for (const [id, fill] of [["comparison-arrow", "#8b9086"], ["comparison-recovery-arrow", "#e38d62"]]) {
+    const marker = svgElement("marker", { id, markerWidth: 7, markerHeight: 7, refX: 6, refY: 3.5, orient: "auto", markerUnits: "strokeWidth" });
+    marker.append(svgElement("path", { d: "M0,0 L7,3.5 L0,7 Z", fill }));
+    definitions.append(marker);
+  }
+  comparisonGraph.append(definitions);
+
+  const nodeById = new Map(comparison.nodes.map((node) => [node.id, node]));
+  comparison.edges.map(comparisonEdge).forEach((edge, index) => {
+    const from = nodeById.get(edge.from);
+    const to = nodeById.get(edge.to);
+    let pathData;
+    if (edge.kind === "recovery") {
+      const startX = from.x + 71;
+      const endX = to.x + 71;
+      pathData = `M${startX} ${from.y + 68} C${startX} 367,${endX} 367,${endX} ${to.y + 68}`;
+    } else {
+      const startX = from.x + 142;
+      const startY = from.y + 34;
+      const endX = to.x;
+      const endY = to.y + 34;
+      const curve = Math.max(30, Math.abs(endX - startX) * .42);
+      pathData = `M${startX} ${startY} C${startX + curve} ${startY},${endX - curve} ${endY},${endX} ${endY}`;
+    }
+    comparisonGraph.append(svgElement("path", {
+      class: `comparison-edge ${edge.kind}`,
+      d: pathData,
+      "data-comparison-edge": index,
+      "marker-end": edge.kind === "recovery" ? "url(#comparison-recovery-arrow)" : "url(#comparison-arrow)",
+    }));
+    if (edge.kind === "recovery") {
+      const label = svgElement("text", { class: "comparison-edge-label", x: (from.x + to.x) / 2 + 71, y: 363 });
+      label.textContent = edge.label;
+      comparisonGraph.append(label);
+    }
+  });
+
+  comparison.nodes.forEach((node, index) => {
+    const group = svgElement("g", { class: `comparison-node ${node.kind}`, transform: `translate(${node.x} ${node.y})`, "data-comparison-node": index });
+    group.append(svgElement("rect", { width: 142, height: 68 }));
+    const eyebrow = svgElement("text", { class: "comparison-node-eyebrow", x: 12, y: 20 });
+    eyebrow.textContent = node.eyebrow;
+    const title = svgElement("text", { class: "comparison-node-title", x: 12, y: 47 });
+    title.textContent = node.title;
+    group.append(eyebrow, title);
+    comparisonGraph.append(group);
+  });
 }
 
 function playComparison() {
   for (const timer of comparisonTimers) window.clearTimeout(timer);
   comparisonTimers = [];
-  const lines = [...document.querySelectorAll(".stream-line")];
-  const pathNodes = [...document.querySelectorAll(".contract-node")];
-  lines.forEach((line) => line.classList.remove("active"));
-  pathNodes.forEach((node) => node.classList.remove("active"));
+  const graphItems = [...document.querySelectorAll(".comparison-node, .comparison-edge")];
+  const routeSteps = [...document.querySelectorAll(".adaptive-step")];
+  graphItems.forEach((item) => item.classList.remove("active"));
+  routeSteps.forEach((step) => step.classList.remove("active"));
   if (reduceMotion || !comparisonVisible) {
     if (reduceMotion) {
-      lines.forEach((line) => line.classList.add("active"));
-      pathNodes.forEach((node) => node.classList.add("active"));
+      graphItems.forEach((item) => item.classList.add("active"));
+      routeSteps.forEach((step) => step.classList.add("active"));
     }
     return;
   }
-  for (let index = 0; index < comparisons[activeComparison].codex.length; index += 1) {
+  routeSteps.forEach((step, index) => {
     comparisonTimers.push(window.setTimeout(() => {
-      document.querySelectorAll(`[data-stream-index="${index}"]`).forEach((line) => line.classList.add("active"));
-      pathNodes[index]?.classList.add("active");
-    }, 180 + index * 620));
-  }
+      step.classList.add("active");
+    }, 120 + index * 180));
+  });
+  comparisons[activeComparison].nodes.forEach((node, index) => {
+    comparisonTimers.push(window.setTimeout(() => {
+      document.querySelector(`[data-comparison-node="${index}"]`)?.classList.add("active");
+      document.querySelectorAll(`[data-comparison-edge="${index - 1}"]`).forEach((edge) => edge.classList.add("active"));
+    }, 180 + index * 220));
+  });
+  comparisonTimers.push(window.setTimeout(() => {
+    document.querySelectorAll(".comparison-edge").forEach((edge) => edge.classList.add("active"));
+  }, 180 + comparisons[activeComparison].nodes.length * 220));
 }
 
 function renderComparison(key, { animate = comparisonVisible } = {}) {
@@ -135,9 +201,11 @@ function renderComparison(key, { animate = comparisonVisible } = {}) {
   document.querySelector("#comparison-title").textContent = comparison.title;
   document.querySelector("#comparison-task").textContent = comparison.task;
   document.querySelector("#comparison-result").textContent = comparison.result;
-  document.querySelector("#codex-stream").innerHTML = streamMarkup(comparison.codex);
-  document.querySelector("#weave-stream").innerHTML = streamMarkup(comparison.weave);
-  document.querySelector("#contract-path").innerHTML = comparison.path.map((label, index) => `<span class="contract-node ${index === 1 ? "calibrate" : ""}">${label}</span>`).join("");
+  document.querySelector("#codex-goal").textContent = comparison.codex.goal;
+  document.querySelector("#codex-note").textContent = comparison.codex.note;
+  document.querySelector("#codex-route").innerHTML = comparison.codex.route.map((label, index) => `<span class="adaptive-step"><i>${index + 1}</i>${escapeMarkup(label)}</span>`).join("");
+  document.querySelector("#comparison-contracts").innerHTML = Object.entries(comparison.contracts).map(([kind, text]) => `<article class="contract-card ${kind}"><small>${escapeMarkup(kind)}</small><p>${escapeMarkup(text)}</p></article>`).join("");
+  renderComparisonGraph(comparison);
   document.querySelectorAll("[data-comparison-key]").forEach((button) => {
     const selected = button.dataset.comparisonKey === key;
     button.classList.toggle("active", selected);

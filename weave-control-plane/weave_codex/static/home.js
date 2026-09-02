@@ -995,10 +995,13 @@ function runCanvasMarkup(graph, executions) {
     const status = runExecutionStatus(node.execution || {});
     const title = String(node.name || node.execution?.name || `Step ${index + 1}`);
     const shortTitle = title.length > 25 ? `${title.slice(0, 24)}…` : title;
-    const detailId = `run-node-${String(node.id).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-    return `<g class="run-graph-node ${escapeHtml(node.kind || "work")} ${status.className}" transform="translate(${node.x} ${node.y})" role="button" tabindex="0" data-run-node="${escapeHtml(detailId)}" aria-label="Inspect ${escapeHtml(title)}"><rect width="${node.width}" height="${node.height}" rx="13"></rect><circle cx="18" cy="18" r="5"></circle><text class="run-node-kind" x="31" y="22">${escapeHtml(phaseKindLabel(node).replace("Codex goal", "Codex"))}</text><text class="run-node-title" x="16" y="51">${escapeHtml(shortTitle)}</text><text class="run-node-status" x="16" y="75">${escapeHtml(status.label)}</text></g>`;
+    return `<g class="run-graph-node ${escapeHtml(node.kind || "work")} ${status.className} ${index === 0 ? "selected" : ""}" transform="translate(${node.x} ${node.y})" role="button" tabindex="0" data-run-node-index="${index}" aria-label="Inspect ${escapeHtml(title)}"><rect width="${node.width}" height="${node.height}" rx="13"></rect><circle cx="18" cy="18" r="5"></circle><text class="run-node-kind" x="31" y="22">${escapeHtml(phaseKindLabel(node).replace("Codex goal", "Codex"))}</text><text class="run-node-title" x="16" y="51">${escapeHtml(shortTitle)}</text><text class="run-node-status" x="16" y="75">${escapeHtml(status.label)}</text></g>`;
   }).join("");
-  return `<section class="run-replay" aria-labelledby="run-replay-title"><header><div><small>RESULT CANVAS</small><h3 id="run-replay-title">Replay the workflow</h3></div><p>Select a node to inspect it.</p></header><div class="run-graph-frame"><svg class="run-graph" viewBox="0 0 ${layout.width} ${layout.height}" role="img" aria-label="Run result workflow"><defs><marker id="run-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z"></path></marker></defs>${edgeMarkup}${nodeMarkup}</svg></div></section>`;
+  const stepButtons = executions.map((execution, index) => {
+    const status = runExecutionStatus(execution);
+    return `<button class="run-step-chip ${index === 0 ? "selected" : ""}" type="button" data-run-step-index="${index}"><span>${index + 1}</span><b>${escapeHtml(execution.name || `Step ${index + 1}`)}</b><i class="${status.className}">${escapeHtml(status.label)}</i></button>`;
+  }).join("");
+  return `<section class="run-replay" aria-labelledby="run-replay-title"><header><div><small>WORKFLOW REPLAY</small><h3 id="run-replay-title">Follow the recorded path</h3></div><p>Choose a step for its instructions, evidence, and output.</p></header><div class="run-graph-frame"><svg class="run-graph" viewBox="0 0 ${layout.width} ${layout.height}" role="img" aria-label="Run result workflow"><defs><marker id="run-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z"></path></marker></defs>${edgeMarkup}${nodeMarkup}</svg></div><nav class="run-step-strip" aria-label="Run steps">${stepButtons}</nav></section>`;
 }
 
 function contextMarkup(context = {}) {
@@ -1015,7 +1018,7 @@ function contextMarkup(context = {}) {
     : "<p>No additional context was stored for this older run.</p>";
 }
 
-function runNodeDetail(execution, phase, index, timeline, result, state) {
+function runNodeInspector(execution, phase, index, timeline, result, state) {
   const status = runExecutionStatus(execution);
   const activity = timeline.filter((item) => item.phase === execution.phaseId);
   const counts = activity.reduce((acc, item) => { acc[item.kind] = (acc[item.kind] || 0) + 1; return acc; }, {});
@@ -1034,26 +1037,118 @@ function runNodeDetail(execution, phase, index, timeline, result, state) {
   const exactState = execution.status === "pass" ? "passed" : execution.status === "stopped" ? "stopped" : "failed";
   const exactCheck = execution.kind === "command" ? `<div class="exact-check ${exactState}"><b>${escapeHtml(status.label)}</b><code>${escapeHtml(execution.command || phase?.command || "Command unavailable")}</code><p>${escapeHtml(execution.evidence || execution.summary || "No evidence recorded.")}</p></div>` : "";
   const title = execution.name || phase?.name || (execution.kind === "checkpoint" ? "Calibration" : execution.kind === "verify" ? "Review the result" : "Codex step");
-  const detailId = `run-node-${String(execution.phaseId).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-  return `<details class="run-node-detail" id="${escapeHtml(detailId)}"><summary><span class="run-detail-index">${index + 1}</span><span><small>${escapeHtml(phaseKindLabel(execution))}</small><b>${escapeHtml(title)}</b></span><em class="${status.className}">${escapeHtml(status.label)}</em></summary><div class="run-node-body">${intervention}${exactCheck}<div class="activity-chips">${chips}</div><div class="node-io-grid"><details><summary>Input</summary><pre>${escapeHtml(io.input || "No input stored.")}</pre></details><details><summary>Context</summary>${contextMarkup(io.context)}</details><details><summary>Output</summary><pre>${escapeHtml(io.output || "No output stored.")}</pre></details></div></div></details>`;
+  return `<article class="run-step-inspector"><header><span class="run-detail-index">${index + 1}</span><div><small>${escapeHtml(phaseKindLabel(execution))}</small><h3>${escapeHtml(title)}</h3></div><em class="${status.className}">${escapeHtml(status.label)}</em></header>${intervention}${exactCheck}<div class="activity-chips">${chips}</div><div class="node-io-grid"><details open><summary>Instruction</summary><pre>${escapeHtml(io.input || "No input stored.")}</pre></details><details><summary>Context</summary>${contextMarkup(io.context)}</details><details open><summary>Visible result</summary><pre>${escapeHtml(io.output || "No output stored.")}</pre></details></div></article>`;
 }
 
-function bindRunReplay(detail) {
-  const openDetail = (id) => {
-    const target = document.getElementById(id);
-    if (!target) return;
-    target.open = true;
-    $$("[data-run-node]", detail).forEach((node) => node.classList.toggle("selected", node.dataset.runNode === id));
-    target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+function bindRunReplay(detail, executions, graph, timeline, result, state) {
+  const phaseById = new Map((graph?.phases || []).map((phase) => [phase.id, phase]));
+  const selectStep = (rawIndex) => {
+    const index = Number(rawIndex);
+    const execution = executions[index];
+    if (!execution) return;
+    $("#run-step-inspector").innerHTML = runNodeInspector(execution, phaseById.get(execution.phaseId), index, timeline, result, state);
+    $$("[data-run-node-index]", detail).forEach((node) => node.classList.toggle("selected", Number(node.dataset.runNodeIndex) === index));
+    $$("[data-run-step-index]", detail).forEach((node) => node.classList.toggle("selected", Number(node.dataset.runStepIndex) === index));
   };
-  $$("[data-run-node]", detail).forEach((node) => {
-    node.addEventListener("click", () => openDetail(node.dataset.runNode));
+  $$("[data-run-node-index]", detail).forEach((node) => {
+    node.addEventListener("click", () => selectStep(node.dataset.runNodeIndex));
     node.addEventListener("keydown", (event) => {
       if (!["Enter", " "].includes(event.key)) return;
       event.preventDefault();
-      openDetail(node.dataset.runNode);
+      selectStep(node.dataset.runNodeIndex);
     });
   });
+  $$("[data-run-step-index]", detail).forEach((node) => node.addEventListener("click", () => selectStep(node.dataset.runStepIndex)));
+}
+
+function artifactKindLabel(kind) {
+  return ({ spreadsheet: "Workbook", table: "Table", image: "Image", pdf: "PDF", media: "Media", text: "Document", file: "File" })[kind] || "File";
+}
+
+function artifactIcon(kind) {
+  const paths = {
+    spreadsheet: '<path d="M5 3h14v18H5zM5 8h14M10 8v13M10 13h9M10 17h9"/>',
+    table: '<path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14"/>',
+    image: '<path d="M4 5h16v14H4zM7 16l4-4 3 3 2-2 4 4M8 9h.01"/>',
+    pdf: '<path d="M6 3h9l3 3v15H6zM15 3v4h4M9 16v-5h2a2 2 0 0 1 0 4H9m5 1v-5h3"/>',
+    media: '<path d="M5 4h14v16H5zM10 9l5 3-5 3z"/>',
+    text: '<path d="M6 3h9l3 3v15H6zM15 3v4h4M9 11h6M9 15h6"/>',
+    file: '<path d="M6 3h9l3 3v15H6zM15 3v4h4"/>',
+  };
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[kind] || paths.file}</svg>`;
+}
+
+function formatArtifactSize(bytes) {
+  if (!Number.isFinite(bytes)) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function artifactEndpoint(runId, action, path, sheet = "") {
+  const query = new URLSearchParams({ path });
+  if (sheet) query.set("sheet", sheet);
+  return `/api/runs/${encodeURIComponent(runId)}/artifacts/${action}?${query}`;
+}
+
+function artifactTableMarkup(preview) {
+  const columns = preview.columns || [];
+  const rows = preview.rows || [];
+  if (!columns.length && !rows.length) return '<div class="artifact-empty"><b>Empty table</b><p>No populated cells were found.</p></div>';
+  const width = Math.max(columns.length, ...rows.map((row) => row.length), 0);
+  const headings = Array.from({ length: width }, (_, index) => columns[index] || `Column ${index + 1}`);
+  return `<div class="artifact-table-wrap"><table class="artifact-table"><thead><tr>${headings.map((value) => `<th>${escapeHtml(value)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headings.map((_, index) => `<td>${escapeHtml(row[index] || "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>${preview.truncated ? '<p class="artifact-limit">Preview limited to 60 rows and 30 columns.</p>' : ""}`;
+}
+
+function artifactStudioMarkup(runId, artifacts, privacy) {
+  if (!artifacts.length) return `<section class="artifact-studio empty"><header><div><small>OUTPUTS</small><h3>No changed files detected</h3></div></header><div class="artifact-empty"><b>The run returned text only.</b><p>The final response is still available below.</p></div></section>`;
+  const files = artifacts.map((artifact, index) => `<button class="artifact-tab ${index === 0 ? "selected" : ""}" type="button" data-artifact-index="${index}">${artifactIcon(artifact.kind)}<span><b>${escapeHtml(artifact.name)}</b><small>${escapeHtml(artifactKindLabel(artifact.kind))} · ${escapeHtml(formatArtifactSize(artifact.size))}</small></span></button>`).join("");
+  return `<section class="artifact-studio"><header><div><small>OUTPUTS</small><h3>${artifacts.length} file${artifacts.length === 1 ? "" : "s"} from this run</h3></div><p>${escapeHtml(privacy)}</p></header><nav class="artifact-tabs" aria-label="Run output files">${files}</nav><div id="artifact-preview" class="artifact-preview"><p>Loading preview…</p></div></section>`;
+}
+
+async function showArtifact(runId, artifact, target, sheet = "") {
+  if (!artifact || !target) return;
+  const rawUrl = artifactEndpoint(runId, "raw", artifact.path);
+  const action = `<a class="artifact-download" href="${escapeHtml(rawUrl)}" ${["image", "media"].includes(artifact.kind) ? 'target="_blank" rel="noreferrer"' : ""}>${artifact.kind === "image" ? "Open original" : "Download"}</a>`;
+  const head = `<header><div>${artifactIcon(artifact.kind)}<span><small>${escapeHtml(artifactKindLabel(artifact.kind))}</small><h4>${escapeHtml(artifact.name)}</h4></span></div>${action}</header>`;
+  if (artifact.kind === "image") {
+    target.innerHTML = `${head}<div class="artifact-image"><img src="${escapeHtml(rawUrl)}" alt="Rendered output ${escapeHtml(artifact.name)}"></div>`;
+    return;
+  }
+  if (artifact.kind === "media") {
+    const audio = /\.(?:m4a|mp3|ogg|wav)$/i.test(artifact.name);
+    target.innerHTML = `${head}<div class="artifact-media">${audio ? `<audio controls src="${escapeHtml(rawUrl)}"></audio>` : `<video controls src="${escapeHtml(rawUrl)}"></video>`}</div>`;
+    return;
+  }
+  if (artifact.kind === "pdf" || artifact.kind === "file") {
+    target.innerHTML = `${head}<div class="artifact-empty"><b>${artifact.kind === "pdf" ? "PDF ready to open" : "Preview unavailable"}</b><p>Download the original file to inspect it.</p></div>`;
+    return;
+  }
+  target.innerHTML = `${head}<p class="artifact-loading">Preparing a safe local preview…</p>`;
+  try {
+    const preview = await request(artifactEndpoint(runId, "preview", artifact.path, sheet));
+    if (preview.kind === "table" || preview.kind === "spreadsheet") {
+      const sheetTabs = preview.kind === "spreadsheet" ? `<nav class="sheet-tabs" aria-label="Workbook sheets">${preview.sheets.map((name) => `<button type="button" data-sheet-name="${escapeHtml(name)}" class="${name === preview.sheet ? "selected" : ""}">${escapeHtml(name)}</button>`).join("")}</nav>` : "";
+      target.innerHTML = `${head}${sheetTabs}<div class="artifact-table-meta"><span>${preview.rowCount} rows</span><span>${preview.columnCount} columns</span></div>${artifactTableMarkup(preview)}`;
+      $$("[data-sheet-name]", target).forEach((button) => button.addEventListener("click", () => void showArtifact(runId, artifact, target, button.dataset.sheetName)));
+      return;
+    }
+    target.innerHTML = `${head}<pre class="artifact-text">${escapeHtml(preview.text || "No readable content.")}</pre>`;
+  } catch (error) {
+    target.innerHTML = `${head}<div class="artifact-empty"><b>Preview unavailable</b><p>${escapeHtml(error.message)}</p></div>`;
+  }
+}
+
+function bindArtifactStudio(detail, runId, artifacts) {
+  const target = $("#artifact-preview");
+  if (!target || !artifacts.length) return;
+  const selectArtifact = (rawIndex) => {
+    const index = Number(rawIndex);
+    $$("[data-artifact-index]", detail).forEach((button) => button.classList.toggle("selected", Number(button.dataset.artifactIndex) === index));
+    void showArtifact(runId, artifacts[index], target);
+  };
+  $$("[data-artifact-index]", detail).forEach((button) => button.addEventListener("click", () => selectArtifact(button.dataset.artifactIndex)));
+  selectArtifact(0);
 }
 
 async function showRun(runId) {
@@ -1062,7 +1157,10 @@ async function showRun(runId) {
   const detail = $("#run-detail");
   detail.innerHTML = "<p>Loading run…</p>";
   try {
-    const state = await request(`/api/runs/${encodeURIComponent(runId)}`);
+    const [state, artifactResult] = await Promise.all([
+      request(`/api/runs/${encodeURIComponent(runId)}`),
+      request(`/api/runs/${encodeURIComponent(runId)}/artifacts`).catch(() => ({ artifacts: [], privacy: "No file preview is available for this run." })),
+    ]);
     const result = state.result || {};
     let executions = result.phaseProgram?.executions || [];
     const timeline = result.timeline || state.timeline || [];
@@ -1072,11 +1170,13 @@ async function showRun(runId) {
       graph = { phases: [{ id: "native-codex-run", name: "Codex run", kind: "native" }], edges: [] };
     }
     const phaseById = new Map((graph?.phases || []).map((phase) => [phase.id, phase]));
-    const phaseCards = executions.map((execution, index) => runNodeDetail(execution, phaseById.get(execution.phaseId), index, timeline, result, state)).join("");
     const title = result.workflow?.name || (executions.length ? "Guided workflow" : "Direct Codex run");
     const task = result.workflow?.task || "What you asked Codex to do, where you intervened, and what came back.";
-    detail.innerHTML = `<header class="receipt-head"><div><p class="kicker">${escapeHtml(friendlyStatus(result.completionStatus || state.status).toUpperCase())}</p><h2>${escapeHtml(title)}</h2><p>${escapeHtml(task)}</p></div></header>${runCanvasMarkup(graph, executions)}<section class="run-node-list" aria-label="Inspectable workflow nodes">${phaseCards}</section><details class="result-card"><summary>Final result</summary><pre class="receipt-output">${escapeHtml(result.finalResponse || state.error || "No final response.")}</pre></details>`;
-    bindRunReplay(detail);
+    const initialInspector = runNodeInspector(executions[0], phaseById.get(executions[0].phaseId), 0, timeline, result, state);
+    const artifacts = artifactResult.artifacts || [];
+    detail.innerHTML = `<header class="receipt-head"><div><p class="kicker">${escapeHtml(friendlyStatus(result.completionStatus || state.status).toUpperCase())}</p><h2>${escapeHtml(title)}</h2><p>${escapeHtml(task)}</p></div></header><div class="run-workbench"><div class="run-workflow-column">${runCanvasMarkup(graph, executions)}<section id="run-step-inspector" aria-label="Selected step details">${initialInspector}</section></div>${artifactStudioMarkup(runId, artifacts, artifactResult.privacy || "Only files created or changed during this run are shown.")}</div><details class="result-card"><summary>Read Codex’s final response</summary><pre class="receipt-output">${escapeHtml(result.finalResponse || state.error || "No final response.")}</pre></details>`;
+    bindRunReplay(detail, executions, graph, timeline, result, state);
+    bindArtifactStudio(detail, runId, artifacts);
   } catch (error) { detail.innerHTML = `<p>Could not load receipt: ${escapeHtml(error.message)}</p>`; }
 }
 

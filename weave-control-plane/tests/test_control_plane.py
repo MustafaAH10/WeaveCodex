@@ -498,7 +498,9 @@ def test_main_app_unifies_task_design_runs_integrations_and_evidence() -> None:
     assert "CALIBRATION" in javascript
     assert "execution.feedback" in javascript
     assert "layoutRunGraph" in javascript
-    assert "RESULT CANVAS" in javascript
+    assert "WORKFLOW REPLAY" in javascript
+    assert "request(`/api/runs/${encodeURIComponent(runId)}/artifacts`" in javascript
+    assert 'id="artifact-preview"' in javascript
     assert "runCanvasMarkup" in javascript
     assert "node-io-grid" in javascript
     assert 'title="Delete step" aria-label="Delete step"' in javascript

@@ -84,31 +84,40 @@ test("the graph renderer draws exact edges and supports switching and animation"
   assert.match(script, /ArrowRight/);
 });
 
-test("the side by side demo uses three concrete tested workflow scenarios", () => {
-  assert.deepEqual(Object.keys(comparisons), ["forecast", "poster", "operations"]);
-  assert.equal((html.match(/data-comparison-key=/g) ?? []).length, 3);
-  for (const comparison of Object.values(comparisons)) {
-    assert.equal(comparison.codex.length, 4);
-    assert.equal(comparison.weave.length, 4);
-    assert.equal(comparison.path.length, 4);
-    assert.ok(comparison.weave.some(([kind]) => kind === "calibrate"));
-    assert.ok(comparison.weave.some(([kind]) => kind === "pass"));
-    assert.match(comparison.path[1], /Lock/);
-    assert.match(comparison.result, /Both artifacts passed/);
+test("the control comparison uses four concrete user-authored workflow graphs", () => {
+  assert.deepEqual(Object.keys(comparisons), ["finance", "campaign", "vendor", "release"]);
+  assert.equal((html.match(/data-comparison-key=/g) ?? []).length, 4);
+  for (const [key, comparison] of Object.entries(comparisons)) {
+    assert.equal(comparison.nodes.length, 8, `${key} has a concise but substantive decomposition`);
+    const ids = new Set(comparison.nodes.map((node) => node.id));
+    const edges = comparison.edges.map((edge) => Array.isArray(edge) ? { from: edge[0], to: edge[1], kind: "route" } : edge);
+    const outgoing = new Map(comparison.nodes.map((node) => [node.id, 0]));
+    for (const edge of edges) {
+      assert.ok(ids.has(edge.from) && ids.has(edge.to), `${key} edge endpoints exist`);
+      outgoing.set(edge.from, outgoing.get(edge.from) + 1);
+    }
+    assert.ok([...outgoing.values()].some((count) => count > 1), `${key} visibly branches`);
+    assert.ok(comparison.nodes.some((node) => node.kind === "human"), `${key} exposes calibration`);
+    assert.ok(comparison.nodes.some((node) => node.kind === "check"), `${key} has an exact check`);
+    assert.ok(edges.some((edge) => edge.kind === "recovery"), `${key} has a named recovery edge`);
+    assert.deepEqual(Object.keys(comparison.contracts), ["evidence", "calibration", "check", "recovery"]);
+    assert.equal(comparison.codex.route.length, 4);
+    assert.match(comparison.codex.note, /inside the|inside an|inside.*run|implicit/i);
   }
   assert.match(script, /function playComparison\(\)/);
-  assert.match(script, /data-stream-index/);
+  assert.match(script, /renderComparisonGraph/);
+  assert.match(script, /comparison-recovery-arrow/);
   assert.match(script, /comparisonObserver/);
-  assert.match(html, /Observed product acceptance trial/);
+  assert.match(html, /This illustrates the control surfaces, not a claim that Codex fails/);
 });
 
 test("copy is concise and preserves the product boundary", () => {
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(ids).size, ids.length, "HTML ids must be unique");
-  assert.match(html, /Keep the run on course/);
-  assert.match(html, /Same permissions, different control/);
+  assert.match(html, /Decide the route/);
+  assert.match(html, /Same Codex, a route you own/);
   assert.match(html, /Lock the intent, evidence, and recovery path/);
-  assert.match(html, /Your visible contract/);
+  assert.match(html, /Route drawn before the run/);
   assert.match(html, /official local Codex app-server/);
   assert.match(html, /Independent\. Open source\. Built on Codex\./);
   assert.match(html, /class="copy-label" aria-live="polite"/);

@@ -81,8 +81,9 @@ deliberately short:
 4. **Save from the canvas or under Saved** without the original task or repository, then reuse or
    visibly adapt it for another task. Saved also contains Codex skills, connectors, and account
    setup.
-5. **Review Runs** starting from the goals and human decisions—not internal IDs or protocol
-   objects. Product checks are available below personal runs as optional evidence.
+5. **Review Runs** by selecting a step on the replay canvas and opening the files that run changed.
+   CSV and workbook cells, images, media, and text render locally; original files remain available
+   for download. Product checks are available below personal runs as optional evidence.
 
 Exact selected-memory controls, raw manifests, and machine-readable identifiers remain runtime/API
 capabilities rather than controls exposed in the simplified first-run screen.

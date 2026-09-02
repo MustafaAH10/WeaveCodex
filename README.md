@@ -65,7 +65,8 @@ Then open <http://127.0.0.1:8790/>. The local app has three working areas:
   creative work;
 - **Saved** — reuse workflows, choose existing Codex skills/connectors, and manage local
   account setup; and
-- **Runs** — review authored steps, human decisions, exact checks, and final results.
+- **Runs** — replay authored steps and open locally rendered tables, workbooks, images, media,
+  and text produced by each run.
 
 The standalone public website explains the Codex/Weave boundary; the local Build area stays focused
 on the executable canvas. Setup and integrations live together under Saved, and product evidence is
